@@ -114,9 +114,12 @@ export class OfficeEngine {
       const label = c.def.nameCn || c.def.name;
       const nx = c.px + 30;
       const ny = c.py + 10;
-      ctx.fillStyle = "rgba(255,255,255,0.7)";
-      ctx.fillText(label, nx + 1, ny + 1);
-      ctx.fillStyle = c.def.color;
+      const tw = ctx.measureText(label).width;
+      // 底色背景
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillRect(nx - 3, ny - 16, tw + 6, 22);
+      // 文字
+      ctx.fillStyle = "#FFFFFF";
       ctx.fillText(label, nx, ny);
     }
     ctx.restore();

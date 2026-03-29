@@ -32,9 +32,18 @@ function homePos(d: CharacterDef) {
   return { px: d.deskTile.x * TILE + TILE, py: d.deskTile.y * TILE + TILE };
 }
 
-function randomDest() {
+// 白板位置（牆面上方，時鐘旁）
+const WHITEBOARD = { x: 5, y: 3.5 };
+
+function randomDest(charId?: string) {
+  // Lego 和 Sherlock 有機會去白板
+  if ((charId === "lego" || charId === "sherlock") && Math.random() < 0.4) {
+    return {
+      px: WHITEBOARD.x * TILE + (Math.random() - 0.5) * TILE * 2,
+      py: WHITEBOARD.y * TILE,
+    };
+  }
   const r = Math.random() < 0.5 ? ROOMS.tearoom : ROOMS.meetingRoom;
-  // 隨機偏移避免所有人走到同一點
   const jitterX = (Math.random() - 0.5) * TILE * 3;
   const jitterY = (Math.random() - 0.5) * TILE * 1.5;
   return {
@@ -84,7 +93,7 @@ export class CharacterManager {
         break; // working 狀態不離開座位
       case "idle_home":
         if (--c.walkTimer <= 0) {
-          const d = randomDest();
+          const d = randomDest(c.def.id);
           c.targetPx = d.px; c.targetPy = d.py;
           c.state = "walking"; c.goingHome = false;
           c.walkTimer = rand(WALK_MIN, WALK_MAX);
