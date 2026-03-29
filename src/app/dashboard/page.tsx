@@ -9,6 +9,14 @@ interface Metrics {
   modelName?: string;
   contextUsedPercent?: number;
   updatedAt?: string;
+  resetAt?: string;
+}
+
+function shortModelName(name?: string): string {
+  if (!name) return "--";
+  // "Claude Opus 4.6 (1M context)" -> "Opus 4.6"
+  const match = name.match(/(Opus|Sonnet|Haiku)\s*[\d.]+/i);
+  return match ? match[0] : name.replace(/\s*\(.*?\)\s*/g, "");
 }
 
 interface MemberStatus {
@@ -108,7 +116,7 @@ export default function Dashboard() {
               </div>
               <div className="bg-gray-900 rounded-lg p-3">
                 <span className="text-gray-400 text-sm">MODEL</span>
-                <p className="text-sm text-cyan-400 mt-1">{metrics.modelName || "--"}</p>
+                <p className="text-sm text-cyan-400 mt-1">{shortModelName(metrics.modelName)}</p>
               </div>
             </div>
 
@@ -148,7 +156,7 @@ export default function Dashboard() {
           {/* RIGHT: Team */}
           <div className="flex-1 p-4 overflow-y-auto">
             <div className="text-gray-500 text-sm uppercase tracking-wider mb-3">Team Members</div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {TEAM.map(m => {
                 const ms = members[m.id];
                 const st = ms ? STATUS_MAP[ms.status] ?? { label: ms.status, color: "#6b7280" } : null;

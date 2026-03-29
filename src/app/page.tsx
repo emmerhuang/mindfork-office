@@ -12,6 +12,7 @@ interface Metrics {
   modelName?: string;
   contextUsedPercent?: number;
   updatedAt?: string;
+  resetAt?: string;
 }
 
 export default function Home() {
@@ -57,7 +58,7 @@ export default function Home() {
       <main className="flex-1 min-h-0">
         {isSleeping ? (
           <div className="h-full flex items-center justify-center">
-            <SleepScene />
+            <SleepScene resetAt={metrics?.resetAt} />
           </div>
         ) : (
           <OfficeCanvas
@@ -107,7 +108,7 @@ export default function Home() {
             {/* Model */}
             <div className="text-center">
               <span className="text-gray-400 text-xs block">MODEL</span>
-              <span className="text-xs text-cyan-400">{metrics.modelName || "--"}</span>
+              <span className="text-xs text-cyan-400">{metrics.modelName ? (metrics.modelName.match(/(Opus|Sonnet|Haiku)\s*[\d.]+/i)?.[0] ?? metrics.modelName.replace(/\s*\(.*?\)\s*/g, "")) : "--"}</span>
             </div>
 
             {/* Context */}

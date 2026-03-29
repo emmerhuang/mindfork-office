@@ -41,7 +41,11 @@ const scenes = [
   },
 ];
 
-export default function SleepScene() {
+interface SleepSceneProps {
+  resetAt?: string; // ISO time string
+}
+
+export default function SleepScene({ resetAt }: SleepSceneProps) {
   const [sceneIndex, setSceneIndex] = useState(0);
 
   useEffect(() => {
@@ -75,6 +79,13 @@ export default function SleepScene() {
           <span className="text-3xl animate-zzz inline-block text-blue-500/60" style={{ animationDelay: "0.5s" }}>Z</span>
           <span className="text-4xl animate-zzz inline-block text-blue-600/60" style={{ animationDelay: "1s" }}>Z</span>
         </div>
+
+        {/* Return time */}
+        <p className="text-white/50 text-sm mb-4">
+          {resetAt
+            ? `預計 ${new Date(resetAt).toLocaleTimeString("zh-TW", { timeZone: "Asia/Taipei", hour: "2-digit", minute: "2-digit", hour12: false })} 回來上班`
+            : "稍後回來"}
+        </p>
 
         {/* Scene dots */}
         <div className="flex justify-center gap-2">
