@@ -52,8 +52,24 @@ export class OfficeEngine {
     const py = (e.clientY - r.top) * (CANVAS_H / r.height);
     const hit = this.mgr.findCharacterAt(px, py);
     if (hit) {
-      const pool = hit.def.dialogues;
-      if (pool.length) this.dlg.show(hit.def.id, pool[Math.floor(Math.random() * pool.length)], hit.px, hit.py, this.tick);
+      if (hit.def.isWaffles) {
+        // Waffles 特殊反應：快速搖動 + 特殊台詞
+        const waffleReacts = ["汪汪汪！（好開心被摸！）", "（翻肚）再摸一次！", "（瘋狂搖尾巴）", "汪！你好你好！", "（舔手）嘿嘿～"];
+        const text = waffleReacts[Math.floor(Math.random() * waffleReacts.length)];
+        this.dlg.show(hit.def.id, text, hit.px, hit.py, this.tick);
+        // 快速切換動畫模擬搖擺
+        hit.animFrame = 0;
+        hit.animTimer = 0;
+        const origTick = hit.animTimer;
+        let count = 0;
+        const wag = setInterval(() => {
+          hit.animFrame ^= 1;
+          if (++count > 8) { clearInterval(wag); hit.animTimer = origTick; }
+        }, 100);
+      } else {
+        const text = this.mgr.getDialogue(hit.def.id);
+        if (text) this.dlg.show(hit.def.id, text, hit.px, hit.py, this.tick);
+      }
       this.opts.onCharacterClick?.(hit.def.id);
     }
   };

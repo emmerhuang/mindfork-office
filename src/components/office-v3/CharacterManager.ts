@@ -18,7 +18,7 @@ export interface CharInstance {
 }
 
 const SPEED = 2;                    // px/tick
-const ANIM_TICK = 30;               // 每 30 ticks 切 frame
+const ANIM_TICK = 10;               // 每 30 ticks 切 frame
 const DLG_MIN = 30 * 30;            // 30s
 const DLG_MAX = 90 * 30;            // 90s
 const WALK_MIN = 20 * 30;           // 20s
