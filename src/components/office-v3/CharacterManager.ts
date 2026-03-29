@@ -81,6 +81,7 @@ export class CharacterManager {
     // state machine
     switch (c.state) {
       case "working":
+        break; // working 狀態不離開座位
       case "idle_home":
         if (--c.walkTimer <= 0) {
           const d = randomDest();
