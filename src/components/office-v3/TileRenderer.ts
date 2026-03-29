@@ -41,7 +41,7 @@ function drawWalls(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null) 
   if (img) {
     const segs = [
       TILE_SPRITES.wall_bookshelf, TILE_SPRITES.wall_window,
-      TILE_SPRITES.wall_plain,     TILE_SPRITES.wall_clock,
+      TILE_SPRITES.wall_whiteboard, TILE_SPRITES.wall_clock,
       TILE_SPRITES.wall_window,    TILE_SPRITES.wall_bookshelf,
     ];
     for (let i = 0; i < segs.length; i++)
@@ -145,17 +145,11 @@ function drawMeetingRoom(ctx: CanvasRenderingContext2D, tileImg?: HTMLImageEleme
     // 會議桌 sprite
     const s = TILE_SPRITES.conference_table;
     if (s) {
-      const dw = TILE * 4;
+      const dw = TILE * 2.8;
       const dh = dw * (s.sh / s.sw);
       drawSprite(ctx, tileImg, s, cx - dw / 2, cy - dh / 2 - TILE * 0.3, dw, dh);
     }
-    // 白板 sprite
-    const wb = TILE_SPRITES.wall_whiteboard;
-    if (wb) {
-      const wbW = TILE * 3;
-      const wbH = wbW * (wb.sh / wb.sw);
-      drawSprite(ctx, tileImg, wb, tx(rm.x + 1.5), ty(rm.y) + 2, wbW, wbH);
-    }
+    // 白板已移至上方牆面（時鐘旁）
   } else {
     // fallback
     const tw = TILE * 3, th = TILE * 1.2;

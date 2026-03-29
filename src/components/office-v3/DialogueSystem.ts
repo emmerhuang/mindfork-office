@@ -46,12 +46,13 @@ export class DialogueSystem {
     ctx.globalAlpha = alpha;
     ctx.font = FONT;
 
-    const maxChars = 22;
-    const display = b.text.length > maxChars ? b.text.slice(0, maxChars - 1) + "..." : b.text;
-    const tw = ctx.measureText(display).width;
+    // 自動換行
     const pad = 10;
-    const bw = Math.min(tw + pad * 2, MAX_W);
-    const bh = 36;
+    const lineH = 34;
+    const lines = wrapText(ctx, b.text, MAX_W - pad * 2);
+    const maxLineW = Math.max(...lines.map(l => ctx.measureText(l).width));
+    const bw = Math.min(maxLineW + pad * 2, MAX_W);
+    const bh = lines.length * lineH + pad;
     const bx = Math.max(4, Math.min(b.cx - bw / 2, 768 - bw - 4));
     const by = b.cy - 50 - bh;
 
@@ -85,15 +86,34 @@ export class DialogueSystem {
     // cover seam
     ctx.fillRect(triX - 4, by + bh - 1, 8, 2);
 
-    // text
+    // text (multi-line)
     ctx.fillStyle = "#222";
-    ctx.fillText(display, bx + pad, by + bh - 6);
+    for (let i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i], bx + pad, by + pad + 24 + i * lineH);
+    }
 
     ctx.restore();
   }
 
   hasActiveBubble(charId: string) { return this.bubbles.has(charId); }
   clear() { this.bubbles.clear(); }
+}
+
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
+  const chars = text.split("");
+  const lines: string[] = [];
+  let line = "";
+  for (const ch of chars) {
+    const test = line + ch;
+    if (ctx.measureText(test).width > maxW && line.length > 0) {
+      lines.push(line);
+      line = ch;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines.length > 0 ? lines : [""];
 }
 
 function roundRect(
