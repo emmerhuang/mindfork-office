@@ -31,19 +31,59 @@ function drawSprite(
 // 地板渲染（保持程式化——單色+格線看起來就很好）
 // ────────────────────────────────────────────────────────────
 
-function drawFloor(ctx: CanvasRenderingContext2D) {
+function drawFloor(ctx: CanvasRenderingContext2D, tileImg?: HTMLImageElement | null) {
   const { tearoom, meetingRoom, workArea } = ROOMS;
 
-  // 主工作區地板
-  ctx.fillStyle = COLORS.floorMain;
-  ctx.fillRect(
-    tx(workArea.bounds.x),
-    ty(workArea.bounds.y),
-    workArea.bounds.w * TILE,
-    workArea.bounds.h * TILE
-  );
+  if (tileImg) {
+    // 用 sprite 鋪地板
+    const floorSprite = TILE_SPRITES.floor_blue;
+    for (let r = workArea.bounds.y; r < workArea.bounds.y + workArea.bounds.h; r++) {
+      for (let c = workArea.bounds.x; c < workArea.bounds.x + workArea.bounds.w; c++) {
+        drawSprite(ctx, tileImg, floorSprite, tx(c), ty(r), TILE, TILE);
+      }
+    }
 
-  // 地板格紋（細線）
+    const tearoomSprite = TILE_SPRITES.floor_wood;
+    for (let r = tearoom.bounds.y; r < tearoom.bounds.y + tearoom.bounds.h; r++) {
+      for (let c = tearoom.bounds.x; c < tearoom.bounds.x + tearoom.bounds.w; c++) {
+        drawSprite(ctx, tileImg, tearoomSprite, tx(c), ty(r), TILE, TILE);
+      }
+    }
+
+    const meetingSprite = TILE_SPRITES.floor_purple;
+    for (let r = meetingRoom.bounds.y; r < meetingRoom.bounds.y + meetingRoom.bounds.h; r++) {
+      for (let c = meetingRoom.bounds.x; c < meetingRoom.bounds.x + meetingRoom.bounds.w; c++) {
+        drawSprite(ctx, tileImg, meetingSprite, tx(c), ty(r), TILE, TILE);
+      }
+    }
+  } else {
+    // fallback 程式化地板
+    ctx.fillStyle = COLORS.floorMain;
+    ctx.fillRect(
+      tx(workArea.bounds.x),
+      ty(workArea.bounds.y),
+      workArea.bounds.w * TILE,
+      workArea.bounds.h * TILE
+    );
+
+    ctx.fillStyle = COLORS.floorTearoom;
+    ctx.fillRect(
+      tx(tearoom.bounds.x),
+      ty(tearoom.bounds.y),
+      tearoom.bounds.w * TILE,
+      tearoom.bounds.h * TILE
+    );
+
+    ctx.fillStyle = COLORS.floorMeeting;
+    ctx.fillRect(
+      tx(meetingRoom.bounds.x),
+      ty(meetingRoom.bounds.y),
+      meetingRoom.bounds.w * TILE,
+      meetingRoom.bounds.h * TILE
+    );
+  }
+
+  // 格線（sprite 和 fallback 都畫，提供視覺結構）
   ctx.strokeStyle = "rgba(0,0,0,0.05)";
   ctx.lineWidth = 0.5;
   for (let c = workArea.bounds.x; c <= workArea.bounds.x + workArea.bounds.w; c++) {
@@ -59,16 +99,6 @@ function drawFloor(ctx: CanvasRenderingContext2D) {
     ctx.stroke();
   }
 
-  // 茶水間地板
-  ctx.fillStyle = COLORS.floorTearoom;
-  ctx.fillRect(
-    tx(tearoom.bounds.x),
-    ty(tearoom.bounds.y),
-    tearoom.bounds.w * TILE,
-    tearoom.bounds.h * TILE
-  );
-
-  // 茶水間格紋
   ctx.strokeStyle = "rgba(180,130,0,0.08)";
   ctx.lineWidth = 0.5;
   for (let c = tearoom.bounds.x; c <= tearoom.bounds.x + tearoom.bounds.w; c++) {
@@ -84,16 +114,6 @@ function drawFloor(ctx: CanvasRenderingContext2D) {
     ctx.stroke();
   }
 
-  // 會議室地板
-  ctx.fillStyle = COLORS.floorMeeting;
-  ctx.fillRect(
-    tx(meetingRoom.bounds.x),
-    ty(meetingRoom.bounds.y),
-    meetingRoom.bounds.w * TILE,
-    meetingRoom.bounds.h * TILE
-  );
-
-  // 會議室格紋
   ctx.strokeStyle = "rgba(100,80,150,0.07)";
   ctx.lineWidth = 0.5;
   for (let c = meetingRoom.bounds.x; c <= meetingRoom.bounds.x + meetingRoom.bounds.w; c++) {
@@ -114,35 +134,51 @@ function drawFloor(ctx: CanvasRenderingContext2D) {
 // 牆壁渲染（保持程式化——牆面用單色+程式化裝飾即可）
 // ────────────────────────────────────────────────────────────
 
-function drawWalls(ctx: CanvasRenderingContext2D) {
-  // 主牆背景（上方 3 tile 高）
-  ctx.fillStyle = COLORS.wallBase;
-  ctx.fillRect(0, 0, CANVAS_W, ty(3));
+function drawWalls(ctx: CanvasRenderingContext2D, tileImg?: HTMLImageElement | null) {
+  if (tileImg) {
+    // 用 sprite 拼接牆面：6 段，每段 2 tile 寬，3 tile 高
+    const wallH = TILE * 3;
+    const segW = TILE * 2;
+    const segments: SpriteFrame[] = [
+      TILE_SPRITES.wall_bookshelf,
+      TILE_SPRITES.wall_window,
+      TILE_SPRITES.wall_plain,
+      TILE_SPRITES.wall_clock,
+      TILE_SPRITES.wall_window,
+      TILE_SPRITES.wall_bookshelf,
+    ];
+    for (let i = 0; i < segments.length; i++) {
+      drawSprite(ctx, tileImg, segments[i], i * segW, 0, segW, wallH);
+    }
 
-  // 牆頂邊條
-  ctx.fillStyle = COLORS.wallTop;
-  ctx.fillRect(0, ty(3) - 4, CANVAS_W, 4);
+    // 踢腳板（深色橫線，sprite 不含此細節）
+    ctx.fillStyle = "rgba(0,0,0,0.3)";
+    ctx.fillRect(0, ty(3), CANVAS_W, 3);
+  } else {
+    // fallback 程式化牆面
+    ctx.fillStyle = COLORS.wallBase;
+    ctx.fillRect(0, 0, CANVAS_W, ty(3));
 
-  // 踢腳板（深色橫線）
-  ctx.fillStyle = "rgba(0,0,0,0.3)";
-  ctx.fillRect(0, ty(3), CANVAS_W, 3);
+    ctx.fillStyle = COLORS.wallTop;
+    ctx.fillRect(0, ty(3) - 4, CANVAS_W, 4);
 
-  // 窗戶 x4（間隔分佈）
-  const windowPositions = [2, 8, 16, 22]; // tile x 位置
-  for (const wx of windowPositions) {
-    drawWindow(ctx, tx(wx), ty(0) + 4, TILE * 4, ty(3) - 8);
+    ctx.fillStyle = "rgba(0,0,0,0.3)";
+    ctx.fillRect(0, ty(3), CANVAS_W, 3);
+
+    const windowPositions = [2, 8, 16, 22];
+    for (const wx of windowPositions) {
+      drawWindow(ctx, tx(wx), ty(0) + 4, TILE * 4, ty(3) - 8);
+    }
+
+    drawBookshelf(ctx, tx(0), ty(0), TILE * 2, ty(3));
+    drawBookshelf(ctx, tx(12), ty(0), TILE * 2, ty(3));
+    drawBookshelf(ctx, tx(26), ty(0), TILE * 2, ty(3));
+
+    drawPlant(ctx, tx(28), ty(3) - 4);
+    drawPlant(ctx, tx(1), ty(3) - 4);
   }
 
-  // 書架 x2（左右各一組）
-  drawBookshelf(ctx, tx(0), ty(0), TILE * 2, ty(3));
-  drawBookshelf(ctx, tx(12), ty(0), TILE * 2, ty(3));
-  drawBookshelf(ctx, tx(26), ty(0), TILE * 2, ty(3));
-
-  // 植物（牆邊裝飾）
-  drawPlant(ctx, tx(28), ty(3) - 4);
-  drawPlant(ctx, tx(1), ty(3) - 4);
-
-  // 區域標籤
+  // 區域標籤（sprite/fallback 都需要）
   drawAreaLabel(ctx, tx(3), ty(14), "茶水間");
   drawAreaLabel(ctx, tx(19), ty(14), "會議室");
 
@@ -501,8 +537,8 @@ export function renderStaticScene(ctx: CanvasRenderingContext2D, tileImg?: HTMLI
   ctx.fillStyle = "#888";
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-  drawFloor(ctx);
-  drawWalls(ctx);
+  drawFloor(ctx, tileImg);
+  drawWalls(ctx, tileImg);
 
   // 所有角色的桌子
   for (const char of CHARACTERS) {
