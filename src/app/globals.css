@@ -39,38 +39,46 @@ body {
     0 calc(var(--pixel-size) * -1) 0 0 currentColor;
 }
 
-/* === IDLE WANDER ANIMATIONS (multiple variants for staggering) === */
+/* === IDLE WANDER ANIMATIONS — clear patrol routes === */
 
+/* Route 1: seat → right (tea room) → down → back */
 @keyframes idle-wander-1 {
-  0% { transform: translate(0, 0); }
-  12% { transform: translate(15px, -8px); }
-  25% { transform: translate(25px, -3px); }
-  37% { transform: translate(10px, 10px); }
-  50% { transform: translate(-15px, 12px); }
-  62% { transform: translate(-25px, 5px); }
-  75% { transform: translate(-10px, -10px); }
-  87% { transform: translate(5px, -15px); }
-  100% { transform: translate(0, 0); }
+  0%, 100% { transform: translate(0, 0); }
+  5% { transform: translate(0, 0); }
+  15% { transform: translate(60px, 0); }
+  25% { transform: translate(80px, 30px); }
+  35% { transform: translate(80px, 60px); }
+  50% { transform: translate(40px, 60px); }
+  60% { transform: translate(0, 60px); }
+  70% { transform: translate(-20px, 30px); }
+  85% { transform: translate(-10px, 0); }
+  95% { transform: translate(0, 0); }
 }
 
+/* Route 2: seat → left (meeting room) → up → back */
 @keyframes idle-wander-2 {
-  0% { transform: translate(0, 0); }
-  15% { transform: translate(-20px, 5px); }
-  30% { transform: translate(-10px, 15px); }
-  45% { transform: translate(20px, 10px); }
-  60% { transform: translate(30px, -5px); }
-  75% { transform: translate(10px, -15px); }
-  90% { transform: translate(-5px, -8px); }
-  100% { transform: translate(0, 0); }
+  0%, 100% { transform: translate(0, 0); }
+  5% { transform: translate(0, 0); }
+  15% { transform: translate(-50px, 0); }
+  25% { transform: translate(-70px, 20px); }
+  40% { transform: translate(-70px, 50px); }
+  55% { transform: translate(-30px, 50px); }
+  65% { transform: translate(0, 40px); }
+  75% { transform: translate(10px, 20px); }
+  90% { transform: translate(0, 0); }
 }
 
+/* Route 3: seat → up (boss area) → wander → back */
 @keyframes idle-wander-3 {
-  0% { transform: translate(0, 0); }
-  20% { transform: translate(10px, 15px); }
-  40% { transform: translate(-15px, 20px); }
-  60% { transform: translate(-20px, -5px); }
-  80% { transform: translate(15px, -12px); }
-  100% { transform: translate(0, 0); }
+  0%, 100% { transform: translate(0, 0); }
+  5% { transform: translate(0, 0); }
+  15% { transform: translate(20px, -40px); }
+  30% { transform: translate(40px, -50px); }
+  45% { transform: translate(0, -60px); }
+  55% { transform: translate(-30px, -40px); }
+  65% { transform: translate(-20px, -10px); }
+  80% { transform: translate(10px, 0); }
+  90% { transform: translate(0, 0); }
 }
 
 /* Breathing / idle animation */
@@ -127,9 +135,9 @@ body {
 }
 
 /* Idle wander variants - 6-10s cycles, different delays */
-.animate-idle { animation: idle-wander-1 8s ease-in-out infinite; }
-.animate-idle-2 { animation: idle-wander-2 9s ease-in-out infinite; }
-.animate-idle-3 { animation: idle-wander-3 7s ease-in-out infinite; }
+.animate-idle { animation: idle-wander-1 16s ease-in-out infinite; }
+.animate-idle-2 { animation: idle-wander-2 18s ease-in-out infinite; }
+.animate-idle-3 { animation: idle-wander-3 14s ease-in-out infinite; }
 
 .animate-sway { animation: idle-sway 4s ease-in-out infinite; }
 .animate-working { animation: working-type 1.5s ease-in-out infinite; }

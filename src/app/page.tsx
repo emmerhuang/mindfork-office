@@ -38,9 +38,6 @@ export default function Home() {
           <span className="text-orange-600">Fork</span>
           <span className="text-amber-900/60 ml-1.5 text-sm sm:text-xl">Office</span>
         </h1>
-        <p className="text-amber-900/40 text-[9px] pixel-text mt-0.5 landscape-hide-text">
-          點擊成員查看詳細資訊
-        </p>
       </header>
 
       {/* Office scene or Sleep scene - fills remaining space */}
