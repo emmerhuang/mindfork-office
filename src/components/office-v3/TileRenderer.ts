@@ -136,43 +136,36 @@ function drawTearoom(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null
 
 // ── 會議室 ────────────────────────────────────────────────
 
-function drawMeetingRoom(ctx: CanvasRenderingContext2D) {
+function drawMeetingRoom(ctx: CanvasRenderingContext2D, tileImg?: HTMLImageElement | null) {
   const rm = ROOMS.meetingRoom;
   const cx = tx(rm.x + rm.w / 2);
-  const cy = ty(rm.y + rm.h / 2) - TILE;
-  const tw = TILE * 3, th = TILE * 1.2;
+  const cy = ty(rm.y + rm.h / 2);
 
-  // 會議桌
-  ctx.fillStyle = "rgba(0,0,0,0.12)";
-  ctx.fillRect(cx - tw / 2 + 3, cy - th / 2 + 4, tw, th);
-  ctx.fillStyle = "#B8946A";
-  ctx.fillRect(cx - tw / 2, cy - th / 2, tw, th);
-  ctx.fillStyle = "#A0825A";
-  ctx.fillRect(cx - tw / 2, cy + th / 2 - 4, tw, 4);
-
-  // 椅子
-  const chairs = [
-    { x: cx - tw / 2 - 12, y: cy }, { x: cx + tw / 2 + 4, y: cy },
-    { x: cx - tw / 4, y: cy - th / 2 - 12 }, { x: cx + tw / 4, y: cy - th / 2 - 12 },
-    { x: cx - tw / 4, y: cy + th / 2 + 4 },  { x: cx + tw / 4, y: cy + th / 2 + 4 },
-  ];
-  for (const p of chairs) {
-    ctx.fillStyle = "#8B6A50";
-    ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#A08070";
-    ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI * 2); ctx.fill();
+  if (tileImg) {
+    // 會議桌 sprite
+    const s = TILE_SPRITES.conference_table;
+    if (s) {
+      const dw = TILE * 4;
+      const dh = dw * (s.sh / s.sw);
+      drawSprite(ctx, tileImg, s, cx - dw / 2, cy - dh / 2 - TILE * 0.3, dw, dh);
+    }
+    // 白板 sprite
+    const wb = TILE_SPRITES.wall_whiteboard;
+    if (wb) {
+      const wbW = TILE * 3;
+      const wbH = wbW * (wb.sh / wb.sw);
+      drawSprite(ctx, tileImg, wb, tx(rm.x + 1.5), ty(rm.y) + 2, wbW, wbH);
+    }
+  } else {
+    // fallback
+    const tw = TILE * 3, th = TILE * 1.2;
+    ctx.fillStyle = "#B8946A";
+    ctx.fillRect(cx - tw / 2, cy - th / 2, tw, th);
+    // 白板
+    const wbX = tx(rm.x + 1), wbY = ty(rm.y) + 2;
+    ctx.fillStyle = "#F5F5F5";
+    ctx.fillRect(wbX, wbY, TILE * 4, TILE * 0.7);
   }
-
-  // 白板
-  const wbX = tx(rm.x + 1), wbY = ty(rm.y) + 2, wbW = TILE * 4, wbH = TILE * 0.7;
-  ctx.fillStyle = "#707880";
-  ctx.fillRect(wbX - 2, wbY - 2, wbW + 4, wbH + 4);
-  ctx.fillStyle = "#F5F5F5";
-  ctx.fillRect(wbX, wbY, wbW, wbH);
-  ctx.strokeStyle = "rgba(50,50,200,0.2)";
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(wbX + 8, wbY + 8); ctx.lineTo(wbX + wbW * 0.6, wbY + 8); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(wbX + 8, wbY + 16); ctx.lineTo(wbX + wbW * 0.4, wbY + 16); ctx.stroke();
 }
 
 // ── 區域標籤 ──────────────────────────────────────────────
@@ -218,6 +211,6 @@ export function renderStaticScene(
   drawDesks(ctx, tileImg);
   drawPlant(ctx, tileImg);
   drawTearoom(ctx, tileImg);
-  drawMeetingRoom(ctx);
+  drawMeetingRoom(ctx, tileImg);
   drawLabels(ctx);
 }
