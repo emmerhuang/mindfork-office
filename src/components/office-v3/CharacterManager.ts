@@ -148,7 +148,7 @@ export class CharacterManager {
   }
 
   findCharacterAt(px: number, py: number): CharInstance | null {
-    let best: CharInstance | null = null, bestD = 25; // hit radius
+    let best: CharInstance | null = null, bestD = 80; // hit radius（配合 TILE=96）
     for (const c of this.characters) {
       const d = Math.sqrt((c.px - px) ** 2 + (c.py - py) ** 2);
       if (d < bestD) { best = c; bestD = d; }
