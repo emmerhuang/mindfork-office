@@ -1,5 +1,7 @@
 "use client";
 
+import { createPortal } from "react-dom";
+import { useEffect, useState } from "react";
 import { MemberData } from "@/types";
 
 interface MemberCardProps {
@@ -8,15 +10,15 @@ interface MemberCardProps {
 }
 
 const statusLabels: Record<string, string> = {
-  idle: "Idle",
-  working: "Working",
-  meeting: "In Meeting",
-  sleeping: "Sleeping",
-  celebrating: "Celebrating",
+  idle: "待命（走動中）",
+  working: "工作中",
+  meeting: "開會中",
+  sleeping: "休息中",
+  celebrating: "慶祝中",
 };
 
 const statusColors: Record<string, string> = {
-  idle: "bg-gray-500",
+  idle: "bg-gray-400",
   working: "bg-green-500",
   meeting: "bg-blue-500",
   sleeping: "bg-purple-500",
@@ -24,88 +26,75 @@ const statusColors: Record<string, string> = {
 };
 
 export default function MemberCard({ member, onClose }: MemberCardProps) {
-  return (
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  const card = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="member-card-overlay"
       onClick={onClose}
     >
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" />
-
-      {/* Card */}
       <div
-        className="relative bg-gray-900 border-2 border-gray-600 rounded-lg p-5 max-w-sm w-full animate-float-in"
+        className="member-card-content animate-float-in"
         onClick={(e) => e.stopPropagation()}
-        style={{
-          boxShadow: `
-            4px 0 0 0 ${member.primaryColor},
-            -4px 0 0 0 ${member.primaryColor},
-            0 4px 0 0 ${member.primaryColor},
-            0 -4px 0 0 ${member.primaryColor}
-          `,
-        }}
+        style={{ borderColor: member.primaryColor }}
       >
-        {/* Close button */}
+        {/* Close */}
         <button
           onClick={onClose}
-          className="absolute top-2 right-3 text-gray-400 hover:text-white text-lg pixel-text"
+          className="absolute top-3 right-4 text-gray-400 hover:text-gray-700 text-xl"
         >
-          X
+          ✕
         </button>
 
         {/* Header */}
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-4 mb-5">
           <div
-            className="w-10 h-10 rounded flex items-center justify-center pixel-text text-white font-bold text-lg"
+            className="w-14 h-14 rounded-lg flex items-center justify-center text-white font-bold text-2xl shrink-0"
             style={{ background: member.primaryColor }}
           >
-            {member.id === "waffles" ? "W" : member.name[0]}
+            {member.id === "waffles" ? "🐕" : member.id === "boss" ? "👑" : member.name[0]}
           </div>
           <div>
-            <h3 className="text-white pixel-text text-sm font-bold">
+            <h3 className="text-gray-900 text-xl font-bold">
               {member.nameCn}
               {member.nameCn !== member.name && (
-                <span className="text-gray-400 ml-2 text-xs">{member.name}</span>
+                <span className="text-gray-400 ml-2 text-sm">{member.name}</span>
               )}
             </h3>
-            <p className="text-gray-400 text-xs pixel-text">{member.role}</p>
+            <p className="text-gray-500 text-sm">{member.role}</p>
           </div>
         </div>
 
         {/* Status */}
-        <div className="flex items-center gap-2 mb-3">
-          <div className={`w-2 h-2 rounded-full ${statusColors[member.status]}`} />
-          <span className="text-gray-300 text-xs pixel-text">
-            {statusLabels[member.status]}
-          </span>
-        </div>
-
-        {/* Description */}
-        <p className="text-gray-300 text-xs mb-3 leading-relaxed">
-          {member.description}
-        </p>
-
-        {/* Current task */}
-        <div className="bg-gray-800 rounded p-2 mb-3">
-          <p className="text-gray-400 text-[10px] pixel-text mb-1">CURRENT TASK</p>
-          <p className="text-gray-200 text-xs">{member.currentTask}</p>
+        <div className="flex items-center gap-2 mb-4">
+          <div className={`w-3 h-3 rounded-full ${statusColors[member.status]}`} />
+          <span className="text-gray-600 text-sm">{statusLabels[member.status]}</span>
         </div>
 
         {/* Personality */}
-        <div className="bg-gray-800 rounded p-2 mb-3">
-          <p className="text-gray-400 text-[10px] pixel-text mb-1">PERSONALITY</p>
-          <p className="text-gray-300 text-xs leading-relaxed">
-            {member.personality}
-          </p>
+        <div className="bg-amber-50 rounded-lg p-4 mb-3">
+          <p className="text-amber-700 text-xs pixel-text mb-2">個性</p>
+          <p className="text-gray-700 text-sm leading-relaxed">{member.personality}</p>
+        </div>
+
+        {/* Current task */}
+        <div className="bg-green-50 rounded-lg p-4 mb-3">
+          <p className="text-green-700 text-xs pixel-text mb-2">目前任務</p>
+          <p className="text-gray-700 text-sm">{member.currentTask}</p>
         </div>
 
         {/* Recent Tasks */}
-        <div className="bg-gray-800 rounded p-2">
-          <p className="text-gray-400 text-[10px] pixel-text mb-1">RECENT TASKS</p>
-          <ul className="space-y-1">
+        <div className="bg-blue-50 rounded-lg p-4">
+          <p className="text-blue-700 text-xs pixel-text mb-2">最近工作</p>
+          <ul className="space-y-2">
             {member.recentTasks.map((task, i) => (
-              <li key={i} className="text-gray-300 text-xs flex items-start gap-1.5">
-                <span className="text-gray-500 pixel-text mt-px">&gt;</span>
+              <li key={i} className="text-gray-700 text-sm flex items-start gap-2">
+                <span className="text-blue-400 mt-0.5">▸</span>
                 <span>{task}</span>
               </li>
             ))}
@@ -114,4 +103,7 @@ export default function MemberCard({ member, onClose }: MemberCardProps) {
       </div>
     </div>
   );
+
+  if (!mounted) return null;
+  return createPortal(card, document.body);
 }

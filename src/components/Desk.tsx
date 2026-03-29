@@ -29,30 +29,43 @@ export default function Desk({ member }: { member: MemberData }) {
 
 function getDeskColor(id: string): { top: string; front: string } {
   switch (id) {
+    case "boss":
+      return { top: "#6b4c3a", front: "#5a3c2a" };
     case "secretary":
-      return { top: "#5a4a3a", front: "#4a3a2a" };
+      return { top: "#7a6a5a", front: "#6a5a4a" };
     case "forge":
-      return { top: "#555", front: "#444" };
+      return { top: "#888", front: "#777" };
     case "waffles":
-      return { top: "#8b6914", front: "#6b4c10" };
+      return { top: "#c4a882", front: "#a08060" };
     default:
-      return { top: "#8b7355", front: "#6b5335" };
+      return { top: "#c4a882", front: "#a08060" };
   }
 }
 
 function DeskItems({ memberId }: { memberId: string }) {
   switch (memberId) {
+    case "boss":
+      return (
+        <div className="absolute -top-3 left-0 flex gap-1 items-end">
+          {/* Coffee cup */}
+          <div className="w-2 h-2.5 bg-amber-700 rounded-b-sm border border-amber-800" />
+          {/* Big screen */}
+          <div className="w-5 h-3 bg-gray-800 border border-gray-600 rounded-[1px]">
+            <div className="w-3 h-1 bg-red-400 mt-0.5 ml-0.5" />
+          </div>
+        </div>
+      );
     case "secretary":
       return (
         <div className="absolute -top-3 left-1 flex gap-0.5">
           {/* Multiple screens */}
-          <div className="w-3 h-2.5 bg-blue-900 border border-gray-600 rounded-[1px]">
+          <div className="w-3 h-2.5 bg-gray-800 border border-gray-500 rounded-[1px]">
             <div className="w-1 h-0.5 bg-blue-400 mt-0.5 ml-0.5" />
           </div>
-          <div className="w-3 h-2.5 bg-blue-900 border border-gray-600 rounded-[1px]">
+          <div className="w-3 h-2.5 bg-gray-800 border border-gray-500 rounded-[1px]">
             <div className="w-1 h-0.5 bg-green-400 mt-0.5 ml-0.5" />
           </div>
-          <div className="w-3 h-2.5 bg-blue-900 border border-gray-600 rounded-[1px]">
+          <div className="w-3 h-2.5 bg-gray-800 border border-gray-500 rounded-[1px]">
             <div className="w-1 h-0.5 bg-yellow-400 mt-0.5 ml-0.5" />
           </div>
         </div>

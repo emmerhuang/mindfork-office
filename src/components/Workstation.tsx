@@ -24,7 +24,14 @@ export default function Workstation({ member }: WorkstationProps) {
 
   return (
     <>
-      <div className="flex flex-col items-center gap-1">
+      <div className="flex flex-col items-center gap-0.5">
+        {/* Name above head */}
+        <p
+          className="pixel-text text-[9px] text-center mb-0.5"
+          style={{ color: member.primaryColor }}
+        >
+          {member.nameCn}
+        </p>
         {/* Character */}
         <PixelCharacter
           member={member}
@@ -36,16 +43,9 @@ export default function Workstation({ member }: WorkstationProps) {
         <div className="w-16">
           <Desk member={member} />
         </div>
-        {/* Name label */}
-        <p
-          className="pixel-text text-[9px] mt-1 text-center"
-          style={{ color: member.primaryColor }}
-        >
-          {member.nameCn}
-        </p>
       </div>
 
-      {/* Detail card modal */}
+      {/* Detail card modal (portal to body) */}
       {showCard && (
         <MemberCard member={member} onClose={() => setShowCard(false)} />
       )}

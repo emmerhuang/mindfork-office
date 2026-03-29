@@ -19,16 +19,16 @@ export default function TeamPowerBar({ rateLimitPercent }: TeamPowerBarProps) {
 
   return (
     <div className="flex items-center gap-3">
-      <span className="pixel-text text-[10px] text-gray-400 whitespace-nowrap">
-        TEAM POWER
+      <span className="pixel-text text-[10px] text-gray-500 whitespace-nowrap">
+        戰力(5H)
       </span>
       <div className="flex gap-[2px]">
         {Array.from({ length: segments }).map((_, i) => (
           <div
             key={i}
-            className="w-3 h-5 border border-gray-700"
+            className="w-3 h-5 border border-gray-300 rounded-[1px]"
             style={{
-              background: i < filledSegments ? getColor(i, segments) : "#1a1a2e",
+              background: i < filledSegments ? getColor(i, segments) : "#e5e7eb",
               boxShadow: i < filledSegments
                 ? `inset 0 -2px 0 0 rgba(0,0,0,0.3)`
                 : "none",
