@@ -58,17 +58,33 @@ export default function Workstation({ member }: WorkstationProps) {
           >
             {member.nameCn}
           </p>
-          {/* Character */}
-          <PixelCharacterSVG
-            member={member}
-            onClick={handleClick}
-            isWagging={isWagging}
-          />
+          {/* Character - add walking bounce when idle */}
+          <div className={isIdle ? (member.id === "waffles" ? "animate-dog-trot" : "animate-walk-step") : ""}>
+            <PixelCharacterSVG
+              member={member}
+              onClick={handleClick}
+              isWagging={isWagging}
+            />
+          </div>
         </div>
-        {/* Desk stays fixed */}
-        <div className="w-14 sm:w-16">
-          <Desk member={member} />
-        </div>
+        {/* Desk (or dog bed for Waffles) stays fixed */}
+        {member.id === "waffles" ? (
+          <div className="w-14 sm:w-16 flex flex-col items-center">
+            {/* Dog bed */}
+            <div className="w-12 h-5 bg-amber-700 rounded-full border border-amber-800 relative">
+              <div className="absolute inset-1 bg-amber-200 rounded-full" />
+            </div>
+            {/* Bowl + bone */}
+            <div className="flex gap-1.5 mt-0.5">
+              <div className="w-3 h-1.5 bg-red-500 rounded-b-full" />
+              <div className="w-3 h-1 bg-white rounded-full" />
+            </div>
+          </div>
+        ) : (
+          <div className="w-14 sm:w-16">
+            <Desk member={member} />
+          </div>
+        )}
       </div>
 
       {showCard && (

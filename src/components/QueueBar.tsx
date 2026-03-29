@@ -1,52 +1,31 @@
 "use client";
 
 interface QueueBarProps {
-  /** Number of pending tasks in the queue */
   pendingTasks: number;
 }
 
 export default function QueueBar({ pendingTasks }: QueueBarProps) {
-  const maxSegments = 10;
-  const isOverload = pendingTasks > maxSegments;
-  const filledSegments = Math.min(pendingTasks, maxSegments);
+  const maxTasks = 10;
+  const isOverload = pendingTasks > maxTasks;
+  const fillPercent = Math.min((pendingTasks / maxTasks) * 100, 100);
 
-  function getColor(index: number): string {
-    if (index < 3) return "#4ade80"; // green
-    if (index < 6) return "#facc15"; // yellow
-    if (index < 8) return "#f97316"; // orange
-    return "#ef4444"; // red
-  }
+  const barColor = pendingTasks <= 3 ? "#4ade80" : pendingTasks <= 6 ? "#facc15" : "#ef4444";
 
   return (
-    <div className="flex items-center gap-3">
-      <span className="pixel-text text-[10px] text-gray-500 whitespace-nowrap">
-        QUEUE
-      </span>
-      <div className="flex gap-[2px]">
-        {Array.from({ length: maxSegments }).map((_, i) => (
-          <div
-            key={i}
-            className={`w-3 h-5 border border-gray-300 rounded-[1px] ${
-              isOverload && i < maxSegments ? "animate-overload-blink" : ""
-            }`}
-            style={{
-              background: i < filledSegments ? getColor(i) : "#e5e7eb",
-              boxShadow: i < filledSegments
-                ? `inset 0 -2px 0 0 rgba(0,0,0,0.3)`
-                : "none",
-            }}
-          />
-        ))}
+    <div className="flex items-center gap-2 w-full">
+      <span className="pixel-text text-[8px] text-amber-700/60 w-10 shrink-0">待辦</span>
+      <div className={`flex-1 h-3 bg-gray-300/50 rounded-full overflow-hidden ${isOverload ? "animate-overload-blink" : ""}`}>
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{ width: `${fillPercent}%`, background: barColor }}
+        />
       </div>
-      {isOverload ? (
-        <span className="pixel-text text-xs font-bold text-red-500 animate-overload-blink">
-          OVERLOAD!
-        </span>
-      ) : (
-        <span className="pixel-text text-[10px] text-gray-500">
-          {pendingTasks}/{maxSegments}
-        </span>
-      )}
+      <span
+        className={`pixel-text text-[9px] font-bold w-8 text-right shrink-0 ${isOverload ? "text-red-500 animate-overload-blink" : ""}`}
+        style={!isOverload ? { color: barColor } : undefined}
+      >
+        {isOverload ? "!" : ""}{pendingTasks}
+      </span>
     </div>
   );
 }

@@ -44,14 +44,10 @@ export default function Office({ rateLimit, pendingTasks }: OfficeProps) {
               <Bookshelf />
               <span className="text-[7px] pixel-text text-amber-700/40">LIBRARY</span>
             </div>
-            <div className="bg-[#f5f0e0]/80 border border-[#b89868] rounded px-2 py-1 flex flex-col gap-0.5">
+            <div className="bg-[#f5f0e0]/80 border border-[#b89868] rounded px-2 py-1.5 w-36 sm:w-44 flex flex-col gap-1">
               <span className="text-[7px] pixel-text text-amber-700/50">戰情看板</span>
-              <div className="scale-[0.65] origin-top-left -ml-1">
-                <TeamPowerBar rateLimitPercent={rateLimit} />
-              </div>
-              <div className="scale-[0.65] origin-top-left -ml-1 -mt-2">
-                <QueueBar pendingTasks={pendingTasks} />
-              </div>
+              <TeamPowerBar rateLimitPercent={rateLimit} />
+              <QueueBar pendingTasks={pendingTasks} />
             </div>
           </div>
 
