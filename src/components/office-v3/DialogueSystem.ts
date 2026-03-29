@@ -10,7 +10,7 @@ interface Bubble {
 const DURATION = 120;   // 4 秒 @ 30fps
 const FADE = 20;
 const MAX_W = 350;
-const FONT = "30px 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
+const FONT = "40px 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
 
 export class DialogueSystem {
   private bubbles = new Map<string, Bubble>();
