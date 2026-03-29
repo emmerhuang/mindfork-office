@@ -1,6 +1,7 @@
 // CharacterRenderer.ts — top-down 俯視角角色像素繪製
 
 import { CharacterDef, TILE } from "./officeData";
+import { CHAR_SPRITES, SpriteFrame } from "./spriteAtlas";
 
 // ────────────────────────────────────────────────────────────
 // 輔助：顏色調暗
@@ -27,7 +28,8 @@ export function drawCharacter(
   char: CharacterDef,
   animFrame: number,   // 0 or 1，用於打字/走路動畫
   isSleeping?: boolean,
-  dimAlpha?: number    // 0-1，sleeping 時調暗
+  dimAlpha?: number,   // 0-1，sleeping 時調暗
+  charImg?: HTMLImageElement | null
 ) {
   ctx.save();
 
@@ -35,7 +37,28 @@ export function drawCharacter(
     ctx.globalAlpha = dimAlpha ?? 0.5;
   }
 
-  if (char.isWaffles) {
+  // 嘗試用 sprite 繪製
+  const spriteSet = CHAR_SPRITES[char.id];
+  if (charImg && spriteSet) {
+    const frames = spriteSet.front;
+    const frame = frames[animFrame % frames.length];
+    const dw = char.isWaffles ? 48 : 48;
+    const dh = char.isWaffles ? 44 : 64;
+
+    // 地面陰影
+    ctx.fillStyle = "rgba(0,0,0,0.15)";
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + dh / 2 - 2, dw / 2 - 2, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // sprite
+    ctx.drawImage(
+      charImg,
+      frame.sx, frame.sy, frame.sw, frame.sh,
+      cx - dw / 2, cy - dh / 2, dw, dh
+    );
+  } else if (char.isWaffles) {
+    // fallback 程式化繪製
     drawWaffles(ctx, cx, cy, char.color, animFrame, isSleeping);
   } else {
     drawHuman(ctx, cx, cy, char.color, char.skinColor, animFrame);

@@ -52,11 +52,17 @@ export default function OfficeCanvas({
       onDialogue: (charId, text) => onDialogueRef.current?.(charId, text),
     });
 
-    engine.init();
-    engine.start();
-    engineRef.current = engine;
+    let stopped = false;
+    engine.init().then(() => {
+      if (!stopped) {
+        engine.start();
+        engineRef.current = engine;
+      }
+    });
+
 
     return () => {
+      stopped = true;
       engine.stop();
       engineRef.current = null;
     };

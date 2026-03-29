@@ -30,6 +30,9 @@ export class OfficeEngine {
   private characterManager: CharacterManager;
   private options: EngineOptions;
 
+  private charImg: HTMLImageElement | null = null;
+  private tileImg: HTMLImageElement | null = null;
+
   private tick = 0;
   private rafId: number | null = null;
   private lastTime = 0;
@@ -86,9 +89,30 @@ export class OfficeEngine {
     }
   };
 
-  init() {
-    // 預渲染靜態場景
+  async init() {
+    // 載入 sprite 圖片（失敗時不阻塞，fallback 用程式化繪製）
+    try {
+      const [charImg, tileImg] = await Promise.all([
+        this.loadImage("/sprites/characters-clean.png"),
+        this.loadImage("/sprites/tileset-clean.png"),
+      ]);
+      this.charImg = charImg;
+      this.tileImg = tileImg;
+    } catch {
+      // 圖片載入失敗，保持 null，render 時走 fallback
+    }
+
+    // 預渲染靜態場景（保持程式化繪製）
     renderStaticScene(this.staticCtx);
+  }
+
+  private loadImage(src: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
   }
 
   start() {
@@ -144,7 +168,7 @@ export class OfficeEngine {
     // 2. 繪製所有角色
     for (const char of this.characterManager.characters) {
       const isSleeping = char.state === "idle_away";
-      drawCharacter(ctx, char.px, char.py, char.def, char.animFrame, false);
+      drawCharacter(ctx, char.px, char.py, char.def, char.animFrame, false, undefined, this.charImg);
 
       // 睡眠 ZZZ（在茶水間/會議室的角色顯示思考泡泡）
       if (isSleeping) {
