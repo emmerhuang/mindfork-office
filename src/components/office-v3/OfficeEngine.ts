@@ -1,6 +1,6 @@
 // OfficeEngine.ts — 主迴圈：init 載入圖片 → start rAF → render
 
-import { CANVAS_W, CANVAS_H, TARGET_FPS } from "./officeData";
+import { CANVAS_W, CANVAS_H, TILE, TARGET_FPS } from "./officeData";
 import { renderStaticScene } from "./TileRenderer";
 import { drawCharacter } from "./CharacterRenderer";
 import { DialogueSystem } from "./DialogueSystem";
