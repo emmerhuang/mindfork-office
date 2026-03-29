@@ -17,6 +17,7 @@ interface Metrics {
 export default function Home() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [memberStatuses, setMemberStatuses] = useState<Record<string, { status: MemberStatus; task: string }>>({});
+  const [memberOs, setMemberOs] = useState<Record<string, string>>({});
 
   useEffect(() => {
     async function fetchStatus() {
@@ -28,6 +29,7 @@ export default function Home() {
           if (data.members && Object.keys(data.members).length > 0) {
             setMemberStatuses(data.members);
           }
+          if (data.memberOs) setMemberOs(data.memberOs);
         }
       } catch { /* ignore */ }
     }
@@ -60,6 +62,7 @@ export default function Home() {
         ) : (
           <OfficeCanvas
             memberStatuses={memberStatuses}
+            memberOs={memberOs}
             onCharacterClick={() => {}}
             className="w-full h-full"
           />

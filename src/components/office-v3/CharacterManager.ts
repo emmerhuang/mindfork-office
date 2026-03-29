@@ -84,8 +84,8 @@ export class CharacterManager {
 
     // dialogue countdown
     if (--c.dialogueTimer <= 0) {
-      const pool = c.def.dialogues;
-      if (pool.length) this.onDialogue(c.def.id, pool[rand(0, pool.length - 1)]);
+      const text = this.getDialogue(c.def.id);
+      if (text) this.onDialogue(c.def.id, text);
       c.dialogueTimer = rand(DLG_MIN, DLG_MAX);
     }
 
@@ -154,6 +154,20 @@ export class CharacterManager {
       if (d < bestD) { best = c; bestD = d; }
     }
     return best;
+  }
+
+  private dynamicOs: Record<string, string> = {};
+
+  updateOs(osData: Record<string, string>) {
+    this.dynamicOs = osData;
+  }
+
+  getDialogue(charId: string): string {
+    // 優先用動態 OS，否則用固定台詞池
+    if (this.dynamicOs[charId]) return this.dynamicOs[charId];
+    const def = CHARACTERS.find(c => c.id === charId);
+    if (def && def.dialogues.length) return def.dialogues[rand(0, def.dialogues.length - 1)];
+    return "";
   }
 
   updateStatuses(data: Record<string, { status: string; task: string }>) {

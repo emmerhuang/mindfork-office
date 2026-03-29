@@ -1,18 +1,17 @@
 "use client";
 
-// OfficeCanvas.tsx — React wrapper，管理 canvas ref 與引擎生命週期
-
 import { useEffect, useRef } from "react";
 import { OfficeEngine } from "./OfficeEngine";
 import { CANVAS_W, CANVAS_H } from "./officeData";
 
 interface Props {
   memberStatuses?: Record<string, { status: string; task: string }>;
+  memberOs?: Record<string, string>;
   onCharacterClick?: (charId: string) => void;
   className?: string;
 }
 
-export default function OfficeCanvas({ memberStatuses, onCharacterClick, className }: Props) {
+export default function OfficeCanvas({ memberStatuses, memberOs, onCharacterClick, className }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<OfficeEngine | null>(null);
   const clickRef = useRef(onCharacterClick);
@@ -38,6 +37,10 @@ export default function OfficeCanvas({ memberStatuses, onCharacterClick, classNa
   useEffect(() => {
     if (memberStatuses && engineRef.current) engineRef.current.updateStatuses(memberStatuses);
   }, [memberStatuses]);
+
+  useEffect(() => {
+    if (memberOs && engineRef.current) engineRef.current.updateMemberOs(memberOs);
+  }, [memberOs]);
 
   return (
     <canvas

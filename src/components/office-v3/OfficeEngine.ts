@@ -83,6 +83,10 @@ export class OfficeEngine {
     this.mgr.updateStatuses(data);
   }
 
+  updateMemberOs(osData: Record<string, string>) {
+    this.mgr.updateOs(osData);
+  }
+
   private loop = (now: number) => {
     const dt = now - this.lastT;
     if (dt >= this.interval) {
