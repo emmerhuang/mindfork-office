@@ -1,40 +1,74 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MemberStatus } from "@/types";
+import { readFileSync, writeFileSync } from "fs";
 
-// In-memory status store (resets on cold start, which is fine for now)
-const statusStore: Record<string, { status: MemberStatus; task: string; updatedAt: string }> = {};
+const STATUS_FILE = "/tmp/mindfork-status.json";
 
-// Global metrics store
-let teamMetrics = {
-  rateLimitPercent: 0, // updated via POST from hook
-  pendingTasks: 3,    // current pending count from task-queue.json
-  updatedAt: new Date().toISOString(),
+interface StatusData {
+  members: Record<string, { status: MemberStatus; task: string; updatedAt: string }>;
+  metrics: {
+    rateLimitPercent: number;
+    pendingTasks: number;
+    updatedAt: string;
+  };
+}
+
+const FALLBACK: StatusData = {
+  members: {},
+  metrics: {
+    rateLimitPercent: -1,
+    pendingTasks: -1,
+    updatedAt: new Date().toISOString(),
+  },
 };
+
+function readStatus(): StatusData {
+  try {
+    const raw = readFileSync(STATUS_FILE, "utf-8");
+    return JSON.parse(raw) as StatusData;
+  } catch {
+    return structuredClone(FALLBACK);
+  }
+}
+
+function writeStatus(data: StatusData): void {
+  writeFileSync(STATUS_FILE, JSON.stringify(data), "utf-8");
+}
 
 // GET /api/status - return all member statuses + team metrics
 export async function GET() {
+  const data = readStatus();
   return NextResponse.json({
-    members: statusStore,
-    metrics: teamMetrics,
+    members: data.members,
+    metrics: data.metrics,
   });
 }
 
 // POST /api/status - update a member's status or team metrics
+// Requires Authorization: Bearer <MINDFORK_API_KEY>
 // Body for member: { memberId: string, status: MemberStatus, task?: string }
 // Body for metrics: { rateLimitPercent?: number, pendingTasks?: number }
 export async function POST(request: NextRequest) {
+  // Auth check
+  const apiKey = process.env.MINDFORK_API_KEY;
+  const authHeader = request.headers.get("authorization");
+  if (!apiKey || authHeader !== `Bearer ${apiKey}`) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     const body = await request.json();
+    const data = readStatus();
 
     // Update team metrics if provided
     if (body.rateLimitPercent !== undefined || body.pendingTasks !== undefined) {
       if (body.rateLimitPercent !== undefined) {
-        teamMetrics.rateLimitPercent = Math.max(0, Math.min(100, body.rateLimitPercent));
+        data.metrics.rateLimitPercent = body.rateLimitPercent;
       }
       if (body.pendingTasks !== undefined) {
-        teamMetrics.pendingTasks = Math.max(0, body.pendingTasks);
+        data.metrics.pendingTasks = Math.max(0, body.pendingTasks);
       }
-      teamMetrics.updatedAt = new Date().toISOString();
+      data.metrics.updatedAt = new Date().toISOString();
     }
 
     // Update member status if provided
@@ -58,17 +92,19 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      statusStore[memberId] = {
+      data.members[memberId] = {
         status,
         task: task || "",
         updatedAt: new Date().toISOString(),
       };
     }
 
+    writeStatus(data);
+
     return NextResponse.json({
       ok: true,
-      members: statusStore,
-      metrics: teamMetrics,
+      members: data.members,
+      metrics: data.metrics,
     });
   } catch {
     return NextResponse.json(

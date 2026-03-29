@@ -3,23 +3,24 @@ import { members } from "@/data/members";
 
 // ============================================================
 // Sprite sheet config (Premade_Character_48x48_XX.png)
-// 48x96 frames, 56 columns per row
-// Row 0: preview thumbnails
+// Sheet is 2688x1968 → 48x48 frames, 56 columns, 41 rows
+// Row 0: preview thumbnails (facing front)
 // Row 1: idle — right(6), up(6), left(6), down(6)
 // Row 2: walk — right(6), up(6), left(6), down(6)
 // ============================================================
 const FRAME_W = 48;
-const FRAME_H = 96;
+const FRAME_H = 48;
 const SHEET_COLS = 56;
 const FRAMES_PER_DIR = 6;
 
 // Member -> sprite sheet mapping
+// NOTE: Sherlock uses 05 (female sprite), Vault uses 03
 const SPRITE_MAP: Record<string, { key: string; file: string }> = {
   boss:      { key: "char01", file: "/sprites/Premade_Character_48x48_01.png" },
   secretary: { key: "char02", file: "/sprites/Premade_Character_48x48_02.png" },
-  sherlock:  { key: "char03", file: "/sprites/Premade_Character_48x48_03.png" },
+  sherlock:  { key: "char05", file: "/sprites/Premade_Character_48x48_05.png" },
   lego:      { key: "char04", file: "/sprites/Premade_Character_48x48_04.png" },
-  vault:     { key: "char05", file: "/sprites/Premade_Character_48x48_05.png" },
+  vault:     { key: "char03", file: "/sprites/Premade_Character_48x48_03.png" },
   forge:     { key: "char06", file: "/sprites/Premade_Character_48x48_06.png" },
   lens:      { key: "char09", file: "/sprites/Premade_Character_48x48_09.png" },
 };
@@ -27,6 +28,28 @@ const SPRITE_MAP: Record<string, { key: string; file: string }> = {
 // Emote sheet config
 const EMOTE_KEY = "emotes";
 const EMOTE_SIZE = 48;
+
+// Emote frame index map (emotes_48x48.png — 10x10 grid, each icon uses 2 frames)
+// Reference: agent-town emotes.ts frame layout
+const EMOTE = {
+  ALERT_Y:   40,  // Row 4: yellow !
+  MONEY:     42,  // Row 4: $
+  SWORD:     44,  // Row 4: sword
+  BUBBLE:    46,  // Row 4: empty bubble
+  TREASURE:  48,  // Row 4: treasure chest
+  ALERT_R:   50,  // Row 5: red !
+  THINKING:  52,  // Row 5: ?
+  HEART:     54,  // Row 5: heart
+  SLEEP:     56,  // Row 5: Z (sleep)
+  DEVICE:    58,  // Row 5: device/typing
+  STAR:      64,  // Row 6: star
+  MUSIC:     66,  // Row 6: music note
+  CONFUSED:  62,  // Row 6: gray ?
+  GOLD:      60,  // Row 6: gold/-
+  ANGRY:     70,  // Row 7: angry
+  WRENCH:    74,  // Row 7: wrench/tool
+  DOTS:      92,  // Row 9: "..."
+} as const;
 
 // ============================================================
 // Office layout constants (world coordinates)
@@ -92,6 +115,7 @@ interface CharState {
   id: string;
   sprite: Phaser.GameObjects.Sprite;
   nameText: Phaser.GameObjects.Text;
+  colorDot: Phaser.GameObjects.Arc | null;
   emoteSprite: Phaser.GameObjects.Sprite | null;
   status: string;
   facing: Direction;
@@ -388,7 +412,7 @@ export class OfficeScene extends Phaser.Scene {
       const cfg = SPRITE_MAP[m.id];
 
       const sprite = this.add.sprite(home.x, home.y, cfg.key);
-      sprite.setScale(0.75);
+      sprite.setScale(1.0);
       sprite.setOrigin(0.5, 1);
       sprite.setInteractive({ cursor: "pointer" });
       sprite.setData("memberId", m.id);
@@ -397,11 +421,19 @@ export class OfficeScene extends Phaser.Scene {
       // Play idle-down by default
       sprite.play(`${m.id}-idle-down`);
 
+      // Colored dot above head for identification
+      const dotColor = parseInt(m.primaryColor.replace("#", ""), 16);
+      const colorDot = this.add.circle(home.x, home.y - 52, 5, dotColor, 1);
+      colorDot.setStrokeStyle(1, 0x000000, 0.4);
+      colorDot.setDepth(1001);
+
       const nameText = this.add.text(home.x, home.y + 2, m.nameCn, {
-        fontSize: "9px",
+        fontSize: "12px",
         fontFamily: "Courier New",
-        color: m.primaryColor,
-        stroke: "#00000066",
+        color: "#ffffff",
+        backgroundColor: m.primaryColor + "cc",
+        padding: { left: 3, right: 3, top: 1, bottom: 1 },
+        stroke: "#000000",
         strokeThickness: 1,
       }).setOrigin(0.5, 0).setDepth(999);
 
@@ -409,6 +441,7 @@ export class OfficeScene extends Phaser.Scene {
         id: m.id,
         sprite,
         nameText,
+        colorDot,
         emoteSprite: null,
         status: m.status,
         facing: "down",
@@ -423,29 +456,47 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   private spawnWaffles() {
-    // Waffles uses an orange ellipse (no sprite sheet for dogs)
+    // Waffles: hand-drawn corgi with full body (no sprite sheet)
     const home = HOME_POSITIONS.waffles;
 
-    // Create a small texture for Waffles
+    // Create a 32x32 texture for Waffles (full corgi body, front view)
     const gfx = this.add.graphics();
+
+    // Body (orange oval)
     gfx.fillStyle(0xd4952a);
-    gfx.fillEllipse(16, 12, 28, 18);
-    // Ears
+    gfx.fillEllipse(16, 16, 28, 20);
+
+    // Four legs
+    gfx.fillRect(6, 22, 4, 8);   // left front
+    gfx.fillRect(22, 22, 4, 8);  // right front
+    gfx.fillRect(8, 24, 4, 6);   // left back
+    gfx.fillRect(20, 24, 4, 6);  // right back
+
+    // Head (circle)
+    gfx.fillCircle(16, 8, 10);
+
+    // Ears (triangles, darker orange)
     gfx.fillStyle(0xb87d1e);
-    gfx.fillTriangle(5, 6, 9, 0, 13, 6);
-    gfx.fillTriangle(19, 6, 23, 0, 27, 6);
+    gfx.fillTriangle(6, 2, 10, -4, 14, 2);
+    gfx.fillTriangle(18, 2, 22, -4, 26, 2);
+
+    // White face marking
+    gfx.fillStyle(0xffffff);
+    gfx.fillEllipse(16, 10, 10, 8);
+
     // Eyes
     gfx.fillStyle(0x000000);
-    gfx.fillCircle(11, 10, 2);
-    gfx.fillCircle(21, 10, 2);
-    // Nose
-    gfx.fillStyle(0x333333);
-    gfx.fillCircle(16, 14, 2);
-    // White chest
-    gfx.fillStyle(0xffffff);
-    gfx.fillEllipse(16, 18, 12, 8);
+    gfx.fillCircle(12, 8, 2);
+    gfx.fillCircle(20, 8, 2);
 
-    gfx.generateTexture("waffles-tex", 32, 24);
+    // Nose
+    gfx.fillCircle(16, 12, 2);
+
+    // Tail (curled up to the right)
+    gfx.fillStyle(0xd4952a);
+    gfx.fillEllipse(28, 12, 6, 4);
+
+    gfx.generateTexture("waffles-tex", 32, 32);
     gfx.destroy();
 
     const sprite = this.add.sprite(home.x, home.y, "waffles-tex");
@@ -454,18 +505,27 @@ export class OfficeScene extends Phaser.Scene {
     sprite.setData("memberId", "waffles");
     sprite.setDepth(Math.round(home.y));
 
+    // Waffles name label
     const nameText = this.add.text(home.x, home.y + 2, "Waffles", {
-      fontSize: "8px",
+      fontSize: "12px",
       fontFamily: "Courier New",
-      color: "#9a6b1a",
-      stroke: "#00000066",
+      color: "#ffffff",
+      backgroundColor: "#9a6b1acc",
+      padding: { left: 3, right: 3, top: 1, bottom: 1 },
+      stroke: "#000000",
       strokeThickness: 1,
     }).setOrigin(0.5, 0).setDepth(999);
+
+    // Waffles color dot (orange)
+    const colorDot = this.add.circle(home.x, home.y - 34, 5, 0x9a6b1a, 1);
+    colorDot.setStrokeStyle(1, 0x000000, 0.4);
+    colorDot.setDepth(1001);
 
     this.waffles = {
       id: "waffles",
       sprite,
       nameText,
+      colorDot,
       emoteSprite: null,
       status: "idle",
       facing: "down",
@@ -523,6 +583,20 @@ export class OfficeScene extends Phaser.Scene {
   private updateNamePos(ch: CharState) {
     ch.nameText.setPosition(ch.sprite.x, ch.sprite.y + 2);
     ch.nameText.setDepth(999);
+
+    // Waffles has a smaller sprite (32px) vs humans (48px)
+    const isWaffles = ch.id === "waffles";
+    const dotOffsetY = isWaffles ? -34 : -52;
+    const emoteOffsetY = isWaffles ? -38 : -56;
+
+    if (ch.colorDot) {
+      ch.colorDot.setPosition(ch.sprite.x, ch.sprite.y + dotOffsetY);
+      ch.colorDot.setDepth(1001);
+    }
+    // Keep emote above head
+    if (ch.emoteSprite) {
+      ch.emoteSprite.setPosition(ch.sprite.x, ch.sprite.y + emoteOffsetY);
+    }
   }
 
   private moveTo(ch: CharState, x: number, y: number) {
@@ -542,9 +616,25 @@ export class OfficeScene extends Phaser.Scene {
     if (ch.emoteSprite) {
       ch.emoteSprite.destroy();
     }
-    ch.emoteSprite = this.add.sprite(ch.sprite.x, ch.sprite.y - 60, EMOTE_KEY, frameIndex);
-    ch.emoteSprite.setScale(0.5);
+    const emoteOffY = ch.id === "waffles" ? -38 : -56;
+    ch.emoteSprite = this.add.sprite(ch.sprite.x, ch.sprite.y + emoteOffY, EMOTE_KEY, frameIndex);
+    ch.emoteSprite.setScale(0.6);
     ch.emoteSprite.setDepth(1000);
+
+    // Two-frame animation for emotes (frameIndex and frameIndex+1)
+    const animKey = `emote-${frameIndex}`;
+    if (!this.anims.exists(animKey)) {
+      this.anims.create({
+        key: animKey,
+        frames: this.anims.generateFrameNumbers(EMOTE_KEY, {
+          start: frameIndex,
+          end: frameIndex + 1,
+        }),
+        frameRate: 3,
+        repeat: -1,
+      });
+    }
+    ch.emoteSprite.play(animKey);
 
     this.time.delayedCall(duration, () => {
       if (ch.emoteSprite) {
@@ -598,9 +688,11 @@ export class OfficeScene extends Phaser.Scene {
 
       ch.idleTimer = this.time.delayedCall(travelTime, () => {
         ch.phase = "visiting";
-        // Show drink emote if tearoom
+        // Show emote based on location
         if (Math.abs(ch.sprite.x - TEAROOM.x) < 80) {
-          this.showEmote(ch, 7, 3000); // coffee emote frame
+          this.showEmote(ch, EMOTE.MUSIC, 3000); // relaxing at tearoom
+        } else if (Math.abs(ch.sprite.x - MEETING.x) < 80) {
+          this.showEmote(ch, EMOTE.THINKING, 3000); // thinking in meeting room
         }
 
         // Stay for a while, then go home
@@ -654,7 +746,7 @@ export class OfficeScene extends Phaser.Scene {
     const delay = 5000 + Math.random() * 10000;
     ch.idleTimer = this.time.delayedCall(delay, () => {
       if (ch.status === "working") {
-        this.showEmote(ch, 0, 2000); // typing/thinking emote
+        this.showEmote(ch, EMOTE.DEVICE, 2000); // typing emote
         this.scheduleTypingEmote(ch);
       }
     });
@@ -699,7 +791,7 @@ export class OfficeScene extends Phaser.Scene {
       w.idleTimer = this.time.delayedCall(travelTime, () => {
         w.phase = "visiting";
         // Stay and wag
-        this.showEmote(w, 3, 2000); // heart emote
+        this.showEmote(w, EMOTE.HEART, 2000); // heart emote
 
         const stayMs = 3000 + Math.random() * 3000;
         w.idleTimer = this.time.delayedCall(stayMs, () => {
