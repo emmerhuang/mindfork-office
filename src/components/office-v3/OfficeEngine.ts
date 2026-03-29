@@ -112,7 +112,7 @@ export class OfficeEngine {
 
     // 名字標籤
     ctx.save();
-    ctx.font = "56px 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
+    ctx.font = "38px 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
     ctx.textAlign = "left";
     for (const c of this.mgr.characters) {
       const label = c.def.nameCn || c.def.name;
