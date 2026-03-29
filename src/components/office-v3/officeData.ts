@@ -1,8 +1,8 @@
 // officeData.ts — 所有常數：角色、台詞、座標
 
-export const TILE = 48; // px per tile (bigger tiles = bigger scene elements)
-export const CANVAS_W = 576;  // 12 cols * 48
-export const CANVAS_H = 768;  // 16 rows * 48
+export const TILE = 64; // px per tile (bigger = more room)
+export const CANVAS_W = 768;  // 12 cols * 64
+export const CANVAS_H = 1024; // 16 rows * 64
 export const COLS = CANVAS_W / TILE; // 12
 export const ROWS = CANVAS_H / TILE; // 16
 export const TARGET_FPS = 30;
