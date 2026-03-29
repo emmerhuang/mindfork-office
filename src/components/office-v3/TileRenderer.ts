@@ -315,12 +315,7 @@ function drawConferenceTable(ctx: CanvasRenderingContext2D, tileImg?: HTMLImageE
   const cx = tx(meetingRoom.bounds.x + meetingRoom.bounds.w / 2);
   const cy = ty(meetingRoom.bounds.y + meetingRoom.bounds.h / 2) - TILE;
 
-  if (tileImg) {
-    const sprite = TILE_SPRITES.conference_table;
-    const dw = TILE * 3;
-    const dh = Math.round(dw * (sprite.sh / sprite.sw));
-    drawSprite(ctx, tileImg, sprite, cx - dw / 2, cy - dh / 2, dw, dh);
-  } else {
+  {
     // fallback 程式化
     const tw = TILE * 3;
     const th = TILE * 1.2;
@@ -456,12 +451,7 @@ function drawWhiteboard(ctx: CanvasRenderingContext2D, tileImg?: HTMLImageElemen
   const wbW = TILE * 4;
   const wbH = TILE * 0.7;
 
-  if (tileImg) {
-    const sprite = TILE_SPRITES.wall_whiteboard;
-    const dw = TILE * 4;
-    const dh = Math.round(dw * (sprite.sh / sprite.sw));
-    drawSprite(ctx, tileImg, sprite, wbX, wbY, dw, dh);
-  } else {
+  {
     drawWhiteboardFallback(ctx, wbX, wbY, wbW, wbH);
   }
 }
