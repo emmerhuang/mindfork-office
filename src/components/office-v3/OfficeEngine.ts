@@ -48,8 +48,25 @@ export class OfficeEngine {
 
   private onClick = (e: MouseEvent) => {
     const r = this.canvas.getBoundingClientRect();
-    const px = (e.clientX - r.left) * (CANVAS_W / r.width);
-    const py = (e.clientY - r.top) * (CANVAS_H / r.height);
+    // object-fit: contain 的正確座標轉換
+    const canvasAspect = CANVAS_W / CANVAS_H;
+    const boxAspect = r.width / r.height;
+    let renderW: number, renderH: number, offsetX: number, offsetY: number;
+    if (boxAspect > canvasAspect) {
+      // 上下填滿，左右有留白
+      renderH = r.height;
+      renderW = r.height * canvasAspect;
+      offsetX = (r.width - renderW) / 2;
+      offsetY = 0;
+    } else {
+      // 左右填滿，上下有留白
+      renderW = r.width;
+      renderH = r.width / canvasAspect;
+      offsetX = 0;
+      offsetY = (r.height - renderH) / 2;
+    }
+    const px = ((e.clientX - r.left - offsetX) / renderW) * CANVAS_W;
+    const py = ((e.clientY - r.top - offsetY) / renderH) * CANVAS_H;
     // 書櫃點擊（牆面區域 y < TILE*3，書架在左右兩端）
     if (py < TILE * 3 && (px < TILE * 2 || px > CANVAS_W - TILE * 2)) {
       const projects = [
