@@ -1,21 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import dynamic from "next/dynamic";
 import Bookshelf from "@/components/Bookshelf";
 import TeamPowerBar from "@/components/TeamPowerBar";
 import QueueBar from "@/components/QueueBar";
 import SleepScene from "@/components/SleepScene";
 import { MemberStatus } from "@/types";
-
-const PhaserGame = dynamic(() => import("@/components/PhaserGame"), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-full flex items-center justify-center bg-[#c4a87a]">
-      <p className="pixel-text text-amber-800/60 text-sm">Loading office...</p>
-    </div>
-  ),
-});
+import OfficeCanvas from "@/components/office-v3/OfficeCanvas";
 
 export default function Home() {
   const [rateLimit, setRateLimit] = useState(-1);
@@ -62,9 +53,10 @@ export default function Home() {
           </div>
         ) : (
           <div className="relative w-full h-full">
-            <PhaserGame
+            <OfficeCanvas
               memberStatuses={memberStatuses}
-              onMemberClick={() => {}}
+              onCharacterClick={() => {}}
+              className="w-full h-full"
             />
 
             {/* HUD overlay */}
@@ -83,7 +75,7 @@ export default function Home() {
 
       <footer className="py-1 text-center border-t border-amber-700/20 relative z-20 shrink-0 landscape-footer">
         <p className="text-amber-800/50 text-[9px] pixel-text">
-          MindFork Team &middot; Pixel Office v2.1
+          MindFork Team &middot; Pixel Office v3.0
         </p>
       </footer>
     </div>
