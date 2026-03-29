@@ -67,7 +67,7 @@ export class DialogueSystem {
     const { cx, cy, text } = bubble;
 
     // 文字測量
-    ctx.font = "bold 15px 'Courier New', monospace";
+    ctx.font = "bold 30px 'Courier New', monospace";
     const textW = ctx.measureText(text).width;
     const padding = { x: 8, y: 5 };
     const bubbleW = Math.min(textW + padding.x * 2, 280); // 最寬 280px
@@ -129,7 +129,7 @@ export class DialogueSystem {
 
     // 文字
     ctx.fillStyle = "#222222";
-    ctx.font = "bold 15px 'Courier New', monospace";
+    ctx.font = "bold 30px 'Courier New', monospace";
     ctx.fillText(displayText, clampedBx + padding.x, by + bubbleH - padding.y);
 
     ctx.restore();

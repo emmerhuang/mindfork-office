@@ -186,7 +186,7 @@ export class OfficeEngine {
   private renderNameLabels() {
     const { ctx } = this;
     ctx.save();
-    ctx.font = "bold 14px 'Courier New', monospace";
+    ctx.font = "bold 28px 'Courier New', monospace";
     ctx.textAlign = "center";
 
     for (const char of this.characterManager.characters) {
