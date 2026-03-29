@@ -4,8 +4,8 @@ import { CharacterDef } from "./officeData";
 import { CHAR_SPRITES } from "./spriteAtlas";
 
 // 顯示大小：人 64x80，Waffles 64x56
-const HUMAN_W = 64, HUMAN_H = 80;
-const DOG_W = 64, DOG_H = 56;
+const HUMAN_W = 52, HUMAN_H = 88;
+const DOG_W = 52, DOG_H = 80;
 
 export function drawCharacter(
   ctx: CanvasRenderingContext2D,
