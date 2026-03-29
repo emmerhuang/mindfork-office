@@ -91,16 +91,25 @@ export default function MemberCard({ member, onClose }: MemberCardProps) {
           <p className="text-gray-200 text-xs">{member.currentTask}</p>
         </div>
 
-        {/* Traits & Desk */}
-        <div className="grid grid-cols-2 gap-2 text-[10px]">
-          <div>
-            <p className="text-gray-500 pixel-text mb-0.5">TRAITS</p>
-            <p className="text-gray-300">{member.traits}</p>
-          </div>
-          <div>
-            <p className="text-gray-500 pixel-text mb-0.5">DESK</p>
-            <p className="text-gray-300">{member.deskItems}</p>
-          </div>
+        {/* Personality */}
+        <div className="bg-gray-800 rounded p-2 mb-3">
+          <p className="text-gray-400 text-[10px] pixel-text mb-1">PERSONALITY</p>
+          <p className="text-gray-300 text-xs leading-relaxed">
+            {member.personality}
+          </p>
+        </div>
+
+        {/* Recent Tasks */}
+        <div className="bg-gray-800 rounded p-2">
+          <p className="text-gray-400 text-[10px] pixel-text mb-1">RECENT TASKS</p>
+          <ul className="space-y-1">
+            {member.recentTasks.map((task, i) => (
+              <li key={i} className="text-gray-300 text-xs flex items-start gap-1.5">
+                <span className="text-gray-500 pixel-text mt-px">&gt;</span>
+                <span>{task}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </div>

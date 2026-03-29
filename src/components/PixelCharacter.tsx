@@ -12,6 +12,25 @@ function generateBoxShadow(pixels: Pixel[], size: number): string {
     .join(", ");
 }
 
+// Boss: CEO chair, commanding presence, gold accents
+const bossPixels: Pixel[] = [
+  // Crown/hair
+  [0, 2, "#ffd700"], [0, 3, "#8b0000"], [0, 4, "#8b0000"], [0, 5, "#ffd700"],
+  // Head
+  [1, 2, "#f0c8a0"], [1, 3, "#f0c8a0"], [1, 4, "#f0c8a0"], [1, 5, "#f0c8a0"],
+  // Face (confident eyes)
+  [2, 2, "#333"], [2, 3, "#f0c8a0"], [2, 4, "#f0c8a0"], [2, 5, "#333"],
+  [3, 3, "#c0392b"], [3, 4, "#c0392b"],
+  // Suit (dark red + gold)
+  [4, 2, "#8b0000"], [4, 3, "#ffd700"], [4, 4, "#ffd700"], [4, 5, "#8b0000"],
+  [5, 1, "#8b0000"], [5, 2, "#8b0000"], [5, 3, "#8b0000"], [5, 4, "#8b0000"], [5, 5, "#8b0000"], [5, 6, "#8b0000"],
+  // Coffee cup in hand
+  [4, 7, "#8b7355"], [3, 7, "#fff"], [3, 6, "#8b7355"],
+  // Legs
+  [6, 2, "#4a0000"], [6, 3, "#4a0000"], [6, 4, "#4a0000"], [6, 5, "#4a0000"],
+  [7, 2, "#2c2c2c"], [7, 5, "#2c2c2c"],
+];
+
 // Secretary General: suit, glasses, multi-screen
 const secretaryPixels: Pixel[] = [
   // Hair (dark)
@@ -139,6 +158,7 @@ const wafflesPixels: Pixel[] = [
 ];
 
 const characterPixelMap: Record<string, Pixel[]> = {
+  boss: bossPixels,
   secretary: secretaryPixels,
   sherlock: sherlockPixels,
   lego: legoPixels,

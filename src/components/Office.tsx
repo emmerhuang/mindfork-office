@@ -5,10 +5,8 @@ import Workstation from "./Workstation";
 import Floor from "./Floor";
 
 export default function Office() {
-  // Layout: Secretary in center, others around
-  // Row 1: Sherlock, Secretary, Lego
-  // Row 2: Vault, Forge, Lens
-  // Row 3: Waffles (centered)
+  // Layout: Boss at top, Secretary in center, others around
+  const boss = members.find((m) => m.id === "boss")!;
   const row1 = members.filter((m) =>
     ["sherlock", "secretary", "lego"].includes(m.id)
   );
@@ -30,11 +28,16 @@ export default function Office() {
 
       {/* Office walls (decorative) */}
       <div className="relative z-10 py-8 px-4">
-        {/* Wall decoration top */}
-        <div className="flex justify-center gap-8 mb-2 opacity-30">
-          <div className="w-8 h-6 border border-yellow-700 rounded-[1px]" />
-          <div className="w-12 h-6 border border-yellow-700 rounded-[1px]" />
-          <div className="w-8 h-6 border border-yellow-700 rounded-[1px]" />
+        {/* Boss at the top - larger, commanding position */}
+        <div className="flex justify-center mb-6">
+          <div className="scale-125">
+            <Workstation member={boss} />
+          </div>
+        </div>
+
+        {/* Gold divider under boss */}
+        <div className="flex justify-center mb-6">
+          <div className="w-56 h-0.5 bg-gradient-to-r from-transparent via-yellow-600/60 to-transparent rounded-full" />
         </div>
 
         {/* Row 1: Sherlock - Secretary (center, larger) - Lego */}

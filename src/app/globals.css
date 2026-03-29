@@ -100,3 +100,11 @@ body {
 .animate-speech { animation: speech-bubble 2s ease-in-out infinite; }
 .animate-wag { animation: wag-tail 0.3s ease-in-out infinite; }
 .animate-float-in { animation: float-in 0.3s ease-out; }
+
+/* Overload blink for queue bar */
+@keyframes overload-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.animate-overload-blink { animation: overload-blink 0.5s ease-in-out infinite; }

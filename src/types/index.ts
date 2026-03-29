@@ -12,4 +12,6 @@ export interface MemberData {
   secondaryColor: string;
   deskItems: string;
   traits: string;
+  personality: string;
+  recentTasks: string[];
 }

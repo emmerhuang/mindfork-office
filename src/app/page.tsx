@@ -1,4 +1,11 @@
 import Office from "@/components/Office";
+import TeamPowerBar from "@/components/TeamPowerBar";
+import QueueBar from "@/components/QueueBar";
+import ProjectShowcase from "@/components/ProjectShowcase";
+
+// Mock data: five_hour = 38%, so team power = 62%
+const MOCK_RATE_LIMIT = 38;
+const MOCK_PENDING_TASKS = 1;
 
 export default function Home() {
   return (
@@ -15,15 +22,26 @@ export default function Home() {
         </p>
       </header>
 
+      {/* Status Bars */}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-8 px-4 pb-6">
+        <TeamPowerBar rateLimitPercent={MOCK_RATE_LIMIT} />
+        <QueueBar pendingTasks={MOCK_PENDING_TASKS} />
+      </div>
+
       {/* Office scene */}
       <main className="flex-1 flex items-start justify-center px-4 pb-8">
         <Office />
       </main>
 
+      {/* Completed works showcase */}
+      <section className="pb-8">
+        <ProjectShowcase />
+      </section>
+
       {/* Footer */}
       <footer className="py-4 text-center border-t border-gray-800">
         <p className="text-gray-600 text-[10px] pixel-text">
-          MindFork Team &middot; Pixel Office v0.1
+          MindFork Team &middot; Pixel Office v0.2
         </p>
       </footer>
     </div>

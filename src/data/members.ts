@@ -2,6 +2,21 @@ import { MemberData } from "@/types";
 
 export const members: MemberData[] = [
   {
+    id: "boss",
+    name: "The Boss",
+    nameCn: "老大",
+    role: "Founder & Commander",
+    description: "MindFork 的創辦人，所有指令的源頭。一句話就能讓整個團隊動起來。",
+    currentTask: "視察團隊、發號施令",
+    status: "working",
+    primaryColor: "#8b0000",
+    secondaryColor: "#ffd700",
+    deskItems: "CEO desk & coffee",
+    traits: "老闆椅、咖啡",
+    personality: "要求嚴謹的決策者，說過的事不想再說第二次。速度不是重點，品質才是。對團隊有高期待，但也真心關心每個成員。血汗團隊的精神領袖。",
+    recentTasks: ["要求建立像素風辦公室視覺化", "修復 rotaryCredit 登入問題", "要求 OAuth 客戶端名稱可點擊"],
+  },
+  {
     id: "secretary",
     name: "Secretary General",
     nameCn: "秘書長",
@@ -13,6 +28,8 @@ export const members: MemberData[] = [
     secondaryColor: "#d4a843",
     deskItems: "Multi-monitor setup",
     traits: "西裝、眼鏡",
+    personality: "嚴謹但幽默的協調者，永遠在多工處理。偶爾會因為 rate limit 而崩潰，但總是第一個回到崗位。",
+    recentTasks: ["修復 rotaryCredit 登入問題", "協調團隊 SAVE 記憶", "設定 Rate Limit 防護機制"],
   },
   {
     id: "sherlock",
@@ -26,6 +43,8 @@ export const members: MemberData[] = [
     secondaryColor: "#f5e6c8",
     deskItems: "Sticky notes everywhere",
     traits: "獵鹿帽、放大鏡",
+    personality: "觀察入微的分析師，喜歡追問「為什麼」。不確定的事絕不輕易下結論，一次只問一個問題。",
+    recentTasks: ["規劃帳號對帳功能規格", "設計像素辦公室需求", "分析分錄情境模式"],
   },
   {
     id: "lego",
@@ -39,6 +58,8 @@ export const members: MemberData[] = [
     secondaryColor: "#808080",
     deskItems: "Building blocks & blueprints",
     traits: "工程師帽、藍圖",
+    personality: "全局思考的建築師，擅長把複雜問題拆解成清晰模組。話不多但每句都是重點。",
+    recentTasks: ["設計多帳本路由架構", "規劃許願池模組", "評估帳號對帳資料流"],
   },
   {
     id: "vault",
@@ -52,6 +73,8 @@ export const members: MemberData[] = [
     secondaryColor: "#c0c0c0",
     deskItems: "Safe & key ring",
     traits: "護目鏡、鑰匙串",
+    personality: "嚴謹的資料庫守護者，對 schema 的潔癖讓人又愛又恨。Migration 是他的藝術。",
+    recentTasks: ["補全 2025-26 科目表 (23筆)", "建立 member_bank_accounts 表", "維護 Turso 生產環境"],
   },
   {
     id: "forge",
@@ -65,6 +88,8 @@ export const members: MemberData[] = [
     secondaryColor: "#2c2c2c",
     deskItems: "Anvil & forge",
     traits: "鐵匠圍裙、錘子",
+    personality: "沉默的實作者，收到規格就埋頭苦幹。代碼品質是他的驕傲，不容妥協。",
+    recentTasks: ["實作帳號對帳功能", "重寫分錄 UI (情境模式)", "修復 payables/receivables 頁面"],
   },
   {
     id: "lens",
@@ -78,6 +103,8 @@ export const members: MemberData[] = [
     secondaryColor: "#85c1e9",
     deskItems: "Microscope",
     traits: "白袍、放大鏡",
+    personality: "溫和但銳利的品質守護者，用正面語氣指出每一個潛在問題。Forge 的最佳拍檔。",
+    recentTasks: ["e2e 測試補充 (scenario/smoke)", "審查許願池安全性", "驗證分錄 403 修復"],
   },
   {
     id: "waffles",
@@ -91,5 +118,7 @@ export const members: MemberData[] = [
     secondaryColor: "#ffffff",
     deskItems: "Dog bed & toys",
     traits: "柯基犬",
+    personality: "辦公室的開心果柯基犬，每天早上 10 點跟大家道早安，下午 3 點提醒休息。會觀察團隊氣氛，適時搖搖尾巴打氣。",
+    recentTasks: ["巡邏辦公室", "跟老大撒嬌", "監督大家有沒有休息"],
   },
 ];
