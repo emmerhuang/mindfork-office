@@ -128,9 +128,9 @@ function drawTearoom(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null
     let cx = bx + 4;
     drawSprite(ctx, img, TILE_SPRITES.fridge,         cx, by + 4, fridgeW, fridgeH);
     cx += fridgeW + 4;
-    drawSprite(ctx, img, TILE_SPRITES.water_cooler,    cx, by + 4 + (fridgeH - waterH), waterW, waterH);
+    drawSprite(ctx, img, TILE_SPRITES.water_cooler,    cx, by + 4 + (fridgeH - waterH) - 20, waterW, waterH);
     cx += waterW + 4;
-    drawSprite(ctx, img, TILE_SPRITES.coffee_machine,  cx, by + 4 + (fridgeH - coffeeH), coffeeW, coffeeH);
+    drawSprite(ctx, img, TILE_SPRITES.coffee_machine,  cx, by + 4 + (fridgeH - coffeeH) - 20, coffeeW, coffeeH);
   } else {
     ctx.fillStyle = "#C8D0D8";
     ctx.fillRect(bx + TILE, by + TILE, TILE * 2, TILE * 2);
