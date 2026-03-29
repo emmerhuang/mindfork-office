@@ -317,13 +317,13 @@ function drawConferenceTable(ctx: CanvasRenderingContext2D, tileImg?: HTMLImageE
 
   if (tileImg) {
     const sprite = TILE_SPRITES.conference_table;
-    const dw = TILE * 5;
+    const dw = TILE * 3;
     const dh = Math.round(dw * (sprite.sh / sprite.sw));
     drawSprite(ctx, tileImg, sprite, cx - dw / 2, cy - dh / 2, dw, dh);
   } else {
     // fallback 程式化
-    const tw = TILE * 6;
-    const th = TILE * 2;
+    const tw = TILE * 3;
+    const th = TILE * 1.2;
 
     ctx.fillStyle = "rgba(0,0,0,0.12)";
     ctx.fillRect(cx - tw / 2 + 3, cy - th / 2 + 4, tw, th);
@@ -458,10 +458,9 @@ function drawWhiteboard(ctx: CanvasRenderingContext2D, tileImg?: HTMLImageElemen
 
   if (tileImg) {
     const sprite = TILE_SPRITES.wall_whiteboard;
-    // 只取白板部分（sprite 包含整面牆，我們取中間白板區域）
-    // 白板在 sprite 裡大約中間區域，直接縮放整面牆效果不好
-    // 改用程式化繪製白板（更精確）
-    drawWhiteboardFallback(ctx, wbX, wbY, wbW, wbH);
+    const dw = TILE * 4;
+    const dh = Math.round(dw * (sprite.sh / sprite.sw));
+    drawSprite(ctx, tileImg, sprite, wbX, wbY, dw, dh);
   } else {
     drawWhiteboardFallback(ctx, wbX, wbY, wbW, wbH);
   }
@@ -539,7 +538,7 @@ export function renderStaticScene(ctx: CanvasRenderingContext2D, tileImg?: HTMLI
 // 所以盆栽放 (5,6) — 走道中間偏下，不擋桌子
 function drawPottedPlantBetween(ctx: CanvasRenderingContext2D, tileImg?: HTMLImageElement | null) {
   const px = tx(5);
-  const py = ty(6);
+  const py = ty(4);
 
   if (tileImg) {
     const sprite = TILE_SPRITES.plant_tall;
