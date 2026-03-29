@@ -108,14 +108,16 @@ export class OfficeEngine {
 
     // 名字標籤
     ctx.save();
-    ctx.font = "bold 28px 'Courier New', monospace";
-    ctx.textAlign = "center";
+    ctx.font = "bold 20px 'Courier New', monospace";
+    ctx.textAlign = "left";
     for (const c of this.mgr.characters) {
       const label = c.def.nameCn || c.def.name;
+      const nx = c.px + 30;
+      const ny = c.py + 10;
       ctx.fillStyle = "rgba(255,255,255,0.7)";
-      ctx.fillText(label, c.px + 1, c.py - 41);
-      ctx.fillStyle = "#333";
-      ctx.fillText(label, c.px, c.py - 42);
+      ctx.fillText(label, nx + 1, ny + 1);
+      ctx.fillStyle = c.def.color;
+      ctx.fillText(label, nx, ny);
     }
     ctx.restore();
 
