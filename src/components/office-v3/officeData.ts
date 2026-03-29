@@ -54,7 +54,7 @@ export const CHARACTERS: CharacterDef[] = [
       "執行力是策略的一部分。",
       "先把這件事收掉，再談下一件。",
     ],
-    deskTile: { x: 2, y: 4 },
+    deskTile: { x: 1, y: 4 },
   },
   {
     id: "secretary",
@@ -73,7 +73,7 @@ export const CHARACTERS: CharacterDef[] = [
       "把決策記下來，不然三個月後沒人記得。",
       "先確認需求，再開始實作。",
     ],
-    deskTile: { x: 7, y: 4 },
+    deskTile: { x: 9, y: 4 },
   },
   {
     id: "sherlock",
@@ -94,7 +94,7 @@ export const CHARACTERS: CharacterDef[] = [
       "我問問題，不是因為不信任你，是因為我信任流程。",
       "需求凍結了，但現實從沒凍結過。",
     ],
-    deskTile: { x: 10, y: 4 },
+    deskTile: { x: 1, y: 7 },
   },
   {
     id: "lego",
@@ -116,7 +116,7 @@ export const CHARACTERS: CharacterDef[] = [
       "這個 trade-off 值得，但要記錄下來。",
       "Monolith 不丟臉，亂成一團的 Monolith 才丟臉。",
     ],
-    deskTile: { x: 2, y: 8 },
+    deskTile: { x: 5, y: 7 },
   },
   {
     id: "vault",
@@ -137,7 +137,7 @@ export const CHARACTERS: CharacterDef[] = [
       "資料是公司最貴的資產，我只是它的管理員。",
       "正規化到第三正規型，然後有意識地反正規化。",
     ],
-    deskTile: { x: 7, y: 8 },
+    deskTile: { x: 9, y: 7 },
   },
   {
     id: "forge",
@@ -157,7 +157,7 @@ export const CHARACTERS: CharacterDef[] = [
       "這個 edge case 我三點想到的，睡不著就補了測試。",
       "部署前我再跑一次 build，習慣了。",
     ],
-    deskTile: { x: 4, y: 11 },
+    deskTile: { x: 1, y: 10 },
   },
   {
     id: "lens",
@@ -178,7 +178,7 @@ export const CHARACTERS: CharacterDef[] = [
       "測試是文件，好的測試告訴你這段程式應該做什麼。",
       "上線前五分鐘說『應該沒問題吧』是我最不想聽到的話。",
     ],
-    deskTile: { x: 9, y: 11 },
+    deskTile: { x: 5, y: 10 },
   },
   {
     id: "waffles",
@@ -198,7 +198,7 @@ export const CHARACTERS: CharacterDef[] = [
       "有人說茶水間嗎？",
       "（把頭擠進 Lego 的螢幕前）我也要看架構圖。",
     ],
-    deskTile: { x: 6, y: 4 }, // 狗窩位置（在老大旁邊）
+    deskTile: { x: 9, y: 10 }, // 狗窩位置（右下角，Lens 旁邊）
     isWaffles: true,
   },
 ];
