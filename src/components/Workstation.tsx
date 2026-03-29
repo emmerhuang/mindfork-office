@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { MemberData } from "@/types";
+import { useState, useMemo } from "react";
+import { MemberData, CharacterPose } from "@/types";
 import PixelCharacterSVG from "./PixelCharacterSVG";
 import Desk from "./Desk";
 import MemberCard from "./MemberCard";
@@ -37,6 +37,47 @@ const behaviorDelays: Record<string, number> = {
   lens: 12,
 };
 
+/**
+ * Determine the character pose based on status and idle behavior.
+ *
+ * - working status -> sitting (at desk, coding/working)
+ * - idle + desk behavior -> sitting (at desk, occasionally sipping)
+ * - idle + tearoom -> walking while moving, drinking when arrived
+ *   (We approximate this with the CSS animation phases: the character
+ *    walks out and back. During the "pause" phase they'd be drinking,
+ *    but since we can't detect CSS animation phase in JS, we use
+ *    walking as the default pose for tearoom/meeting walkers.)
+ * - idle + meeting -> walking while moving, standing when arrived
+ * - idle + dog-rest -> sleeping (Waffles)
+ */
+function getPoseForMember(member: MemberData): CharacterPose {
+  const behavior = memberBehaviors[member.id] ?? "desk";
+
+  if (member.status === "working") {
+    return "sitting";
+  }
+
+  if (member.status === "idle") {
+    switch (behavior) {
+      case "desk":
+        return "sitting";
+      case "tearoom":
+        // Walkers alternate between walking and drinking via CSS animation.
+        // We show "walking" pose; the CSS idle-to-tearoom handles the movement.
+        return "walking";
+      case "meeting":
+        return "walking";
+      case "dog-rest":
+        return member.id === "waffles" ? "sleeping" : "standing";
+      default:
+        return "standing";
+    }
+  }
+
+  // meeting, sleeping, celebrating statuses: use standing
+  return "standing";
+}
+
 export default function Workstation({ member }: WorkstationProps) {
   const [showCard, setShowCard] = useState(false);
   const [isWagging, setIsWagging] = useState(false);
@@ -52,6 +93,7 @@ export default function Workstation({ member }: WorkstationProps) {
   const isIdle = member.status === "idle";
   const behavior = memberBehaviors[member.id] ?? "desk";
   const isWalking = isIdle && (behavior === "tearoom" || behavior === "meeting");
+  const pose = useMemo(() => getPoseForMember(member), [member]);
 
   return (
     <>
@@ -67,9 +109,10 @@ export default function Workstation({ member }: WorkstationProps) {
           >
             {member.nameCn}
           </p>
-          <div className={isWalking ? "animate-walk-step" : member.id === "waffles" && isIdle ? "" : ""}>
+          <div className={isWalking ? "animate-walk-step" : ""}>
             <PixelCharacterSVG
               member={member}
+              pose={pose}
               onClick={handleClick}
               isWagging={isWagging}
             />

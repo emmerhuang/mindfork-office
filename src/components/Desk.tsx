@@ -2,13 +2,35 @@
 
 import { MemberData } from "@/types";
 
-// Isometric desk with character-specific items
+// Monitor component reused across desks
+function Monitor({ color = "#333" }: { color?: string }) {
+  return (
+    <div className="flex flex-col items-center">
+      <div className="w-5 h-3.5 rounded-[1px] border border-gray-500" style={{ background: color }}>
+        <div className="w-3 h-1.5 bg-blue-400/60 mt-0.5 mx-auto rounded-[0.5px]" />
+      </div>
+      <div className="w-1.5 h-1 bg-gray-500" />
+      <div className="w-3 h-0.5 bg-gray-400 rounded-full" />
+    </div>
+  );
+}
+
+function Laptop() {
+  return (
+    <div className="flex flex-col items-center">
+      <div className="w-5 h-3 bg-gray-700 rounded-t-[1px] border border-gray-500">
+        <div className="w-3 h-1 bg-green-400/50 mt-0.5 mx-auto rounded-[0.5px]" />
+      </div>
+      <div className="w-6 h-0.5 bg-gray-500 rounded-b-sm" />
+    </div>
+  );
+}
+
 export default function Desk({ member }: { member: MemberData }) {
   const deskColor = getDeskColor(member.id);
 
   return (
     <div className="relative">
-      {/* Desk top surface (isometric-ish) */}
       <div
         className="w-full h-6 rounded-sm"
         style={{
@@ -16,12 +38,10 @@ export default function Desk({ member }: { member: MemberData }) {
           transform: "perspective(200px) rotateX(10deg)",
         }}
       />
-      {/* Desk front */}
       <div
         className="w-full h-4 rounded-b-sm -mt-0.5"
         style={{ background: deskColor.front }}
       />
-      {/* Desk items */}
       <DeskItems memberId={member.id} />
     </div>
   );
@@ -35,8 +55,6 @@ function getDeskColor(id: string): { top: string; front: string } {
       return { top: "#7a6a5a", front: "#6a5a4a" };
     case "forge":
       return { top: "#888", front: "#777" };
-    case "waffles":
-      return { top: "#c4a882", front: "#a08060" };
     default:
       return { top: "#c4a882", front: "#a08060" };
   }
@@ -46,54 +64,40 @@ function DeskItems({ memberId }: { memberId: string }) {
   switch (memberId) {
     case "boss":
       return (
-        <div className="absolute -top-3 left-0 flex gap-1 items-end">
-          {/* Coffee cup */}
+        <div className="absolute -top-4 left-0 flex gap-1 items-end">
+          <Monitor color="#222" />
           <div className="w-2 h-2.5 bg-amber-700 rounded-b-sm border border-amber-800" />
-          {/* Big screen */}
-          <div className="w-5 h-3 bg-gray-800 border border-gray-600 rounded-[1px]">
-            <div className="w-3 h-1 bg-red-400 mt-0.5 ml-0.5" />
-          </div>
         </div>
       );
     case "secretary":
       return (
-        <div className="absolute -top-3 left-1 flex gap-0.5">
-          {/* Multiple screens */}
-          <div className="w-3 h-2.5 bg-gray-800 border border-gray-500 rounded-[1px]">
-            <div className="w-1 h-0.5 bg-blue-400 mt-0.5 ml-0.5" />
-          </div>
-          <div className="w-3 h-2.5 bg-gray-800 border border-gray-500 rounded-[1px]">
-            <div className="w-1 h-0.5 bg-green-400 mt-0.5 ml-0.5" />
-          </div>
-          <div className="w-3 h-2.5 bg-gray-800 border border-gray-500 rounded-[1px]">
-            <div className="w-1 h-0.5 bg-yellow-400 mt-0.5 ml-0.5" />
-          </div>
+        <div className="absolute -top-4 left-0 flex gap-0.5 items-end">
+          <Monitor />
+          <Monitor />
+          <Monitor />
         </div>
       );
     case "sherlock":
       return (
-        <div className="absolute -top-2 right-0 flex gap-1">
-          {/* Sticky notes */}
-          <div className="w-2 h-2 bg-yellow-300 rotate-3" />
-          <div className="w-2 h-2 bg-pink-300 -rotate-6" />
-          <div className="w-2 h-2 bg-green-300 rotate-1" />
+        <div className="absolute -top-4 left-0 flex gap-1 items-end">
+          <Laptop />
+          <div className="flex gap-0.5">
+            <div className="w-2 h-2 bg-yellow-300 rotate-3" />
+            <div className="w-2 h-2 bg-pink-300 -rotate-6" />
+          </div>
         </div>
       );
     case "lego":
       return (
-        <div className="absolute -top-3 left-0 flex gap-0.5 items-end">
-          {/* Building blocks */}
-          <div className="w-2 h-2 bg-orange-500" />
-          <div className="w-2 h-3 bg-gray-500" />
-          <div className="w-2 h-1.5 bg-orange-400" />
-          {/* Blueprint */}
-          <div className="w-4 h-3 bg-blue-200 ml-1 opacity-70 border border-blue-400" />
+        <div className="absolute -top-4 left-0 flex gap-1 items-end">
+          <Laptop />
+          <div className="w-4 h-3 bg-blue-200 opacity-70 border border-blue-400" />
         </div>
       );
     case "vault":
       return (
-        <div className="absolute -top-4 right-1">
-          {/* Safe */}
+        <div className="absolute -top-4 left-0 flex gap-1 items-end">
+          <Monitor color="#1a3a2a" />
           <div className="w-5 h-4 bg-gray-600 border border-gray-500 rounded-[1px] relative">
             <div className="w-1.5 h-1.5 rounded-full border border-yellow-500 absolute top-1 left-1.5" />
           </div>
@@ -101,32 +105,19 @@ function DeskItems({ memberId }: { memberId: string }) {
       );
     case "forge":
       return (
-        <div className="absolute -top-3 left-0 flex gap-1 items-end">
-          {/* Anvil */}
-          <div className="w-4 h-2 bg-gray-500 rounded-t-sm" />
-          {/* Sparks */}
-          <div className="w-1 h-1 bg-orange-400 rounded-full opacity-75" />
-          <div className="w-0.5 h-0.5 bg-yellow-300 rounded-full opacity-50" />
+        <div className="absolute -top-4 left-0 flex gap-1 items-end">
+          <Monitor color="#2c2c2c" />
+          <Monitor color="#2c2c2c" />
         </div>
       );
     case "lens":
       return (
-        <div className="absolute -top-4 right-0">
-          {/* Microscope */}
+        <div className="absolute -top-4 left-0 flex gap-1 items-end">
+          <Laptop />
           <div className="relative">
-            <div className="w-1 h-4 bg-gray-400 ml-2" />
+            <div className="w-1 h-4 bg-gray-400 ml-1.5" />
             <div className="w-3 h-1 bg-gray-500 rounded-sm" />
-            <div className="w-2 h-0.5 bg-blue-300 ml-0.5" />
           </div>
-        </div>
-      );
-    case "waffles":
-      return (
-        <div className="absolute -top-2 left-0 flex gap-1">
-          {/* Dog bowl */}
-          <div className="w-3 h-1.5 bg-red-600 rounded-b-full" />
-          {/* Toy bone */}
-          <div className="w-3 h-1 bg-white rounded-full" />
         </div>
       );
     default:

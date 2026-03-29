@@ -111,6 +111,22 @@ body {
 .animate-walk-step { animation: walk-gait 0.8s linear infinite; }
 .animate-dog-trot { animation: dog-trot 0.4s linear infinite; }
 
+/* Two-frame walking animation: alternate between frameA and frameB via opacity */
+@keyframes walk-frame-toggle {
+  0%, 49.9% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.walk-frame-container .walk-frame-a {
+  animation: walk-frame-toggle 0.6s step-end infinite;
+}
+
+.walk-frame-container .walk-frame-b {
+  animation: walk-frame-toggle 0.6s step-end infinite;
+  animation-delay: 0.3s;
+  opacity: 0;
+}
+
 /* Breathing / idle animation */
 @keyframes idle-breathe {
   0%, 100% { transform: translateY(0); }

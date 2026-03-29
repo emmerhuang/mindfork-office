@@ -1,5 +1,7 @@
 export type MemberStatus = "idle" | "working" | "meeting" | "sleeping" | "celebrating";
 
+export type CharacterPose = "standing" | "walking" | "sitting" | "drinking" | "sleeping";
+
 export interface MemberData {
   id: string;
   name: string;
