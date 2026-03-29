@@ -156,7 +156,23 @@ export class CharacterManager {
     return best;
   }
 
-  updateStatuses(_data: Record<string, { status: string; task: string }>) {
-    // future: map external status to state machine
+  updateStatuses(data: Record<string, { status: string; task: string }>) {
+    for (const c of this.characters) {
+      const d = data[c.def.id];
+      if (!d) continue;
+      if (d.status === "working" && c.state !== "working") {
+        c.state = "working";
+        c.px = c.homePx; c.py = c.homePy;
+        c.targetPx = c.homePx; c.targetPy = c.homePy;
+      } else if (d.status === "idle" && c.state === "working") {
+        c.state = "idle_home";
+      } else if (d.status === "meeting") {
+        const dest = ROOMS.meetingRoom.dest;
+        c.targetPx = dest.x * TILE + (Math.random() - 0.5) * TILE * 2;
+        c.targetPy = dest.y * TILE + (Math.random() - 0.5) * TILE;
+        c.state = "walking";
+        c.goingHome = false;
+      }
+    }
   }
 }
