@@ -1,6 +1,6 @@
 // CharacterManager.ts — 角色狀態機（working / idle_home / walking / idle_away）
 
-import { CHARACTERS, CharacterDef, TILE, ROOMS } from "./officeData";
+import { CHARACTERS, CharacterDef, TILE, ROOMS, CANVAS_W, CANVAS_H } from "./officeData";
 
 export type CharState = "working" | "idle_home" | "walking" | "idle_away";
 
@@ -110,8 +110,28 @@ export class CharacterManager {
       if (c.goingHome) { c.state = "idle_home"; c.goingHome = false; }
       else { c.state = "idle_away"; c.walkTimer = rand(STAY_MIN, STAY_MAX); }
     } else {
-      c.px += (dx / dist) * SPEED;
-      c.py += (dy / dist) * SPEED;
+      let nx = c.px + (dx / dist) * SPEED;
+      let ny = c.py + (dy / dist) * SPEED;
+
+      // 碰撞避免：跟其他角色保持距離
+      const MIN_DIST = 50;
+      for (const other of this.characters) {
+        if (other === c) continue;
+        const odx = nx - other.px, ody = ny - other.py;
+        const od = Math.sqrt(odx * odx + ody * ody);
+        if (od < MIN_DIST && od > 0) {
+          // 推開
+          nx += (odx / od) * (MIN_DIST - od) * 0.5;
+          ny += (ody / od) * (MIN_DIST - od) * 0.5;
+        }
+      }
+
+      // 邊界限制
+      nx = Math.max(30, Math.min(CANVAS_W - 30, nx));
+      ny = Math.max(TILE * 3 + 20, Math.min(CANVAS_H - 20, ny));
+
+      c.px = nx;
+      c.py = ny;
     }
   }
 
