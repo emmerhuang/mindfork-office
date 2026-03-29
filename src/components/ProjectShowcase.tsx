@@ -64,27 +64,17 @@ export default function ProjectShowcase() {
             rel="noopener noreferrer"
             className="group relative bg-white/80 border border-amber-300/50 hover:border-amber-500 rounded-lg p-3 transition-all hover:-translate-y-1 shadow-sm hover:shadow-md"
           >
-            {/* Pixel icon */}
+            {/* System name as main label */}
             <div
-              className="w-full h-10 mb-2 flex items-center justify-center rounded pixel-text text-[10px] font-bold text-white"
+              className="w-full h-12 mb-2 flex items-center justify-center rounded text-sm font-bold text-white px-1 text-center leading-tight"
               style={{ background: project.color }}
             >
-              {project.icon}
-            </div>
-
-            {/* Name + Version */}
-            <div className="flex items-baseline justify-between mb-1">
-              <p className="pixel-text text-[9px] text-gray-800 truncate">
-                {project.name}
-              </p>
-              <span className="pixel-text text-[8px] text-gray-400 shrink-0 ml-1">
-                {project.version}
-              </span>
-            </div>
-
-            {/* Description */}
-            <p className="text-[10px] text-gray-500 leading-tight">
               {project.description}
+            </div>
+
+            {/* Version */}
+            <p className="text-[10px] text-gray-400 text-center pixel-text">
+              {project.version}
             </p>
 
             {/* Link indicator */}

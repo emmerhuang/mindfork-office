@@ -27,7 +27,7 @@ export default function Workstation({ member }: WorkstationProps) {
       <div className="flex flex-col items-center gap-0.5">
         {/* Name above head */}
         <p
-          className="pixel-text text-[9px] text-center mb-0.5"
+          className="pixel-text text-sm text-center mb-0.5"
           style={{ color: member.primaryColor }}
         >
           {member.nameCn}
