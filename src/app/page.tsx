@@ -1,12 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Bookshelf from "@/components/Bookshelf";
-import TeamPowerBar from "@/components/TeamPowerBar";
-import QueueBar from "@/components/QueueBar";
-import SleepScene from "@/components/SleepScene";
 import { MemberStatus } from "@/types";
 import OfficeCanvas from "@/components/office-v3/OfficeCanvas";
+import SleepScene from "@/components/SleepScene";
 
 interface Metrics {
   rateLimitPercent: number;
@@ -14,13 +11,11 @@ interface Metrics {
   totalCostUsd?: number;
   modelName?: string;
   contextUsedPercent?: number;
+  updatedAt?: string;
 }
 
 export default function Home() {
-  const [metrics, setMetrics] = useState<Metrics>({
-    rateLimitPercent: -1,
-    pendingTasks: -1,
-  });
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [memberStatuses, setMemberStatuses] = useState<Record<string, { status: MemberStatus; task: string }>>({});
 
   useEffect(() => {
@@ -29,15 +24,7 @@ export default function Home() {
         const res = await fetch("/api/status");
         if (res.ok) {
           const data = await res.json();
-          if (data.metrics) {
-            setMetrics({
-              rateLimitPercent: data.metrics.rateLimitPercent ?? -1,
-              pendingTasks: data.metrics.pendingTasks ?? -1,
-              totalCostUsd: data.metrics.totalCostUsd,
-              modelName: data.metrics.modelName,
-              contextUsedPercent: data.metrics.contextUsedPercent,
-            });
-          }
+          if (data.metrics) setMetrics(data.metrics);
           if (data.members && Object.keys(data.members).length > 0) {
             setMemberStatuses(data.members);
           }
@@ -49,89 +36,98 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  const isSleeping = metrics.rateLimitPercent >= 90;
+  const power = metrics && metrics.rateLimitPercent >= 0 ? 100 - metrics.rateLimitPercent : null;
+  const powerColor = power === null ? "#999" : power > 60 ? "#22c55e" : power > 30 ? "#eab308" : "#ef4444";
+  const isSleeping = metrics ? metrics.rateLimitPercent >= 90 : false;
 
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden">
-      <header className="py-1 sm:py-2 text-center relative z-20 shrink-0 landscape-header">
-        <h1 className="pixel-text text-lg sm:text-2xl font-bold tracking-wider">
-          <span className="text-blue-800">Mind</span>
-          <span className="text-orange-600">Fork</span>
-          <span className="text-amber-900/60 ml-1.5 text-sm sm:text-xl">Office</span>
+    <div className="h-screen w-screen bg-gray-950 flex flex-col overflow-hidden">
+      {/* Header */}
+      <header className="py-1.5 text-center shrink-0">
+        <h1 className="text-lg font-bold tracking-wider font-mono">
+          <span className="text-blue-400">Mind</span>
+          <span className="text-orange-400">Fork</span>
+          <span className="text-gray-500 ml-1.5 text-sm">Office</span>
         </h1>
       </header>
 
-      <main className="flex-1 min-h-0 relative z-10">
+      {/* Office Canvas */}
+      <main className="flex-1 min-h-0">
         {isSleeping ? (
           <div className="h-full flex items-center justify-center">
             <SleepScene />
           </div>
         ) : (
-          <div className="relative w-full h-full">
-            <OfficeCanvas
-              memberStatuses={memberStatuses}
-              onCharacterClick={() => {}}
-              className="w-full h-full"
-            />
-
-            {/* HUD overlay - top right */}
-            <div className="absolute top-2 right-2 z-30 flex flex-col gap-1.5 pointer-events-auto">
-              {/* Power + Queue */}
-              <div className="bg-[#f5f0e0]/92 border border-[#b89868] rounded-lg px-2.5 py-2 flex flex-col gap-1.5 min-w-[160px]">
-                <TeamPowerBar rateLimitPercent={metrics.rateLimitPercent} />
-                <QueueBar pendingTasks={metrics.pendingTasks} />
-              </div>
-
-              {/* Stats panel */}
-              <div className="bg-[#f5f0e0]/92 border border-[#b89868] rounded-lg px-2.5 py-2 flex flex-col gap-0.5 min-w-[160px]">
-                {/* Model */}
-                {metrics.modelName && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-[8px] pixel-text text-amber-700/60">MODEL</span>
-                    <span className="text-[9px] text-amber-900 font-medium">{metrics.modelName}</span>
-                  </div>
-                )}
-                {/* Total cost */}
-                {metrics.totalCostUsd !== undefined && metrics.totalCostUsd >= 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-[8px] pixel-text text-amber-700/60">COST</span>
-                    <span className="text-[9px] text-amber-900 font-medium">${metrics.totalCostUsd.toFixed(2)}</span>
-                  </div>
-                )}
-                {/* Context */}
-                {metrics.contextUsedPercent !== undefined && metrics.contextUsedPercent >= 0 && (
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[8px] pixel-text text-amber-700/60">CTX</span>
-                    <div className="flex items-center gap-1">
-                      <div className="w-14 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${metrics.contextUsedPercent}%`,
-                            background: metrics.contextUsedPercent > 80 ? "#ef4444" : metrics.contextUsedPercent > 50 ? "#facc15" : "#4ade80",
-                          }}
-                        />
-                      </div>
-                      <span className="text-[9px] text-amber-900">{metrics.contextUsedPercent}%</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Bookshelf */}
-              <div className="self-end">
-                <Bookshelf />
-              </div>
-            </div>
-          </div>
+          <OfficeCanvas
+            memberStatuses={memberStatuses}
+            onCharacterClick={() => {}}
+            className="w-full h-full"
+          />
         )}
       </main>
 
-      <footer className="py-1 text-center border-t border-amber-700/20 relative z-20 shrink-0 landscape-footer">
-        <p className="text-amber-800/50 text-[9px] pixel-text">
-          MindFork Team &middot; Pixel Office v3.1
-        </p>
-      </footer>
+      {/* Bottom Dashboard Panel (same style as /dashboard left block) */}
+      {metrics && (
+        <div className="shrink-0 bg-gray-900 border-t border-gray-800 px-4 py-2 font-mono text-white">
+          <div className="flex items-center gap-4 max-w-lg mx-auto">
+            {/* Power */}
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-gray-400 text-xs">POWER</span>
+                <span className="text-base font-bold" style={{ color: powerColor }}>
+                  {power !== null ? `${power}%` : "--"}
+                </span>
+              </div>
+              <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                {power !== null && (
+                  <div className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${power}%`, background: powerColor }} />
+                )}
+              </div>
+            </div>
+
+            {/* Tasks */}
+            <div className="text-center">
+              <span className="text-gray-400 text-xs block">TASKS</span>
+              <span className="text-lg font-bold">{metrics.pendingTasks >= 0 ? metrics.pendingTasks : "--"}</span>
+            </div>
+
+            {/* Cost */}
+            <div className="text-center">
+              <span className="text-gray-400 text-xs block">COST</span>
+              <span className="text-sm font-bold text-amber-400">
+                {metrics.totalCostUsd !== undefined && metrics.totalCostUsd >= 0
+                  ? `$${metrics.totalCostUsd.toFixed(0)}` : "--"}
+              </span>
+            </div>
+
+            {/* Model */}
+            <div className="text-center">
+              <span className="text-gray-400 text-xs block">MODEL</span>
+              <span className="text-xs text-cyan-400">{metrics.modelName || "--"}</span>
+            </div>
+
+            {/* Context */}
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-gray-400 text-xs">CTX</span>
+                <span className="text-sm font-bold">
+                  {metrics.contextUsedPercent !== undefined && metrics.contextUsedPercent >= 0
+                    ? `${metrics.contextUsedPercent}%` : "--"}
+                </span>
+              </div>
+              <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                {metrics.contextUsedPercent !== undefined && metrics.contextUsedPercent >= 0 && (
+                  <div className="h-full rounded-full" style={{
+                    width: `${metrics.contextUsedPercent}%`,
+                    background: metrics.contextUsedPercent > 80 ? "#ef4444" : metrics.contextUsedPercent > 50 ? "#eab308" : "#22c55e"
+                  }} />
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
