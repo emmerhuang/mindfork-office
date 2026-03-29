@@ -38,7 +38,7 @@ export default function Home() {
 
   const power = metrics && metrics.rateLimitPercent >= 0 ? 100 - metrics.rateLimitPercent : null;
   const powerColor = power === null ? "#999" : power > 60 ? "#22c55e" : power > 30 ? "#eab308" : "#ef4444";
-  const isSleeping = metrics ? metrics.rateLimitPercent >= 90 : false;
+  const isSleeping = metrics ? metrics.rateLimitPercent >= 98 : false; // 暫時提高到98%，加班中
 
   return (
     <div className="h-screen w-screen bg-gray-950 flex flex-col overflow-hidden">

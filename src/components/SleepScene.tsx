@@ -60,12 +60,12 @@ export default function SleepScene() {
         <div className="text-7xl mb-6 animate-idle">{scene.emoji}</div>
 
         {/* Title */}
-        <h2 className="pixel-text text-lg text-amber-900 font-bold mb-3">
+        <h2 className="pixel-text text-lg text-white font-bold mb-3">
           {scene.title}
         </h2>
 
         {/* Description */}
-        <p className="text-amber-800/70 text-sm leading-relaxed mb-6">
+        <p className="text-white/70 text-sm leading-relaxed mb-6">
           {scene.description}
         </p>
 
