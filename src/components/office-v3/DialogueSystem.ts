@@ -1,4 +1,5 @@
 // DialogueSystem.ts — 對話泡泡（白色圓角矩形 + 三角指針）
+import { CANVAS_W } from "./officeData";
 
 interface Bubble {
   charId: string;
@@ -53,7 +54,7 @@ export class DialogueSystem {
     const maxLineW = Math.max(...lines.map(l => ctx.measureText(l).width));
     const bw = Math.min(maxLineW + pad * 2, MAX_W);
     const bh = lines.length * lineH + pad;
-    const bx = Math.max(4, Math.min(b.cx - bw / 2, 768 - bw - 4));
+    const bx = Math.max(4, Math.min(b.cx - bw / 2, CANVAS_W - bw - 4));
     const by = b.cy - 50 - bh;
 
     // shadow
