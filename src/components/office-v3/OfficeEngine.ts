@@ -50,6 +50,18 @@ export class OfficeEngine {
     const r = this.canvas.getBoundingClientRect();
     const px = (e.clientX - r.left) * (CANVAS_W / r.width);
     const py = (e.clientY - r.top) * (CANVAS_H / r.height);
+    // 書櫃點擊（牆面區域 y < TILE*3，書架在左右兩端）
+    if (py < TILE * 3 && (px < TILE * 2 || px > CANVAS_W - TILE * 2)) {
+      const projects = [
+        "rotaryCredit — 扶輪信用稽核預警系統",
+        "account-rotary — 扶輪會計系統",
+        "WaHoot Rotary — 互動問答系統",
+        "rotarysso — 扶輪 SSO 單一登入",
+      ];
+      this.dlg.show("bookshelf", "📚 已完成專案：\n" + projects.join("\n"), CANVAS_W / 2, TILE * 4, this.tick);
+      return;
+    }
+
     const hit = this.mgr.findCharacterAt(px, py);
     if (hit) {
       if (hit.def.isWaffles) {
@@ -67,8 +79,11 @@ export class OfficeEngine {
           if (++count > 8) { clearInterval(wag); hit.animTimer = origTick; }
         }, 100);
       } else {
-        const text = this.mgr.getDialogue(hit.def.id);
-        if (text) this.dlg.show(hit.def.id, text, hit.px, hit.py, this.tick);
+        // 顯示角色資訊 + 目前工作
+        const status = this.memberStatuses[hit.def.id];
+        const task = status?.task || "待命中";
+        const info = `${hit.def.nameCn}（${hit.def.role}）\n${task}`;
+        this.dlg.show(hit.def.id, info, hit.px, hit.py, this.tick);
       }
       this.opts.onCharacterClick?.(hit.def.id);
     }
@@ -95,7 +110,10 @@ export class OfficeEngine {
     this.canvas.removeEventListener("click", this.onClick);
   }
 
+  private memberStatuses: Record<string, { status: string; task: string }> = {};
+
   updateStatuses(data: Record<string, { status: string; task: string }>) {
+    this.memberStatuses = data;
     this.mgr.updateStatuses(data);
   }
 
