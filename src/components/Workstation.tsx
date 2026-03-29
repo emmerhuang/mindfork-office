@@ -1,0 +1,54 @@
+"use client";
+
+import { useState } from "react";
+import { MemberData } from "@/types";
+import PixelCharacter from "./PixelCharacter";
+import Desk from "./Desk";
+import MemberCard from "./MemberCard";
+
+interface WorkstationProps {
+  member: MemberData;
+}
+
+export default function Workstation({ member }: WorkstationProps) {
+  const [showCard, setShowCard] = useState(false);
+  const [isWagging, setIsWagging] = useState(false);
+
+  const handleClick = () => {
+    if (member.id === "waffles") {
+      setIsWagging(true);
+      setTimeout(() => setIsWagging(false), 2000);
+    }
+    setShowCard(true);
+  };
+
+  return (
+    <>
+      <div className="flex flex-col items-center gap-1">
+        {/* Character */}
+        <PixelCharacter
+          member={member}
+          pixelSize={4}
+          onClick={handleClick}
+          isWagging={isWagging}
+        />
+        {/* Desk */}
+        <div className="w-16">
+          <Desk member={member} />
+        </div>
+        {/* Name label */}
+        <p
+          className="pixel-text text-[9px] mt-1 text-center"
+          style={{ color: member.primaryColor }}
+        >
+          {member.nameCn}
+        </p>
+      </div>
+
+      {/* Detail card modal */}
+      {showCard && (
+        <MemberCard member={member} onClose={() => setShowCard(false)} />
+      )}
+    </>
+  );
+}
