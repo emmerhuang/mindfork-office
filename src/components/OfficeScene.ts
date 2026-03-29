@@ -157,11 +157,11 @@ export class OfficeScene extends Phaser.Scene {
     this.spawnCharacters();
     this.spawnWaffles();
 
-    // Click handler for member card (emit event to React)
+    // Click handler: show speech bubble above character
     this.input.on("gameobjectdown", (_pointer: Phaser.Input.Pointer, obj: Phaser.GameObjects.GameObject) => {
       const charId = obj.getData("memberId") as string | undefined;
       if (charId) {
-        this.game.events.emit("member-click", charId);
+        this.showSpeechBubble(charId);
       }
     });
   }
@@ -806,6 +806,76 @@ export class OfficeScene extends Phaser.Scene {
           });
         });
       });
+    });
+  }
+
+  // ============================================================
+  // Speech bubble (click to talk)
+  // ============================================================
+  private speechBubble: Phaser.GameObjects.Container | null = null;
+
+  private showSpeechBubble(charId: string) {
+    // Remove existing bubble
+    if (this.speechBubble) {
+      this.speechBubble.destroy();
+      this.speechBubble = null;
+    }
+
+    const ch = this.chars.find(c => c.id === charId) ?? (this.waffles?.id === charId ? this.waffles : null);
+    if (!ch) return;
+
+    const member = members.find(m => m.id === charId);
+    if (!member) return;
+
+    // Conversational speech based on current activity
+    const speeches: Record<string, string[]> = {
+      boss: ["最近在盯辦公室視覺化的品質...", "品質要好，不是有就好！", "你們要更加努力！"],
+      secretary: ["我在協調大家的工作進度", "率限快到了，要注意...", "讓我看看待辦清單"],
+      sherlock: ["我在想怎麼讓系統更有創意", "這個需求背後的動機是什麼？", "一次問一個問題就好"],
+      lego: ["架構要乾淨、模組要分明", "這層 proxy 保持低耦合比較好", "我在畫系統藍圖"],
+      vault: ["資料庫的 schema 一定要對齊", "migration 還有技術債要補...", "數據完整性最重要"],
+      forge: ["收到規格，埋頭寫 code 中", "品質是我的驕傲", "我在打磨細節..."],
+      lens: ["我剛跑完測試，全過 ✓", "這邊有個潛在風險要注意", "品質關卡還沒過喔"],
+      waffles: ["汪！你好呀～", "（搖尾巴）要不要休息一下？", "（舔手）我在巡邏辦公室"],
+    };
+
+    const options = speeches[charId] ?? ["..."];
+    const text = options[Math.floor(Math.random() * options.length)];
+
+    // Create bubble
+    const bubbleX = ch.sprite.x;
+    const bubbleY = ch.sprite.y - 70;
+
+    const bubbleBg = this.add.graphics();
+    const bubbleText = this.add.text(0, 0, text, {
+      fontSize: "11px",
+      fontFamily: "sans-serif",
+      color: "#333333",
+      wordWrap: { width: 140 },
+      padding: { x: 6, y: 4 },
+    }).setOrigin(0.5, 0.5);
+
+    const tw = bubbleText.width + 16;
+    const th = bubbleText.height + 12;
+
+    bubbleBg.fillStyle(0xffffff, 0.95);
+    bubbleBg.fillRoundedRect(-tw / 2, -th / 2, tw, th, 6);
+    bubbleBg.lineStyle(2, 0x8b7355);
+    bubbleBg.strokeRoundedRect(-tw / 2, -th / 2, tw, th, 6);
+    // Triangle pointer
+    bubbleBg.fillStyle(0xffffff, 0.95);
+    bubbleBg.fillTriangle(-4, th / 2, 4, th / 2, 0, th / 2 + 8);
+
+    const container = this.add.container(bubbleX, bubbleY, [bubbleBg, bubbleText]);
+    container.setDepth(2000);
+    this.speechBubble = container;
+
+    // Auto-remove after 4 seconds
+    this.time.delayedCall(4000, () => {
+      if (this.speechBubble === container) {
+        container.destroy();
+        this.speechBubble = null;
+      }
     });
   }
 
