@@ -121,9 +121,16 @@ function drawTearoom(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null
   const bx = tx(ROOMS.tearoom.x);
   const by = ty(ROOMS.tearoom.y);
   if (img) {
-    drawSprite(ctx, img, TILE_SPRITES.fridge,         bx + TILE,       by + TILE * 0.5, TILE * 1.5, TILE * 2.2);
-    drawSprite(ctx, img, TILE_SPRITES.water_cooler,    bx + TILE * 3.2, by + TILE * 0.3, TILE,       TILE * 2.2);
-    drawSprite(ctx, img, TILE_SPRITES.coffee_machine,  bx + TILE * 4.8, by + TILE * 0.5, TILE * 1.2, TILE * 2);
+    // 冰箱（左上角），飲水機（緊接，小30%），咖啡機（緊接，小50%）
+    const fridgeW = TILE * 1.5, fridgeH = TILE * 2.2;
+    const waterW = TILE * 0.7, waterH = TILE * 1.54;
+    const coffeeW = TILE * 0.6, coffeeH = TILE * 1.0;
+    let cx = bx + 4;
+    drawSprite(ctx, img, TILE_SPRITES.fridge,         cx, by + 4, fridgeW, fridgeH);
+    cx += fridgeW + 4;
+    drawSprite(ctx, img, TILE_SPRITES.water_cooler,    cx, by + 4 + (fridgeH - waterH), waterW, waterH);
+    cx += waterW + 4;
+    drawSprite(ctx, img, TILE_SPRITES.coffee_machine,  cx, by + 4 + (fridgeH - coffeeH), coffeeW, coffeeH);
   } else {
     ctx.fillStyle = "#C8D0D8";
     ctx.fillRect(bx + TILE, by + TILE, TILE * 2, TILE * 2);
