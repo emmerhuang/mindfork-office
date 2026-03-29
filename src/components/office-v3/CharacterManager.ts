@@ -36,7 +36,7 @@ export type ClickHandler = (charId: string) => void;
 // ────────────────────────────────────────────────────────────
 
 const WALK_SPEED = 1.5;       // px per tick
-const ANIM_INTERVAL = 8;      // 每 8 ticks 切換一次動畫幀
+const ANIM_INTERVAL = 30;     // 每 30 ticks（1秒）切換一次，自然不閃
 // 對話觸發間隔（ticks @ 30fps）
 const DIALOGUE_MIN = 30 * 30; // 30 秒
 const DIALOGUE_MAX = 90 * 30; // 90 秒
