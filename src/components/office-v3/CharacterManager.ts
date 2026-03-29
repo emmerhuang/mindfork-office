@@ -34,7 +34,13 @@ function homePos(d: CharacterDef) {
 
 function randomDest() {
   const r = Math.random() < 0.5 ? ROOMS.tearoom : ROOMS.meetingRoom;
-  return { px: r.dest.x * TILE + TILE / 2, py: r.dest.y * TILE + TILE / 2 };
+  // 隨機偏移避免所有人走到同一點
+  const jitterX = (Math.random() - 0.5) * TILE * 3;
+  const jitterY = (Math.random() - 0.5) * TILE * 1.5;
+  return {
+    px: r.dest.x * TILE + TILE / 2 + jitterX,
+    py: r.dest.y * TILE + TILE / 2 + jitterY,
+  };
 }
 
 export class CharacterManager {
