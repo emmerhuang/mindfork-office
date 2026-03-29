@@ -49,7 +49,7 @@ export class DialogueSystem {
 
     // 自動換行
     const pad = 10;
-    const lineH = 34;
+    const lineH = 48;
     const lines = wrapText(ctx, b.text, MAX_W - pad * 2);
     const maxLineW = Math.max(...lines.map(l => ctx.measureText(l).width));
     const bw = Math.min(maxLineW + pad * 2, MAX_W);
@@ -101,20 +101,24 @@ export class DialogueSystem {
 }
 
 function wrapText(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
-  const chars = text.split("");
-  const lines: string[] = [];
-  let line = "";
-  for (const ch of chars) {
-    const test = line + ch;
-    if (ctx.measureText(test).width > maxW && line.length > 0) {
-      lines.push(line);
-      line = ch;
-    } else {
-      line = test;
+  const result: string[] = [];
+  // 先按 \n 拆段落
+  for (const para of text.split("\n")) {
+    if (!para) { result.push(""); continue; }
+    // 再按寬度拆行
+    let line = "";
+    for (const ch of para.split("")) {
+      const test = line + ch;
+      if (ctx.measureText(test).width > maxW && line.length > 0) {
+        result.push(line);
+        line = ch;
+      } else {
+        line = test;
+      }
     }
+    if (line) result.push(line);
   }
-  if (line) lines.push(line);
-  return lines.length > 0 ? lines : [""];
+  return result.length > 0 ? result : [""];
 }
 
 function roundRect(
