@@ -231,6 +231,25 @@ body {
 
 .animate-overload-blink { animation: overload-blink 0.5s ease-in-out infinite; }
 
+/* Status indicator animations */
+@keyframes typing-keys {
+  0%, 100% { transform: translateY(0); }
+  33% { transform: translateY(-1px); }
+  66% { transform: translateY(1px); }
+}
+
+@keyframes thinking-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.2); opacity: 1; }
+}
+
+@keyframes celebrate-stars {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.3) rotate(10deg); }
+  50% { transform: scale(1) rotate(0deg); }
+  75% { transform: scale(1.3) rotate(-10deg); }
+}
+
 /* === LANDSCAPE + SHORT VIEWPORT OPTIMIZATION === */
 
 /* Landscape orientation with short height (mobile landscape) */

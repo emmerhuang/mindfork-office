@@ -1,11 +1,11 @@
 "use client";
 
 import { members } from "@/data/members";
-import Workstation from "./Workstation";
+import CharacterSprite, { DESK_COORDS } from "./CharacterSprite";
 import Bookshelf from "./Bookshelf";
 import TeamPowerBar from "./TeamPowerBar";
 import QueueBar from "./QueueBar";
-
+import Desk from "./Desk";
 import { MemberStatus } from "@/types";
 
 interface OfficeProps {
@@ -15,8 +15,7 @@ interface OfficeProps {
 }
 
 export default function Office({ rateLimit, pendingTasks, memberStatuses = {} }: OfficeProps) {
-  // Apply real-time status overrides from API
-  const applyStatus = (m: typeof members[0]) => {
+  const applyStatus = (m: (typeof members)[0]) => {
     const override = memberStatuses[m.id];
     if (override) {
       return { ...m, status: override.status, currentTask: override.task || m.currentTask };
@@ -24,127 +23,218 @@ export default function Office({ rateLimit, pendingTasks, memberStatuses = {} }:
     return m;
   };
 
-  const boss = applyStatus(members.find((m) => m.id === "boss")!);
-  const secretary = applyStatus(members.find((m) => m.id === "secretary")!);
-  const sherlock = applyStatus(members.find((m) => m.id === "sherlock")!);
-  const lego = applyStatus(members.find((m) => m.id === "lego")!);
-  const vault = applyStatus(members.find((m) => m.id === "vault")!);
-  const forge = applyStatus(members.find((m) => m.id === "forge")!);
-  const lens = applyStatus(members.find((m) => m.id === "lens")!);
-  const waffles = applyStatus(members.find((m) => m.id === "waffles")!);
+  const allMembers = members.map(applyStatus);
+  const humanMembers = allMembers.filter((m) => m.id !== "waffles");
 
   return (
-    <div className="w-full h-full flex items-start justify-center p-1 overflow-y-auto">
-      <div className="w-full max-w-md">
-        <div className="bg-[#e8dcc8] rounded-xl border-2 border-[#8b7355] overflow-hidden shadow-lg">
+    <div className="w-full h-full flex items-stretch justify-center p-1 overflow-hidden">
+      <div className="w-full h-full max-w-lg">
+        {/* Office container fills available height */}
+        <div
+          className="relative w-full h-full bg-[#c4a87a] rounded-xl border-2 border-[#8b7355] overflow-hidden shadow-lg"
+        >
+          {/* ================================================ */}
+          {/* WALL ZONE - top ~28% */}
+          {/* ================================================ */}
+          <div
+            className="absolute top-0 left-0 right-0"
+            style={{ height: "28%", background: "linear-gradient(180deg, #5b7a6a 0%, #4a6858 100%)" }}
+          >
+            {/* Baseboard */}
+            <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-[#3d5548]" />
 
-          {/* Top bar: entrance */}
-          <div className="bg-[#5b7a6a] px-3 py-1.5 flex items-center justify-between border-b-2 border-[#3d5548]">
-            <div className="flex items-center gap-2">
-              <span className="text-sm">🚪</span>
-              <span className="pixel-text text-[9px] text-white/80">MINDFORK HQ</span>
+            {/* Window left */}
+            <div className="absolute top-[18%] left-[6%] w-[14%] aspect-[4/3] border-2 border-[#8b7355] bg-[#87ceeb]/40 rounded-sm">
+              <div className="absolute top-0 bottom-0 left-1/2 w-px bg-[#8b7355]" />
+              <div className="absolute left-0 right-0 top-1/2 h-px bg-[#8b7355]" />
             </div>
-            <div className="flex gap-1 items-center">
-              <div className="w-2 h-2 rounded-full bg-green-400" />
-              <span className="text-[8px] text-green-300 pixel-text">OPEN</span>
-            </div>
-          </div>
 
-          {/* Wall section: bookshelf + status board — full width */}
-          <div className="bg-[#d4c4a8] px-3 py-2 flex items-stretch gap-3 border-b border-[#b89868]">
-            {/* Bookshelf (left half) */}
-            <div className="flex-1 flex items-center gap-2">
+            {/* Window right */}
+            <div className="absolute top-[18%] right-[6%] w-[14%] aspect-[4/3] border-2 border-[#8b7355] bg-[#87ceeb]/40 rounded-sm">
+              <div className="absolute top-0 bottom-0 left-1/2 w-px bg-[#8b7355]" />
+              <div className="absolute left-0 right-0 top-1/2 h-px bg-[#8b7355]" />
+            </div>
+
+            {/* Title bar */}
+            <div className="absolute top-1 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
+              <span className="text-[8px] sm:text-[9px] pixel-text text-white/80">MINDFORK HQ</span>
+              <div className="flex gap-0.5 items-center">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                <span className="text-[7px] text-green-300 pixel-text">OPEN</span>
+              </div>
+            </div>
+
+            {/* Bookshelf - on wall, left */}
+            <div className="absolute bottom-3 left-[24%]" style={{ zIndex: 5 }}>
               <Bookshelf />
-              <span className="text-[8px] pixel-text text-amber-700/50">書櫃</span>
             </div>
-            {/* Status board (right half) */}
-            <div className="flex-1 bg-[#f5f0e0]/80 border border-[#b89868] rounded px-3 py-2 flex flex-col gap-1.5 justify-center">
+
+            {/* Status board - on wall, right */}
+            <div
+              className="absolute bottom-2 right-[8%] w-[38%] bg-[#f5f0e0]/90 border border-[#b89868] rounded px-2 py-1.5 flex flex-col gap-1"
+              style={{ zIndex: 5 }}
+            >
               <TeamPowerBar rateLimitPercent={rateLimit} />
               <QueueBar pendingTasks={pendingTasks} />
             </div>
-          </div>
 
-          {/* Open office area */}
-          <div className="bg-[#e2d6be] px-3 py-3 border-b border-[#b89868]">
-            <span className="text-[8px] pixel-text text-amber-700/60 mb-2 block">💻 辦公區</span>
-
-            {/* Boss + Waffles + Secretary */}
-            <div className="flex items-end justify-center gap-4 mb-3">
-              <Workstation member={boss} />
-              <Workstation member={waffles} />
-              <Workstation member={secretary} />
-            </div>
-
-            {/* Sherlock, Lego, Vault */}
-            <div className="flex justify-center gap-4 mb-3">
-              <Workstation member={sherlock} />
-              <Workstation member={lego} />
-              <Workstation member={vault} />
-            </div>
-
-            {/* Forge, Lens */}
-            <div className="flex justify-center gap-4">
-              <Workstation member={forge} />
-              <Workstation member={lens} />
+            {/* Wall clock */}
+            <div className="absolute top-[15%] left-1/2 -translate-x-1/2 w-6 h-6 rounded-full border-2 border-[#8b7355] bg-[#f5f0e0]">
+              <div className="absolute top-1/2 left-1/2 w-px h-2 bg-gray-700 -translate-x-1/2 origin-bottom -rotate-12" />
+              <div className="absolute top-1/2 left-1/2 w-px h-1.5 bg-gray-700 -translate-x-1/2 origin-bottom rotate-45" />
             </div>
           </div>
 
-          {/* Meeting room + Break room side by side */}
-          <div className="flex">
-            {/* Meeting room */}
-            <div className="flex-1 bg-[#d8ceb5] border-r border-[#b89868] p-3 relative">
-              {/* Sliding door */}
-              <div className="absolute top-0 left-0 right-0 h-2 bg-[#8b7355] flex">
-                <div className="flex-1 border-r border-[#6b5335] bg-[#a08060]" />
-                <div className="flex-1 bg-[#a08060]" />
-              </div>
-              <span className="text-[8px] pixel-text text-amber-700/60 mt-1 block">📋 會議室</span>
-              <div className="flex flex-col items-center mt-2 gap-1.5">
-                <div className="w-20 h-7 bg-[#8b7355] rounded border border-[#6b5335] flex items-center justify-center">
-                  <span className="text-[6px] text-amber-200/60 pixel-text">MEETING</span>
-                </div>
-                <div className="flex gap-2">
-                  {[...Array(4)].map((_, i) => (
-                    <div key={i} className="w-3 h-3 bg-[#6b5335] rounded-sm border border-[#5a4325]" />
-                  ))}
-                </div>
-                <div className="w-16 h-6 bg-white border-2 border-gray-300 rounded-sm">
-                  <div className="flex gap-0.5 p-0.5">
-                    <div className="w-2 h-0.5 bg-blue-400" />
-                    <div className="w-3 h-0.5 bg-red-400" />
-                  </div>
-                </div>
-              </div>
-            </div>
+          {/* ================================================ */}
+          {/* FLOOR ZONE - bottom ~72% */}
+          {/* ================================================ */}
+          <div
+            className="absolute bottom-0 left-0 right-0"
+            style={{
+              height: "72%",
+              background: `repeating-linear-gradient(
+                90deg,
+                #c4a87a 0px, #c4a87a 60px,
+                #b89868 60px, #b89868 61px,
+                #c9ad80 61px, #c9ad80 120px,
+                #b89868 120px, #b89868 121px
+              )`,
+            }}
+          >
+            {/* Plank horizontal lines */}
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage:
+                  "repeating-linear-gradient(0deg, transparent 0px, transparent 19px, #b8986855 19px, #b8986855 20px)",
+              }}
+            />
+          </div>
 
-            {/* Break room */}
-            <div className="flex-1 bg-[#ddd4bf] p-3 relative">
-              {/* Sliding door */}
-              <div className="absolute top-0 left-0 right-0 h-2 bg-[#8b7355] flex">
-                <div className="flex-1 border-r border-[#6b5335] bg-[#a08060]" />
-                <div className="flex-1 bg-[#a08060]" />
-              </div>
-              <span className="text-[8px] pixel-text text-amber-700/60 mt-1 block">☕ 茶水間</span>
-              <div className="flex flex-col items-center mt-2 gap-2">
-                <div className="flex gap-2 items-end">
-                  <div className="w-6 h-8 bg-gray-700 rounded-t-sm border border-gray-600">
-                    <div className="w-1.5 h-1 bg-red-400 mx-auto mt-1 rounded-full" />
-                  </div>
-                  <div className="w-5 h-9 bg-blue-200 rounded-t-lg border border-blue-300">
-                    <div className="w-2.5 h-2.5 bg-blue-400 mx-auto mt-1 rounded-full" />
-                  </div>
-                  <div className="w-7 h-5 bg-gray-200 border border-gray-400 rounded-sm">
-                    <div className="w-3 h-2.5 bg-gray-800 m-0.5 rounded-sm" />
-                  </div>
-                </div>
-                <div className="flex gap-1.5">
-                  <div className="w-5 h-3 bg-amber-600 rounded-b-full" />
-                  <div className="w-4 h-3 bg-green-600 rounded-full" />
-                </div>
+          {/* ================================================ */}
+          {/* OFFICE AREA LABEL */}
+          {/* ================================================ */}
+          <div className="absolute" style={{ top: "29%", left: "4%", zIndex: 5 }}>
+            <span className="text-[7px] sm:text-[8px] pixel-text text-amber-700/50">OFFICE</span>
+          </div>
+
+          {/* ================================================ */}
+          {/* MEETING ROOM - bottom left */}
+          {/* ================================================ */}
+          <div
+            className="absolute border-t-2 border-r-2 border-[#8b7355] bg-[#d8ceb5]/60 rounded-tr-lg"
+            style={{ bottom: 0, left: 0, width: "40%", height: "22%", zIndex: 2 }}
+          >
+            <span className="absolute top-1 left-2 text-[7px] pixel-text text-amber-700/50">MEETING</span>
+            {/* Meeting table */}
+            <div
+              className="absolute top-[35%] left-1/2 -translate-x-1/2 w-[55%] h-[28%] bg-[#8b7355] rounded border border-[#6b5335] flex items-center justify-center"
+              style={{ zIndex: 3 }}
+            >
+              <span className="text-[5px] text-amber-200/40 pixel-text">TABLE</span>
+            </div>
+            {/* Chairs */}
+            <div className="absolute bottom-[15%] left-1/2 -translate-x-1/2 flex gap-2">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="w-2.5 h-2.5 bg-[#6b5335] rounded-sm border border-[#5a4325]" />
+              ))}
+            </div>
+            {/* Whiteboard */}
+            <div className="absolute top-1 right-2 w-8 h-5 bg-white border border-gray-300 rounded-sm">
+              <div className="flex gap-0.5 p-0.5">
+                <div className="w-1.5 h-0.5 bg-blue-400" />
+                <div className="w-2 h-0.5 bg-red-400" />
               </div>
             </div>
           </div>
 
+          {/* ================================================ */}
+          {/* TEA ROOM - bottom right */}
+          {/* ================================================ */}
+          <div
+            className="absolute border-t-2 border-l-2 border-[#8b7355] bg-[#ddd4bf]/60 rounded-tl-lg"
+            style={{ bottom: 0, right: 0, width: "40%", height: "22%", zIndex: 2 }}
+          >
+            <span className="absolute top-1 left-2 text-[7px] pixel-text text-amber-700/50">TEA ROOM</span>
+            {/* Coffee machine */}
+            <div className="absolute top-[25%] right-[12%] flex gap-1 items-end">
+              <div className="w-4 h-6 bg-gray-700 rounded-t-sm border border-gray-600">
+                <div className="w-1.5 h-1 bg-red-400 mx-auto mt-0.5 rounded-full" />
+              </div>
+              <div className="w-3.5 h-7 bg-blue-200 rounded-t-lg border border-blue-300">
+                <div className="w-2 h-2 bg-blue-400 mx-auto mt-0.5 rounded-full" />
+              </div>
+            </div>
+            {/* Snacks */}
+            <div className="absolute bottom-[18%] right-[15%] flex gap-1">
+              <div className="w-3.5 h-2 bg-amber-600 rounded-b-full" />
+              <div className="w-3 h-2 bg-green-600 rounded-full" />
+            </div>
+            {/* Microwave */}
+            <div className="absolute top-[30%] left-[15%] w-5 h-4 bg-gray-200 border border-gray-400 rounded-sm">
+              <div className="w-2.5 h-2 bg-gray-800 m-0.5 rounded-sm" />
+            </div>
+          </div>
+
+          {/* ================================================ */}
+          {/* WAFFLES DOG BED - near boss */}
+          {/* ================================================ */}
+          <div
+            className="absolute"
+            style={{
+              left: "32%",
+              top: "38%",
+              transform: "translate(-50%, 0)",
+              zIndex: 4,
+            }}
+          >
+            <div className="w-10 h-4 bg-amber-700 rounded-full border border-amber-800 relative">
+              <div className="absolute inset-0.5 bg-amber-200 rounded-full" />
+            </div>
+            <div className="flex gap-1 justify-center mt-0.5">
+              <div className="w-2 h-1 bg-red-500 rounded-b-full" />
+              <div className="w-2 h-0.5 bg-white rounded-full" />
+            </div>
+          </div>
+
+          {/* ================================================ */}
+          {/* DESKS - static furniture */}
+          {/* ================================================ */}
+          {humanMembers.map((m) => {
+            const deskPos = DESK_COORDS[m.id];
+            if (!deskPos) return null;
+            return (
+              <div
+                key={`desk-${m.id}`}
+                className="absolute"
+                style={{
+                  left: `${deskPos.x}%`,
+                  top: `${deskPos.y}%`,
+                  transform: "translate(-50%, 0)",
+                  width: "13%",
+                  zIndex: Math.round(deskPos.y) + 1,
+                }}
+              >
+                <Desk member={m} />
+              </div>
+            );
+          })}
+
+          {/* ================================================ */}
+          {/* CHARACTER SPRITES - animated, absolute positioned */}
+          {/* ================================================ */}
+          {allMembers.map((m) => (
+            <CharacterSprite key={m.id} member={m} />
+          ))}
+
+          {/* ================================================ */}
+          {/* Room divider lines */}
+          {/* ================================================ */}
+          {/* Horizontal line separating office from rooms */}
+          <div
+            className="absolute left-0 right-0 border-t border-dashed border-[#8b7355]/30"
+            style={{ top: "78%", zIndex: 1 }}
+          />
         </div>
       </div>
     </div>
