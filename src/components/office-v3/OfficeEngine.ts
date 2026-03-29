@@ -113,7 +113,7 @@ export class OfficeEngine {
     for (const c of this.mgr.characters) {
       const label = c.def.nameCn || c.def.name;
       const nx = c.px + 30;
-      const ny = c.py + 10;
+      const ny = c.py + 30;
       const tw = ctx.measureText(label).width;
       // 底色背景
       ctx.fillStyle = "rgba(0,0,0,0.55)";
