@@ -38,14 +38,16 @@ export default function Office({ rateLimit, pendingTasks }: OfficeProps) {
             </div>
           </div>
 
-          {/* Wall section: bookshelf + status board */}
-          <div className="bg-[#d4c4a8] px-3 py-2 flex items-start justify-between border-b border-[#b89868]">
-            <div className="flex items-center gap-2">
+          {/* Wall section: bookshelf + status board — full width */}
+          <div className="bg-[#d4c4a8] px-3 py-2 flex items-stretch gap-3 border-b border-[#b89868]">
+            {/* Bookshelf (left half) */}
+            <div className="flex-1 flex items-center gap-2">
               <Bookshelf />
-              <span className="text-[7px] pixel-text text-amber-700/40">LIBRARY</span>
+              <span className="text-[8px] pixel-text text-amber-700/50">書櫃</span>
             </div>
-            <div className="bg-[#f5f0e0]/80 border border-[#b89868] rounded px-2 py-1.5 w-36 sm:w-44 flex flex-col gap-1">
-              <span className="text-[7px] pixel-text text-amber-700/50">戰情看板</span>
+            {/* Status board (right half) */}
+            <div className="flex-1 bg-[#f5f0e0]/80 border border-[#b89868] rounded px-3 py-2 flex flex-col gap-1.5 justify-center">
+              <span className="text-[8px] pixel-text text-amber-700/50">戰情看板</span>
               <TeamPowerBar rateLimitPercent={rateLimit} />
               <QueueBar pendingTasks={pendingTasks} />
             </div>
