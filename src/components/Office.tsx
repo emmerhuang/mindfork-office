@@ -47,7 +47,6 @@ export default function Office({ rateLimit, pendingTasks }: OfficeProps) {
             </div>
             {/* Status board (right half) */}
             <div className="flex-1 bg-[#f5f0e0]/80 border border-[#b89868] rounded px-3 py-2 flex flex-col gap-1.5 justify-center">
-              <span className="text-[8px] pixel-text text-amber-700/50">戰情看板</span>
               <TeamPowerBar rateLimitPercent={rateLimit} />
               <QueueBar pendingTasks={pendingTasks} />
             </div>
@@ -81,8 +80,13 @@ export default function Office({ rateLimit, pendingTasks }: OfficeProps) {
           {/* Meeting room + Break room side by side */}
           <div className="flex">
             {/* Meeting room */}
-            <div className="flex-1 bg-[#d8ceb5] border-r border-[#b89868] p-3">
-              <span className="text-[8px] pixel-text text-amber-700/60">📋 會議室</span>
+            <div className="flex-1 bg-[#d8ceb5] border-r border-[#b89868] p-3 relative">
+              {/* Sliding door */}
+              <div className="absolute top-0 left-0 right-0 h-2 bg-[#8b7355] flex">
+                <div className="flex-1 border-r border-[#6b5335] bg-[#a08060]" />
+                <div className="flex-1 bg-[#a08060]" />
+              </div>
+              <span className="text-[8px] pixel-text text-amber-700/60 mt-1 block">📋 會議室</span>
               <div className="flex flex-col items-center mt-2 gap-1.5">
                 <div className="w-20 h-7 bg-[#8b7355] rounded border border-[#6b5335] flex items-center justify-center">
                   <span className="text-[6px] text-amber-200/60 pixel-text">MEETING</span>
@@ -102,8 +106,13 @@ export default function Office({ rateLimit, pendingTasks }: OfficeProps) {
             </div>
 
             {/* Break room */}
-            <div className="flex-1 bg-[#ddd4bf] p-3">
-              <span className="text-[8px] pixel-text text-amber-700/60">☕ 茶水間</span>
+            <div className="flex-1 bg-[#ddd4bf] p-3 relative">
+              {/* Sliding door */}
+              <div className="absolute top-0 left-0 right-0 h-2 bg-[#8b7355] flex">
+                <div className="flex-1 border-r border-[#6b5335] bg-[#a08060]" />
+                <div className="flex-1 bg-[#a08060]" />
+              </div>
+              <span className="text-[8px] pixel-text text-amber-700/60 mt-1 block">☕ 茶水間</span>
               <div className="flex flex-col items-center mt-2 gap-2">
                 <div className="flex gap-2 items-end">
                   <div className="w-6 h-8 bg-gray-700 rounded-t-sm border border-gray-600">

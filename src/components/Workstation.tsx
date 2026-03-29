@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { MemberData } from "@/types";
 import PixelCharacterSVG from "./PixelCharacterSVG";
 import Desk from "./Desk";
@@ -10,28 +10,36 @@ interface WorkstationProps {
   member: MemberData;
 }
 
-const wanderClasses = ["animate-idle", "animate-idle-2", "animate-idle-3"];
-const wanderDelays = [0, 1.5, 3, 4.5, 2, 5.5, 1, 3.5];
+// Each idle member gets a purposeful behavior
+type IdleBehavior = "desk" | "tearoom" | "meeting" | "dog-rest";
 
-function getWanderIndex(id: string): number {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = (hash * 31 + id.charCodeAt(i)) % 100;
-  }
-  return hash;
-}
+const memberBehaviors: Record<string, IdleBehavior> = {
+  boss: "desk",        // Boss stays at desk, drinks coffee
+  secretary: "desk",   // Secretary works at desk
+  sherlock: "tearoom",  // Sherlock goes to get coffee, thinks
+  lego: "meeting",      // Lego goes to meeting room, plans on whiteboard
+  vault: "desk",        // Vault stays at desk, guarding data
+  forge: "desk",        // Forge stays at desk, coding
+  lens: "tearoom",      // Lens goes to tea room for a break
+  waffles: "dog-rest",  // Waffles rests on bed
+};
+
+const behaviorClasses: Record<IdleBehavior, string> = {
+  desk: "animate-idle-desk",
+  tearoom: "animate-idle-tearoom",
+  meeting: "animate-idle-meeting",
+  "dog-rest": "animate-idle-dog-rest",
+};
+
+const behaviorDelays: Record<string, number> = {
+  sherlock: 3,
+  lego: 8,
+  lens: 12,
+};
 
 export default function Workstation({ member }: WorkstationProps) {
   const [showCard, setShowCard] = useState(false);
   const [isWagging, setIsWagging] = useState(false);
-
-  const wanderStyle = useMemo(() => {
-    const idx = getWanderIndex(member.id);
-    return {
-      className: wanderClasses[idx % wanderClasses.length],
-      delay: wanderDelays[idx % wanderDelays.length],
-    };
-  }, [member.id]);
 
   const handleClick = () => {
     if (member.id === "waffles") {
@@ -42,24 +50,24 @@ export default function Workstation({ member }: WorkstationProps) {
   };
 
   const isIdle = member.status === "idle";
+  const behavior = memberBehaviors[member.id] ?? "desk";
+  const isWalking = isIdle && (behavior === "tearoom" || behavior === "meeting");
 
   return (
     <>
       <div className="flex flex-col items-center gap-0.5">
-        {/* Name + Character wrapper: only this part wanders, desk stays put */}
+        {/* Name + Character: this part moves for walkers */}
         <div
-          className={isIdle ? wanderStyle.className : ""}
-          style={isIdle ? { animationDelay: `${wanderStyle.delay}s` } : undefined}
+          className={isIdle ? behaviorClasses[behavior] : ""}
+          style={behaviorDelays[member.id] ? { animationDelay: `${behaviorDelays[member.id]}s` } : undefined}
         >
-          {/* Name above head */}
           <p
             className="pixel-text text-[10px] sm:text-sm text-center mb-0.5"
             style={{ color: member.primaryColor }}
           >
             {member.nameCn}
           </p>
-          {/* Character - add walking bounce when idle */}
-          <div className={isIdle ? (member.id === "waffles" ? "animate-dog-trot" : "animate-walk-step") : ""}>
+          <div className={isWalking ? "animate-walk-step" : member.id === "waffles" && isIdle ? "" : ""}>
             <PixelCharacterSVG
               member={member}
               onClick={handleClick}
@@ -67,14 +75,12 @@ export default function Workstation({ member }: WorkstationProps) {
             />
           </div>
         </div>
-        {/* Desk (or dog bed for Waffles) stays fixed */}
+        {/* Desk or dog bed stays fixed */}
         {member.id === "waffles" ? (
           <div className="w-14 sm:w-16 flex flex-col items-center">
-            {/* Dog bed */}
             <div className="w-12 h-5 bg-amber-700 rounded-full border border-amber-800 relative">
               <div className="absolute inset-1 bg-amber-200 rounded-full" />
             </div>
-            {/* Bowl + bone */}
             <div className="flex gap-1.5 mt-0.5">
               <div className="w-3 h-1.5 bg-red-500 rounded-b-full" />
               <div className="w-3 h-1 bg-white rounded-full" />
