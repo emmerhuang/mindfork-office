@@ -60,10 +60,12 @@ export class CharacterManager {
     this.onDialogue = onDialogue;
     this.characters = CHARACTERS.map((def) => {
       const h = homePos(def);
+      // boss 和 secretary 預設 working，其他人 idle_home（會走動）
+      const initState: CharState = (def.id === "boss" || def.id === "secretary") ? "working" : "idle_home";
       return {
         def, ...h, targetPx: h.px, targetPy: h.py,
         homePx: h.px, homePy: h.py,
-        state: "working" as CharState,
+        state: initState,
         animFrame: 0, animTimer: 0,
         dialogueTimer: rand(DLG_MIN, DLG_MAX),
         walkTimer: rand(WALK_MIN, WALK_MAX),
