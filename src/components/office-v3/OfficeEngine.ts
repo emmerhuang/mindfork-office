@@ -137,7 +137,7 @@ export class OfficeEngine {
       const tw = ctx.measureText(label).width;
       // 底色背景
       ctx.fillStyle = "rgba(0,0,0,0.55)";
-      ctx.fillRect(nx - 3, ny - 16, tw + 6, 22);
+      ctx.fillRect(nx - 3, ny - 34, tw + 6, 42);
       // 文字
       ctx.fillStyle = "#FFFFFF";
       ctx.fillText(label, nx, ny);
