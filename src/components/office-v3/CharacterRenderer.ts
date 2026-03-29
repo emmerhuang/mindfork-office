@@ -55,56 +55,56 @@ function drawHuman(
   // 地面陰影
   ctx.fillStyle = "rgba(0,0,0,0.18)";
   ctx.beginPath();
-  ctx.ellipse(cx, cy + 9, 7, 3, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, cy + 14, 11, 4, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // 身體（圓形橢圓，主色）
+  // 身體（橢圓，主色）
   ctx.fillStyle = bodyColor;
   ctx.beginPath();
-  ctx.ellipse(cx, cy + 4, 6, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, cy + 6, 10, 8, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // 身體輪廓
   ctx.strokeStyle = darken(bodyColor, 0.3);
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.ellipse(cx, cy + 4, 6, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, cy + 6, 10, 8, 0, 0, Math.PI * 2);
   ctx.stroke();
 
   // 頭部（圓形，膚色）
   ctx.fillStyle = skinColor;
   ctx.beginPath();
-  ctx.arc(cx, cy - 3, 5, 0, Math.PI * 2);
+  ctx.arc(cx, cy - 4, 9, 0, Math.PI * 2);
   ctx.fill();
 
   // 頭部輪廓
   ctx.strokeStyle = darken(skinColor, 0.25);
-  ctx.lineWidth = 0.8;
+  ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.arc(cx, cy - 3, 5, 0, Math.PI * 2);
+  ctx.arc(cx, cy - 4, 9, 0, Math.PI * 2);
   ctx.stroke();
 
   // 眼睛（兩個小點）
   ctx.fillStyle = "#333333";
-  ctx.fillRect(cx - 2, cy - 4, 1.5, 1.5);
-  ctx.fillRect(cx + 1, cy - 4, 1.5, 1.5);
+  ctx.fillRect(cx - 3, cy - 6, 2, 2);
+  ctx.fillRect(cx + 2, cy - 6, 2, 2);
 
   // 手臂（打字動畫）
-  const armOffset = animFrame === 0 ? -1 : 1;
+  const armOffset = animFrame === 0 ? -2 : 2;
   ctx.fillStyle = skinColor;
   // 左手
   ctx.beginPath();
-  ctx.ellipse(cx - 7, cy + 2 + armOffset, 2.5, 2, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx - 11, cy + 3 + armOffset, 3.5, 3, 0, 0, Math.PI * 2);
   ctx.fill();
   // 右手
   ctx.beginPath();
-  ctx.ellipse(cx + 7, cy + 2 - armOffset, 2.5, 2, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx + 11, cy + 3 - armOffset, 3.5, 3, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // 頭髮/帽子（小色塊，用來區分角色特徵）
+  // 頭髮/帽子（用角色主色，上半圓）
   ctx.fillStyle = darken(bodyColor, 0.15);
   ctx.beginPath();
-  ctx.arc(cx, cy - 7, 4, Math.PI, 0);
+  ctx.arc(cx, cy - 9, 7, Math.PI, 0);
   ctx.fill();
 }
 

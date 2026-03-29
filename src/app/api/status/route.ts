@@ -9,6 +9,10 @@ interface StatusData {
   metrics: {
     rateLimitPercent: number;
     pendingTasks: number;
+    totalCostUsd?: number;
+    modelId?: string;
+    modelName?: string;
+    contextUsedPercent?: number;
     updatedAt: string;
   };
 }
@@ -18,6 +22,10 @@ const FALLBACK: StatusData = {
   metrics: {
     rateLimitPercent: -1,
     pendingTasks: -1,
+    totalCostUsd: -1,
+    modelId: "",
+    modelName: "",
+    contextUsedPercent: -1,
     updatedAt: new Date().toISOString(),
   },
 };
@@ -61,12 +69,23 @@ export async function POST(request: NextRequest) {
     const data = readStatus();
 
     // Update team metrics if provided
-    if (body.rateLimitPercent !== undefined || body.pendingTasks !== undefined) {
+    if (body.rateLimitPercent !== undefined || body.pendingTasks !== undefined ||
+        body.totalCostUsd !== undefined || body.modelId !== undefined || body.contextUsedPercent !== undefined) {
       if (body.rateLimitPercent !== undefined) {
         data.metrics.rateLimitPercent = body.rateLimitPercent;
       }
       if (body.pendingTasks !== undefined) {
         data.metrics.pendingTasks = Math.max(0, body.pendingTasks);
+      }
+      if (body.totalCostUsd !== undefined) {
+        data.metrics.totalCostUsd = body.totalCostUsd;
+      }
+      if (body.modelId !== undefined) {
+        data.metrics.modelId = body.modelId;
+        data.metrics.modelName = body.modelName ?? body.modelId;
+      }
+      if (body.contextUsedPercent !== undefined) {
+        data.metrics.contextUsedPercent = body.contextUsedPercent;
       }
       data.metrics.updatedAt = new Date().toISOString();
     }
