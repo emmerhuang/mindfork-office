@@ -154,7 +154,7 @@ function drawMeetingRoom(ctx: CanvasRenderingContext2D, tileImg?: HTMLImageEleme
     if (s) {
       const dw = TILE * 2.8;
       const dh = dw * (s.sh / s.sw);
-      drawSprite(ctx, tileImg, s, cx - dw / 2, cy - dh / 2 - TILE * 0.3 + 30, dw, dh);
+      drawSprite(ctx, tileImg, s, cx - dw / 2, cy - dh / 2 - TILE * 0.3 + 20, dw, dh);
     }
     // 白板已移至上方牆面（時鐘旁）
   } else {
