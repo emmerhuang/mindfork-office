@@ -6,20 +6,32 @@ import Bookshelf from "./Bookshelf";
 import TeamPowerBar from "./TeamPowerBar";
 import QueueBar from "./QueueBar";
 
+import { MemberStatus } from "@/types";
+
 interface OfficeProps {
   rateLimit: number;
   pendingTasks: number;
+  memberStatuses?: Record<string, { status: MemberStatus; task: string }>;
 }
 
-export default function Office({ rateLimit, pendingTasks }: OfficeProps) {
-  const boss = members.find((m) => m.id === "boss")!;
-  const secretary = members.find((m) => m.id === "secretary")!;
-  const sherlock = members.find((m) => m.id === "sherlock")!;
-  const lego = members.find((m) => m.id === "lego")!;
-  const vault = members.find((m) => m.id === "vault")!;
-  const forge = members.find((m) => m.id === "forge")!;
-  const lens = members.find((m) => m.id === "lens")!;
-  const waffles = members.find((m) => m.id === "waffles")!;
+export default function Office({ rateLimit, pendingTasks, memberStatuses = {} }: OfficeProps) {
+  // Apply real-time status overrides from API
+  const applyStatus = (m: typeof members[0]) => {
+    const override = memberStatuses[m.id];
+    if (override) {
+      return { ...m, status: override.status, currentTask: override.task || m.currentTask };
+    }
+    return m;
+  };
+
+  const boss = applyStatus(members.find((m) => m.id === "boss")!);
+  const secretary = applyStatus(members.find((m) => m.id === "secretary")!);
+  const sherlock = applyStatus(members.find((m) => m.id === "sherlock")!);
+  const lego = applyStatus(members.find((m) => m.id === "lego")!);
+  const vault = applyStatus(members.find((m) => m.id === "vault")!);
+  const forge = applyStatus(members.find((m) => m.id === "forge")!);
+  const lens = applyStatus(members.find((m) => m.id === "lens")!);
+  const waffles = applyStatus(members.find((m) => m.id === "waffles")!);
 
   return (
     <div className="w-full h-full flex items-start justify-center p-1 overflow-y-auto">
