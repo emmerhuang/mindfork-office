@@ -19,7 +19,7 @@
 
 body {
   background: #c4a87a;
-  overflow-x: hidden;
+  overflow: hidden;
   color: #333;
 }
 
@@ -39,14 +39,37 @@ body {
     0 calc(var(--pixel-size) * -1) 0 0 currentColor;
 }
 
-/* Idle: wander around animation */
-@keyframes idle-wander {
+/* === IDLE WANDER ANIMATIONS (multiple variants for staggering) === */
+
+@keyframes idle-wander-1 {
   0% { transform: translate(0, 0); }
-  15% { transform: translate(6px, -2px); }
-  30% { transform: translate(12px, 0); }
-  45% { transform: translate(6px, 3px); }
-  60% { transform: translate(-4px, 2px); }
-  75% { transform: translate(-8px, -1px); }
+  12% { transform: translate(15px, -8px); }
+  25% { transform: translate(25px, -3px); }
+  37% { transform: translate(10px, 10px); }
+  50% { transform: translate(-15px, 12px); }
+  62% { transform: translate(-25px, 5px); }
+  75% { transform: translate(-10px, -10px); }
+  87% { transform: translate(5px, -15px); }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes idle-wander-2 {
+  0% { transform: translate(0, 0); }
+  15% { transform: translate(-20px, 5px); }
+  30% { transform: translate(-10px, 15px); }
+  45% { transform: translate(20px, 10px); }
+  60% { transform: translate(30px, -5px); }
+  75% { transform: translate(10px, -15px); }
+  90% { transform: translate(-5px, -8px); }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes idle-wander-3 {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(10px, 15px); }
+  40% { transform: translate(-15px, 20px); }
+  60% { transform: translate(-20px, -5px); }
+  80% { transform: translate(15px, -12px); }
   100% { transform: translate(0, 0); }
 }
 
@@ -103,7 +126,11 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.animate-idle { animation: idle-wander 8s ease-in-out infinite; }
+/* Idle wander variants - 6-10s cycles, different delays */
+.animate-idle { animation: idle-wander-1 8s ease-in-out infinite; }
+.animate-idle-2 { animation: idle-wander-2 9s ease-in-out infinite; }
+.animate-idle-3 { animation: idle-wander-3 7s ease-in-out infinite; }
+
 .animate-sway { animation: idle-sway 4s ease-in-out infinite; }
 .animate-working { animation: working-type 1.5s ease-in-out infinite; }
 .animate-gear { animation: gear-spin 2s linear infinite; }
@@ -148,3 +175,84 @@ body {
 }
 
 .animate-overload-blink { animation: overload-blink 0.5s ease-in-out infinite; }
+
+/* === LANDSCAPE + SHORT VIEWPORT OPTIMIZATION === */
+
+/* Landscape orientation with short height (mobile landscape) */
+@media (orientation: landscape) and (max-height: 500px) {
+  /* Shrink header */
+  .landscape-header {
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+  }
+
+  .landscape-header h1 {
+    font-size: 14px !important;
+  }
+
+  /* Hide subtitle text */
+  .landscape-hide-text {
+    display: none !important;
+  }
+
+  /* Shrink footer */
+  .landscape-footer {
+    padding-top: 1px !important;
+    padding-bottom: 1px !important;
+  }
+
+  /* Compact sidebar */
+  .landscape-sidebar {
+    width: 140px !important;
+  }
+
+  /* Compact status board */
+  .status-board {
+    padding: 2px 4px !important;
+  }
+
+  /* Office container fills viewport */
+  .office-container {
+    max-height: none !important;
+  }
+
+  /* Tighter card modal */
+  .member-card-content {
+    padding: 12px;
+    max-height: 90vh;
+    max-width: 320px;
+  }
+
+  .member-card-overlay {
+    padding: 8px;
+  }
+}
+
+/* Even shorter screens (very compact phones landscape) */
+@media (orientation: landscape) and (max-height: 400px) {
+  .landscape-header {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .landscape-footer {
+    display: none !important;
+  }
+
+  .landscape-sidebar {
+    width: 120px !important;
+  }
+}
+
+/* General small-height optimization (not necessarily landscape) */
+@media (max-height: 600px) {
+  .landscape-header {
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+  }
+
+  .landscape-footer {
+    padding-top: 1px !important;
+    padding-bottom: 1px !important;
+  }
+}

@@ -6,8 +6,8 @@ const statusStore: Record<string, { status: MemberStatus; task: string; updatedA
 
 // Global metrics store
 let teamMetrics = {
-  rateLimitPercent: 38, // mock default
-  pendingTasks: 1,      // mock default
+  rateLimitPercent: 0, // updated via POST from hook
+  pendingTasks: 3,    // current pending count from task-queue.json
   updatedAt: new Date().toISOString(),
 };
 
