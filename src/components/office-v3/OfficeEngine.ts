@@ -102,8 +102,8 @@ export class OfficeEngine {
       // 圖片載入失敗，保持 null，render 時走 fallback
     }
 
-    // 預渲染靜態場景（保持程式化繪製）
-    renderStaticScene(this.staticCtx);
+    // 預渲染靜態場景（有 tileImg 時用 sprite，否則 fallback）
+    renderStaticScene(this.staticCtx, this.tileImg);
   }
 
   private loadImage(src: string): Promise<HTMLImageElement> {
@@ -186,21 +186,18 @@ export class OfficeEngine {
   private renderNameLabels() {
     const { ctx } = this;
     ctx.save();
-    ctx.font = "bold 9px 'Courier New', monospace";
+    ctx.font = "bold 14px 'Courier New', monospace";
     ctx.textAlign = "center";
 
     for (const char of this.characterManager.characters) {
-      // 只在 working 狀態（待在桌子旁）顯示名稱
-      if (char.state !== "working") continue;
-
       const label = char.def.nameCn || char.def.name;
 
       // 文字陰影（可讀性）
       ctx.fillStyle = "rgba(255,255,255,0.7)";
-      ctx.fillText(label, char.px + 1, char.py - 17);
+      ctx.fillText(label, char.px + 1, char.py - 39);
 
       ctx.fillStyle = "#333333";
-      ctx.fillText(label, char.px, char.py - 18);
+      ctx.fillText(label, char.px, char.py - 40);
     }
 
     ctx.textAlign = "left";

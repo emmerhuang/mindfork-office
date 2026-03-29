@@ -67,11 +67,11 @@ export class DialogueSystem {
     const { cx, cy, text } = bubble;
 
     // 文字測量
-    ctx.font = "bold 11px 'Courier New', monospace";
+    ctx.font = "bold 15px 'Courier New', monospace";
     const textW = ctx.measureText(text).width;
     const padding = { x: 8, y: 5 };
-    const bubbleW = Math.min(textW + padding.x * 2, 220); // 最寬 220px
-    const bubbleH = 24;
+    const bubbleW = Math.min(textW + padding.x * 2, 280); // 最寬 280px
+    const bubbleH = 30;
 
     // 如果文字太長，需要換行（簡化：直接截斷顯示）
     const displayText = text.length > 28 ? text.slice(0, 26) + "…" : text;
@@ -129,7 +129,7 @@ export class DialogueSystem {
 
     // 文字
     ctx.fillStyle = "#222222";
-    ctx.font = "bold 10px 'Courier New', monospace";
+    ctx.font = "bold 15px 'Courier New', monospace";
     ctx.fillText(displayText, clampedBx + padding.x, by + bubbleH - padding.y);
 
     ctx.restore();

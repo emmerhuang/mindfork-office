@@ -42,3 +42,47 @@ export const CHAR_SPRITES: Record<string, Record<string, SpriteFrame[]>> = {
     back: [{ sx: 2177, sy: 1340, sw: 112, sh: 184 }, { sx: 2387, sy: 1340, sw: 143, sh: 184 }, { sx: 2641, sy: 1340, sw: 108, sh: 184 }],
   },
 };
+
+// ────────────────────────────────────────────────────────────
+// Tileset sprite atlas (tileset-clean.png 2816x1536, 2x resolution)
+// ────────────────────────────────────────────────────────────
+
+export const TILE_SPRITES: Record<string, SpriteFrame> = {
+  // Band 0 — Floors
+  floor_blue:       { sx: 0,    sy: 0,   sw: 329, sh: 376 },
+  floor_darkblue:   { sx: 376,  sy: 0,   sw: 305, sh: 376 },
+  floor_wood:       { sx: 728,  sy: 0,   sw: 282, sh: 376 },
+  floor_yellow:     { sx: 1056, sy: 0,   sw: 329, sh: 376 },
+  floor_purple:     { sx: 1431, sy: 0,   sw: 329, sh: 376 },
+  floor_brick:      { sx: 1807, sy: 0,   sw: 330, sh: 376 },
+
+  // Band 2 — Walls (green wall segments with decorations)
+  wall_plain:       { sx: 0,    sy: 422, sw: 329, sh: 343 },
+  wall_window:      { sx: 376,  sy: 422, sw: 305, sh: 343 },
+  wall_plain_alt:   { sx: 727,  sy: 422, sw: 283, sh: 342 },
+  wall_bookshelf:   { sx: 1056, sy: 422, sw: 330, sh: 352 },
+  wall_clock:       { sx: 1431, sy: 422, sw: 329, sh: 343 },
+  wall_whiteboard:  { sx: 1806, sy: 422, sw: 330, sh: 343 },
+  wall_door:        { sx: 2182, sy: 422, sw: 259, sh: 345 },
+
+  // Band 3 — Furniture
+  desk_monitor:     { sx: 41,   sy: 852,  sw: 294, sh: 279 },
+  desk_laptop:      { sx: 399,  sy: 886,  sw: 294, sh: 245 },
+  office_chair:     { sx: 816,  sy: 891,  sw: 155, sh: 236 },
+  meeting_chair_l:  { sx: 1190, sy: 925,  sw: 89,  sh: 154 },
+  conference_table: { sx: 1431, sy: 842,  sw: 330, sh: 326 },
+  meeting_chair_r:  { sx: 1901, sy: 925,  sw: 87,  sh: 154 },
+  filing_cabinet:   { sx: 2205, sy: 837,  sw: 166, sh: 291 },
+  dog_bed:          { sx: 2476, sy: 938,  sw: 216, sh: 147 },
+  dog_bowl:         { sx: 2703, sy: 985,  sw: 105, sh: 84  },
+
+  // Band 4 — Equipment
+  coffee_machine:   { sx: 82,   sy: 1230, sw: 184, sh: 257 },
+  water_cooler:     { sx: 456,  sy: 1208, sw: 139, sh: 293 },
+  microwave:        { sx: 762,  sy: 1266, sw: 235, sh: 194 },
+  fridge:           { sx: 1131, sy: 1202, sw: 202, sh: 300 },
+  plant_small:      { sx: 1524, sy: 1307, sw: 123, sh: 94  },
+  plant_tall:       { sx: 1833, sy: 1225, sw: 195, sh: 264 },
+  window_panel:     { sx: 2135, sy: 1200, sw: 306, sh: 295 },
+  carpet:           { sx: 2487, sy: 1232, sw: 306, sh: 244 },
+};

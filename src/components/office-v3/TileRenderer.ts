@@ -2,12 +2,33 @@
 // 繪製到 offscreen canvas，主迴圈只需 drawImage 一次
 
 import { TILE, CANVAS_W, CANVAS_H, COLS, ROWS, COLORS, ROOMS, CHARACTERS } from "./officeData";
+import { TILE_SPRITES, SpriteFrame } from "./spriteAtlas";
 
 function tx(col: number) { return col * TILE; }
 function ty(row: number) { return row * TILE; }
 
 // ────────────────────────────────────────────────────────────
-// 地板渲染
+// 輔助：從 tileset 繪製 sprite 到指定位置
+// ────────────────────────────────────────────────────────────
+
+function drawSprite(
+  ctx: CanvasRenderingContext2D,
+  tileImg: HTMLImageElement,
+  sprite: SpriteFrame,
+  dx: number,
+  dy: number,
+  dw: number,
+  dh: number
+) {
+  ctx.drawImage(
+    tileImg,
+    sprite.sx, sprite.sy, sprite.sw, sprite.sh,
+    dx, dy, dw, dh
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// 地板渲染（保持程式化——單色+格線看起來就很好）
 // ────────────────────────────────────────────────────────────
 
 function drawFloor(ctx: CanvasRenderingContext2D) {
@@ -90,7 +111,7 @@ function drawFloor(ctx: CanvasRenderingContext2D) {
 }
 
 // ────────────────────────────────────────────────────────────
-// 牆壁渲染
+// 牆壁渲染（保持程式化——牆面用單色+程式化裝飾即可）
 // ────────────────────────────────────────────────────────────
 
 function drawWalls(ctx: CanvasRenderingContext2D) {
@@ -203,188 +224,215 @@ function drawAreaLabel(ctx: CanvasRenderingContext2D, x: number, y: number, text
 }
 
 // ────────────────────────────────────────────────────────────
-// 家具渲染
+// 家具渲染（有 tileImg 時用 sprite，否則 fallback）
 // ────────────────────────────────────────────────────────────
 
-function drawDesk(ctx: CanvasRenderingContext2D, tileX: number, tileY: number, color: string, isWaffles?: boolean) {
+let deskIndex = 0; // 用來交替 monitor/laptop
+
+function drawDesk(ctx: CanvasRenderingContext2D, tileX: number, tileY: number, color: string, isWaffles?: boolean, tileImg?: HTMLImageElement | null) {
   const x = tx(tileX);
   const y = ty(tileY);
   const dw = TILE * 2; // 桌寬 2 tiles
   const dh = TILE;     // 桌高 1 tile
 
   if (isWaffles) {
-    // 狗窩：橢圓形床墊
-    ctx.fillStyle = COLORS.dogBedDark;
-    ctx.beginPath();
-    ctx.ellipse(x + dw / 2, y + dh / 2 + 4, dw / 2 - 2, dh / 2 - 2, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = COLORS.dogBed;
-    ctx.beginPath();
-    ctx.ellipse(x + dw / 2, y + dh / 2 + 4, dw / 2 - 5, dh / 2 - 5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // 骨頭標記
-    ctx.fillStyle = "#FFF";
-    ctx.fillRect(x + dw / 2 - 3, y + dh / 2 + 2, 6, 2);
-    ctx.fillRect(x + dw / 2 - 1, y + dh / 2, 2, 6);
+    // 狗窩
+    if (tileImg) {
+      const bed = TILE_SPRITES.dog_bed;
+      drawSprite(ctx, tileImg, bed, x, y - 4, dw, dh + 4);
+      // 狗碗在旁邊
+      const bowl = TILE_SPRITES.dog_bowl;
+      drawSprite(ctx, tileImg, bowl, x + dw + 2, y + 4, TILE * 0.8, TILE * 0.5);
+    } else {
+      // fallback 程式化
+      ctx.fillStyle = COLORS.dogBedDark;
+      ctx.beginPath();
+      ctx.ellipse(x + dw / 2, y + dh / 2 + 4, dw / 2 - 2, dh / 2 - 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = COLORS.dogBed;
+      ctx.beginPath();
+      ctx.ellipse(x + dw / 2, y + dh / 2 + 4, dw / 2 - 5, dh / 2 - 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#FFF";
+      ctx.fillRect(x + dw / 2 - 3, y + dh / 2 + 2, 6, 2);
+      ctx.fillRect(x + dw / 2 - 1, y + dh / 2, 2, 6);
+    }
     return;
   }
 
-  // 椅子（桌子前方）
-  const chairY = y + dh + 3;
-  ctx.fillStyle = COLORS.chairBase;
-  ctx.beginPath();
-  ctx.arc(x + dw / 2, chairY + 8, 8, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = COLORS.chairSeat;
-  ctx.beginPath();
-  ctx.arc(x + dw / 2, chairY + 8, 6, 0, Math.PI * 2);
-  ctx.fill();
+  if (tileImg) {
+    // 用 sprite 繪製桌子（交替 monitor/laptop）
+    const spriteKey = deskIndex % 2 === 0 ? "desk_monitor" : "desk_laptop";
+    const sprite = TILE_SPRITES[spriteKey];
+    // 桌子 sprite 寬高比約 294:279，顯示在 2 tile 寬 x 1.2 tile 高
+    const spriteH = Math.round(dw * (sprite.sh / sprite.sw));
+    drawSprite(ctx, tileImg, sprite, x, y + dh - spriteH, dw, spriteH);
+    deskIndex++;
+  } else {
+    // fallback 程式化桌子（不再畫椅子——任務 H）
+    // 桌面陰影
+    ctx.fillStyle = "rgba(0,0,0,0.12)";
+    ctx.fillRect(x + 2, y + 3, dw, dh);
 
-  // 桌面陰影
-  ctx.fillStyle = "rgba(0,0,0,0.12)";
-  ctx.fillRect(x + 2, y + 3, dw, dh);
+    // 桌面（木色）
+    ctx.fillStyle = COLORS.deskTop;
+    ctx.fillRect(x, y, dw, dh);
 
-  // 桌面（木色）
-  ctx.fillStyle = COLORS.deskTop;
-  ctx.fillRect(x, y, dw, dh);
+    // 桌邊（立體感）
+    ctx.fillStyle = COLORS.deskSide;
+    ctx.fillRect(x, y + dh - 4, dw, 4);
 
-  // 桌邊（立體感）
-  ctx.fillStyle = COLORS.deskSide;
-  ctx.fillRect(x, y + dh - 4, dw, 4);
+    // 電腦螢幕
+    const scrW = 14;
+    const scrH = 10;
+    const scrX = x + dw / 2 - 2;
+    const scrY = y + 4;
 
-  // 電腦螢幕（桌面中間偏右）
-  const scrW = 14;
-  const scrH = 10;
-  const scrX = x + dw / 2 - 2;
-  const scrY = y + 4;
+    ctx.fillStyle = COLORS.computerBase;
+    ctx.fillRect(scrX + 4, scrY + scrH, 6, 3);
+    ctx.fillRect(scrX + 1, scrY + scrH + 3, 12, 2);
 
-  ctx.fillStyle = COLORS.computerBase;
-  ctx.fillRect(scrX + 4, scrY + scrH, 6, 3);
-  ctx.fillRect(scrX + 1, scrY + scrH + 3, 12, 2);
+    ctx.fillStyle = COLORS.computerScreen;
+    ctx.fillRect(scrX, scrY, scrW, scrH);
 
-  ctx.fillStyle = COLORS.computerScreen;
-  ctx.fillRect(scrX, scrY, scrW, scrH);
+    ctx.fillStyle = color + "40";
+    ctx.fillRect(scrX + 1, scrY + 1, scrW - 2, scrH - 2);
 
-  // 螢幕發光（角色顏色）
-  ctx.fillStyle = color + "40";
-  ctx.fillRect(scrX + 1, scrY + 1, scrW - 2, scrH - 2);
+    // 鍵盤
+    ctx.fillStyle = COLORS.keyboardColor;
+    ctx.fillRect(x + 2, y + dh - 10, 12, 6);
 
-  // 鍵盤
-  ctx.fillStyle = COLORS.keyboardColor;
-  ctx.fillRect(x + 2, y + dh - 10, 12, 6);
-
-  // 滑鼠
-  ctx.fillStyle = "#AAAAAA";
-  ctx.fillRect(x + 16, y + dh - 9, 5, 7);
-  ctx.fillStyle = "#888888";
-  ctx.fillRect(x + 18, y + dh - 9, 1, 3);
+    // 滑鼠
+    ctx.fillStyle = "#AAAAAA";
+    ctx.fillRect(x + 16, y + dh - 9, 5, 7);
+    ctx.fillStyle = "#888888";
+    ctx.fillRect(x + 18, y + dh - 9, 1, 3);
+  }
 }
 
-function drawConferenceTable(ctx: CanvasRenderingContext2D) {
+function drawConferenceTable(ctx: CanvasRenderingContext2D, tileImg?: HTMLImageElement | null) {
   const { meetingRoom } = ROOMS;
   const cx = tx(meetingRoom.bounds.x + meetingRoom.bounds.w / 2);
   const cy = ty(meetingRoom.bounds.y + meetingRoom.bounds.h / 2) - TILE;
-  const tw = TILE * 6;
-  const th = TILE * 2;
 
-  // 桌面陰影
-  ctx.fillStyle = "rgba(0,0,0,0.12)";
-  ctx.fillRect(cx - tw / 2 + 3, cy - th / 2 + 4, tw, th);
+  if (tileImg) {
+    const sprite = TILE_SPRITES.conference_table;
+    const dw = TILE * 5;
+    const dh = Math.round(dw * (sprite.sh / sprite.sw));
+    drawSprite(ctx, tileImg, sprite, cx - dw / 2, cy - dh / 2, dw, dh);
+  } else {
+    // fallback 程式化
+    const tw = TILE * 6;
+    const th = TILE * 2;
 
-  // 桌面
-  ctx.fillStyle = COLORS.confTable;
-  ctx.fillRect(cx - tw / 2, cy - th / 2, tw, th);
+    ctx.fillStyle = "rgba(0,0,0,0.12)";
+    ctx.fillRect(cx - tw / 2 + 3, cy - th / 2 + 4, tw, th);
 
-  // 桌緣高光
-  ctx.fillStyle = "#D0A87A";
-  ctx.fillRect(cx - tw / 2, cy - th / 2, tw, 3);
+    ctx.fillStyle = COLORS.confTable;
+    ctx.fillRect(cx - tw / 2, cy - th / 2, tw, th);
 
-  // 桌邊
-  ctx.fillStyle = COLORS.deskSide;
-  ctx.fillRect(cx - tw / 2, cy + th / 2 - 4, tw, 4);
+    ctx.fillStyle = "#D0A87A";
+    ctx.fillRect(cx - tw / 2, cy - th / 2, tw, 3);
 
-  // 椅子（環繞桌子）
-  const chairPositions = [
-    { x: cx - tw / 2 - 12, y: cy },           // 左
-    { x: cx + tw / 2 + 4, y: cy },            // 右
-    { x: cx - tw / 4, y: cy - th / 2 - 12 }, // 上左
-    { x: cx + tw / 4, y: cy - th / 2 - 12 }, // 上右
-    { x: cx - tw / 4, y: cy + th / 2 + 4 },  // 下左
-    { x: cx + tw / 4, y: cy + th / 2 + 4 },  // 下右
-  ];
+    ctx.fillStyle = COLORS.deskSide;
+    ctx.fillRect(cx - tw / 2, cy + th / 2 - 4, tw, 4);
 
-  for (const pos of chairPositions) {
-    ctx.fillStyle = COLORS.confChair;
-    ctx.beginPath();
-    ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#A08070";
-    ctx.beginPath();
-    ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
-    ctx.fill();
-  }
+    // 椅子（環繞桌子）
+    const chairPositions = [
+      { x: cx - tw / 2 - 12, y: cy },
+      { x: cx + tw / 2 + 4, y: cy },
+      { x: cx - tw / 4, y: cy - th / 2 - 12 },
+      { x: cx + tw / 4, y: cy - th / 2 - 12 },
+      { x: cx - tw / 4, y: cy + th / 2 + 4 },
+      { x: cx + tw / 4, y: cy + th / 2 + 4 },
+    ];
 
-  // 水杯（桌上）
-  const cupPositions = [
-    { x: cx - 20, y: cy },
-    { x: cx, y: cy - 5 },
-    { x: cx + 20, y: cy },
-  ];
-  for (const pos of cupPositions) {
-    ctx.fillStyle = "#87CEEB80";
-    ctx.fillRect(pos.x - 3, pos.y - 5, 6, 8);
-    ctx.strokeStyle = "#87CEEB";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(pos.x - 3, pos.y - 5, 6, 8);
+    for (const pos of chairPositions) {
+      ctx.fillStyle = COLORS.confChair;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#A08070";
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 水杯
+    const cupPositions = [
+      { x: cx - 20, y: cy },
+      { x: cx, y: cy - 5 },
+      { x: cx + 20, y: cy },
+    ];
+    for (const pos of cupPositions) {
+      ctx.fillStyle = "#87CEEB80";
+      ctx.fillRect(pos.x - 3, pos.y - 5, 6, 8);
+      ctx.strokeStyle = "#87CEEB";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(pos.x - 3, pos.y - 5, 6, 8);
+    }
   }
 }
 
-function drawTearoomEquipment(ctx: CanvasRenderingContext2D) {
+function drawTearoomEquipment(ctx: CanvasRenderingContext2D, tileImg?: HTMLImageElement | null) {
   const { tearoom } = ROOMS;
   const baseX = tx(tearoom.bounds.x);
   const baseY = ty(tearoom.bounds.y);
 
-  // 冰箱
-  const fridgeX = baseX + TILE;
-  const fridgeY = baseY + TILE;
-  ctx.fillStyle = "#C8D0D8";
-  ctx.fillRect(fridgeX, fridgeY, TILE * 2, TILE * 2);
-  ctx.fillStyle = "#A8B0B8";
-  ctx.fillRect(fridgeX, fridgeY, TILE * 2, TILE);
-  ctx.fillStyle = "#666";
-  ctx.fillRect(fridgeX + TILE * 2 - 4, fridgeY + 4, 2, TILE - 8);
-  ctx.fillRect(fridgeX + TILE * 2 - 4, fridgeY + TILE + 4, 2, TILE - 8);
+  if (tileImg) {
+    // 冰箱
+    const fridgeSprite = TILE_SPRITES.fridge;
+    drawSprite(ctx, tileImg, fridgeSprite, baseX + TILE, baseY + TILE * 0.5, TILE * 1.5, TILE * 2.2);
 
-  // 飲水機
-  const waterX = baseX + TILE * 4;
-  const waterY = baseY + TILE;
-  ctx.fillStyle = COLORS.waterCooler;
-  ctx.fillRect(waterX, waterY, TILE, TILE * 2);
-  ctx.fillStyle = "#7AAABB";
-  ctx.beginPath();
-  ctx.arc(waterX + TILE / 2, waterY + 4, 8, 0, Math.PI * 2);
-  ctx.fill();
-  // 水桶（半透明藍）
-  ctx.fillStyle = "#87CEEB60";
-  ctx.beginPath();
-  ctx.ellipse(waterX + TILE / 2, waterY + 4, 7, 9, 0, 0, Math.PI * 2);
-  ctx.fill();
+    // 飲水機
+    const waterSprite = TILE_SPRITES.water_cooler;
+    drawSprite(ctx, tileImg, waterSprite, baseX + TILE * 3.2, baseY + TILE * 0.3, TILE, TILE * 2.2);
 
-  // 咖啡機
-  const coffeeX = baseX + TILE * 6;
-  const coffeeY = baseY + TILE;
-  ctx.fillStyle = COLORS.coffeeMaker;
-  ctx.fillRect(coffeeX, coffeeY, TILE + 4, TILE + 8);
-  // 咖啡杯出口
-  ctx.fillStyle = "#7A4A2A";
-  ctx.fillRect(coffeeX + 6, coffeeY + TILE - 2, 8, 4);
-  // 操作面板（小白點）
-  ctx.fillStyle = "#FF4444";
-  ctx.fillRect(coffeeX + TILE - 2, coffeeY + 4, 3, 3);
-  ctx.fillStyle = "#44FF44";
-  ctx.fillRect(coffeeX + TILE - 2, coffeeY + 9, 3, 3);
+    // 咖啡機
+    const coffeeSprite = TILE_SPRITES.coffee_machine;
+    drawSprite(ctx, tileImg, coffeeSprite, baseX + TILE * 4.8, baseY + TILE * 0.5, TILE * 1.2, TILE * 2);
+  } else {
+    // fallback 程式化
 
-  // 流理台（橫向長台）
+    // 冰箱
+    const fridgeX = baseX + TILE;
+    const fridgeY = baseY + TILE;
+    ctx.fillStyle = "#C8D0D8";
+    ctx.fillRect(fridgeX, fridgeY, TILE * 2, TILE * 2);
+    ctx.fillStyle = "#A8B0B8";
+    ctx.fillRect(fridgeX, fridgeY, TILE * 2, TILE);
+    ctx.fillStyle = "#666";
+    ctx.fillRect(fridgeX + TILE * 2 - 4, fridgeY + 4, 2, TILE - 8);
+    ctx.fillRect(fridgeX + TILE * 2 - 4, fridgeY + TILE + 4, 2, TILE - 8);
+
+    // 飲水機
+    const waterX = baseX + TILE * 4;
+    const waterY = baseY + TILE;
+    ctx.fillStyle = COLORS.waterCooler;
+    ctx.fillRect(waterX, waterY, TILE, TILE * 2);
+    ctx.fillStyle = "#7AAABB";
+    ctx.beginPath();
+    ctx.arc(waterX + TILE / 2, waterY + 4, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#87CEEB60";
+    ctx.beginPath();
+    ctx.ellipse(waterX + TILE / 2, waterY + 4, 7, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 咖啡機
+    const coffeeX = baseX + TILE * 6;
+    const coffeeY = baseY + TILE;
+    ctx.fillStyle = COLORS.coffeeMaker;
+    ctx.fillRect(coffeeX, coffeeY, TILE + 4, TILE + 8);
+    ctx.fillStyle = "#7A4A2A";
+    ctx.fillRect(coffeeX + 6, coffeeY + TILE - 2, 8, 4);
+    ctx.fillStyle = "#FF4444";
+    ctx.fillRect(coffeeX + TILE - 2, coffeeY + 4, 3, 3);
+    ctx.fillStyle = "#44FF44";
+    ctx.fillRect(coffeeX + TILE - 2, coffeeY + 9, 3, 3);
+  }
+
+  // 流理台（程式化——tileset 沒有對應 sprite）
   ctx.fillStyle = "#C8C0B0";
   ctx.fillRect(baseX, baseY + TILE * 4, TILE * 10, TILE);
   ctx.fillStyle = "#B0A898";
@@ -397,10 +445,69 @@ function drawTearoomEquipment(ctx: CanvasRenderingContext2D) {
 }
 
 // ────────────────────────────────────────────────────────────
+// 會議室白板 — 任務 G
+// ────────────────────────────────────────────────────────────
+
+function drawWhiteboard(ctx: CanvasRenderingContext2D, tileImg?: HTMLImageElement | null) {
+  const { meetingRoom } = ROOMS;
+  // 白板掛在會議室牆上（上方），水平居中
+  const wbX = tx(meetingRoom.bounds.x + 1);
+  const wbY = ty(meetingRoom.bounds.y) + 2;
+  const wbW = TILE * 4;
+  const wbH = TILE * 0.7;
+
+  if (tileImg) {
+    const sprite = TILE_SPRITES.wall_whiteboard;
+    // 只取白板部分（sprite 包含整面牆，我們取中間白板區域）
+    // 白板在 sprite 裡大約中間區域，直接縮放整面牆效果不好
+    // 改用程式化繪製白板（更精確）
+    drawWhiteboardFallback(ctx, wbX, wbY, wbW, wbH);
+  } else {
+    drawWhiteboardFallback(ctx, wbX, wbY, wbW, wbH);
+  }
+}
+
+function drawWhiteboardFallback(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
+  // 白板邊框（灰色金屬框）
+  ctx.fillStyle = "#707880";
+  ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
+
+  // 白板面
+  ctx.fillStyle = "#F5F5F5";
+  ctx.fillRect(x, y, w, h);
+
+  // 筆槽
+  ctx.fillStyle = "#505860";
+  ctx.fillRect(x + w * 0.2, y + h + 2, w * 0.6, 4);
+
+  // 白板上的文字痕跡（裝飾）
+  ctx.strokeStyle = "rgba(50,50,200,0.2)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x + 8, y + 8);
+  ctx.lineTo(x + w * 0.6, y + 8);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x + 8, y + 16);
+  ctx.lineTo(x + w * 0.4, y + 16);
+  ctx.stroke();
+
+  // 紅色標記
+  ctx.strokeStyle = "rgba(200,50,50,0.25)";
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.65, y + 6);
+  ctx.lineTo(x + w * 0.85, y + h - 6);
+  ctx.stroke();
+}
+
+// ────────────────────────────────────────────────────────────
 // 公開 API：渲染整個靜態場景
 // ────────────────────────────────────────────────────────────
 
-export function renderStaticScene(ctx: CanvasRenderingContext2D) {
+export function renderStaticScene(ctx: CanvasRenderingContext2D, tileImg?: HTMLImageElement | null) {
+  // 重設桌子交替計數器
+  deskIndex = 0;
+
   // 底色（以防漏洞）
   ctx.fillStyle = "#888";
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
@@ -410,12 +517,36 @@ export function renderStaticScene(ctx: CanvasRenderingContext2D) {
 
   // 所有角色的桌子
   for (const char of CHARACTERS) {
-    drawDesk(ctx, char.deskTile.x, char.deskTile.y, char.color, char.isWaffles);
+    drawDesk(ctx, char.deskTile.x, char.deskTile.y, char.color, char.isWaffles, tileImg);
   }
 
+  // 盆栽（Boss 和 Secretary 中間）— 任務 F
+  // 注意：Waffles 的 deskTile 是 (6,4)，盆栽不在這裡重複畫
+  // 因為 Waffles 的桌位就是 (6,4) 且是狗窩，盆栽改放 (5,6) 避免重疊
+  drawPottedPlantBetween(ctx, tileImg);
+
   // 會議桌
-  drawConferenceTable(ctx);
+  drawConferenceTable(ctx, tileImg);
+
+  // 會議室白板 — 任務 G
+  drawWhiteboard(ctx, tileImg);
 
   // 茶水間設備
-  drawTearoomEquipment(ctx);
+  drawTearoomEquipment(ctx, tileImg);
+}
+
+// 盆栽放在老大(2,4)和秘書長(7,4)中間，但 Waffles 狗窩在 (6,4)
+// 所以盆栽放 (5,6) — 走道中間偏下，不擋桌子
+function drawPottedPlantBetween(ctx: CanvasRenderingContext2D, tileImg?: HTMLImageElement | null) {
+  const px = tx(5);
+  const py = ty(6);
+
+  if (tileImg) {
+    const sprite = TILE_SPRITES.plant_tall;
+    const dw = TILE * 0.9;
+    const dh = Math.round(dw * (sprite.sh / sprite.sw));
+    drawSprite(ctx, tileImg, sprite, px + (TILE - dw) / 2, py + TILE - dh, dw, dh);
+  } else {
+    drawPlant(ctx, px + 10, py + TILE - 2);
+  }
 }
