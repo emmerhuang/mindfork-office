@@ -1,20 +1,29 @@
-// CharacterRenderer.ts — 角色繪製（sprite 優先，fallback 程式化）
+// CharacterRenderer.ts — 角色繪製（PixelLab 獨立圖 / Gemini atlas / fallback 程式化）
 
 import { CharacterDef } from "./officeData";
-import { CHAR_SPRITES } from "./spriteAtlas";
+import { CHAR_SPRITES, PIXELLAB_CHARACTERS, PIXELLAB_DIRS } from "./spriteAtlas";
 
 // 顯示大小：人 64x80，Waffles 64x56
 const HUMAN_W = 78, HUMAN_H = 132;
 const DOG_W = 78, DOG_H = 120;
+
+/** 從移動向量推算面朝方向 */
+function facingDir(dx: number, dy: number): string {
+  if (dx === 0 && dy === 0) return "south";
+  if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? "east" : "west";
+  return dy > 0 ? "south" : "north";
+}
 
 export function drawCharacter(
   ctx: CanvasRenderingContext2D,
   cx: number, cy: number,
   char: CharacterDef,
   animFrame: number,
-  charImg: HTMLImageElement | null,
+  geminiAtlasImg: HTMLImageElement | null,
+  pixelLabImgs: Record<string, HTMLImageElement>,
+  dx: number = 0,
+  dy: number = 0,
 ) {
-  const sprites = CHAR_SPRITES[char.id];
   const isWaff = !!char.isWaffles;
   const dw = isWaff ? DOG_W : HUMAN_W;
   const dh = isWaff ? DOG_H : HUMAN_H;
@@ -25,10 +34,26 @@ export function drawCharacter(
   ctx.ellipse(cx, cy + dh / 2 - 2, dw / 2 - 4, 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  if (charImg && sprites) {
+  // --- PixelLab characters ---
+  if (PIXELLAB_CHARACTERS.has(char.id)) {
+    const img = pixelLabImgs[char.id];
+    if (img) {
+      const dir = facingDir(dx, dy);
+      const f = PIXELLAB_DIRS[dir];
+      ctx.drawImage(img, f.sx, f.sy, f.sw, f.sh, cx - dw / 2, cy - dh / 2, dw, dh);
+      return;
+    }
+    // fallback if image not loaded
+    drawHumanFallback(ctx, cx, cy, char.color, animFrame);
+    return;
+  }
+
+  // --- Gemini atlas characters ---
+  const sprites = CHAR_SPRITES[char.id];
+  if (geminiAtlasImg && sprites) {
     const frames = sprites.front;
     const f = frames[animFrame % frames.length];
-    ctx.drawImage(charImg, f.sx, f.sy, f.sw, f.sh, cx - dw / 2, cy - dh / 2, dw, dh);
+    ctx.drawImage(geminiAtlasImg, f.sx, f.sy, f.sw, f.sh, cx - dw / 2, cy - dh / 2, dw, dh);
     return;
   }
 

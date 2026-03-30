@@ -1,26 +1,26 @@
 export interface SpriteFrame { sx: number; sy: number; sw: number; sh: number; }
 
+// ────────────────────────────────────────────────────────────
+// PixelLab characters: individual sprite sheets (192x48, 4 directions)
+// Layout: south(0) | east(48) | north(96) | west(144), each 48x48
+// ────────────────────────────────────────────────────────────
+
+export const PIXELLAB_CHARACTERS = new Set(["boss", "secretary", "sherlock", "lego"]);
+
+export interface PixelLabFrame { sx: number; sy: number; sw: 48; sh: 48; }
+
+export const PIXELLAB_DIRS: Record<string, PixelLabFrame> = {
+  south: { sx: 0,   sy: 0, sw: 48, sh: 48 },
+  east:  { sx: 48,  sy: 0, sw: 48, sh: 48 },
+  north: { sx: 96,  sy: 0, sw: 48, sh: 48 },
+  west:  { sx: 144, sy: 0, sw: 48, sh: 48 },
+};
+
+// ────────────────────────────────────────────────────────────
+// Gemini characters: atlas from characters-clean.png (unchanged)
+// ────────────────────────────────────────────────────────────
+
 export const CHAR_SPRITES: Record<string, Record<string, SpriteFrame[]>> = {
-  boss: {
-    front: [{ sx: 57, sy: 110, sw: 120, sh: 203 }, { sx: 286, sy: 110, sw: 124, sh: 203 }, { sx: 522, sy: 110, sw: 115, sh: 203 }],
-    walk: [{ sx: 72, sy: 341, sw: 100, sh: 198 }, { sx: 304, sy: 341, sw: 98, sh: 198 }, { sx: 531, sy: 341, sw: 99, sh: 198 }],
-    back: [{ sx: 62, sy: 561, sw: 115, sh: 202 }, { sx: 296, sy: 561, sw: 112, sh: 202 }, { sx: 527, sy: 561, sw: 113, sh: 202 }],
-  },
-  secretary: {
-    front: [{ sx: 766, sy: 111, sw: 117, sh: 202 }, { sx: 997, sy: 111, sw: 118, sh: 202 }, { sx: 1229, sy: 111, sw: 117, sh: 202 }],
-    walk: [{ sx: 751, sy: 341, sw: 124, sh: 198 }, { sx: 1001, sy: 341, sw: 115, sh: 198 }, { sx: 1238, sy: 341, sw: 122, sh: 198 }],
-    back: [{ sx: 766, sy: 561, sw: 117, sh: 202 }, { sx: 997, sy: 561, sw: 118, sh: 202 }, { sx: 1231, sy: 561, sw: 115, sh: 202 }],
-  },
-  sherlock: {
-    front: [{ sx: 1465, sy: 105, sw: 132, sh: 208 }, { sx: 1694, sy: 105, sw: 132, sh: 208 }, { sx: 1924, sy: 105, sw: 147, sh: 208 }],
-    walk: [{ sx: 1448, sy: 335, sw: 149, sh: 204 }, { sx: 1699, sy: 335, sw: 116, sh: 204 }, { sx: 1923, sy: 335, sw: 150, sh: 204 }],
-    back: [{ sx: 1465, sy: 557, sw: 129, sh: 206 }, { sx: 1698, sy: 557, sw: 128, sh: 206 }, { sx: 1927, sy: 557, sw: 128, sh: 206 }],
-  },
-  lego: {
-    front: [{ sx: 2169, sy: 102, sw: 125, sh: 211 }, { sx: 2405, sy: 102, sw: 120, sh: 211 }, { sx: 2636, sy: 102, sw: 126, sh: 211 }],
-    walk: [{ sx: 2159, sy: 331, sw: 128, sh: 208 }, { sx: 2413, sy: 331, sw: 107, sh: 208 }, { sx: 2644, sy: 331, sw: 127, sh: 208 }],
-    back: [{ sx: 2168, sy: 555, sw: 125, sh: 208 }, { sx: 2409, sy: 555, sw: 116, sh: 208 }, { sx: 2640, sy: 555, sw: 123, sh: 208 }],
-  },
   vault: {
     front: [{ sx: 62, sy: 879, sw: 115, sh: 202 }, { sx: 296, sy: 879, sw: 115, sh: 202 }, { sx: 525, sy: 879, sw: 115, sh: 202 }],
     walk: [{ sx: 71, sy: 1100, sw: 101, sh: 203 }, { sx: 306, sy: 1100, sw: 99, sh: 203 }, { sx: 530, sy: 1100, sw: 99, sh: 203 }],

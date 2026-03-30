@@ -5,6 +5,7 @@ import { renderStaticScene } from "./TileRenderer";
 import { drawCharacter } from "./CharacterRenderer";
 import { DialogueSystem } from "./DialogueSystem";
 import { CharacterManager } from "./CharacterManager";
+import { PIXELLAB_CHARACTERS } from "./spriteAtlas";
 
 export interface EngineOptions {
   onCharacterClick?: (charId: string) => void;
@@ -21,6 +22,7 @@ export class OfficeEngine {
   private opts: EngineOptions;
   private charImg: HTMLImageElement | null = null;
   private tileImg: HTMLImageElement | null = null;
+  private pixelLabImgs: Record<string, HTMLImageElement> = {};
   private tick = 0;
   private rafId: number | null = null;
   private lastT = 0;
@@ -116,6 +118,15 @@ export class OfficeEngine {
         load("/sprites/tileset-clean.png"),
       ]);
     } catch { /* fallback to programmatic rendering */ }
+    // Load PixelLab character sprite sheets
+    const plNames = Array.from(PIXELLAB_CHARACTERS);
+    const plResults = await Promise.allSettled(
+      plNames.map((n) => load(`/sprites/${n}-pixellab.png`))
+    );
+    for (let i = 0; i < plNames.length; i++) {
+      const r = plResults[i];
+      if (r.status === "fulfilled") this.pixelLabImgs[plNames[i]] = r.value;
+    }
     renderStaticScene(this.offCtx, this.tileImg);
   }
 
@@ -158,7 +169,10 @@ export class OfficeEngine {
     // 角色（依 y 排序模擬深度）
     const sorted = [...this.mgr.characters].sort((a, b) => a.py - b.py);
     for (const c of sorted) {
-      drawCharacter(ctx, c.px, c.py, c.def, c.animFrame, this.charImg);
+      // walking 時用 target 差值算面朝方向，否則朝南
+      const dx = c.state === "walking" ? c.targetPx - c.px : 0;
+      const dy = c.state === "walking" ? c.targetPy - c.py : 0;
+      drawCharacter(ctx, c.px, c.py, c.def, c.animFrame, this.charImg, this.pixelLabImgs, dx, dy);
     }
 
     // 名字標籤
