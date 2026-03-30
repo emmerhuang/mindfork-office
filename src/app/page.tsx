@@ -73,62 +73,52 @@ export default function Home() {
       {/* Bottom Dashboard Panel (same style as /dashboard left block) */}
       {metrics && (
         <div className="shrink-0 bg-gray-900 border-t border-gray-800 px-4 py-2 font-mono text-white">
-          <div className="flex items-center gap-4 max-w-lg mx-auto">
-            {/* Power */}
-            <div className="flex-1">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-gray-400 text-xs">POWER</span>
-                <span className="text-base font-bold" style={{ color: powerColor }}>
-                  {power !== null ? `${power}%` : "--"}
-                </span>
-              </div>
-              <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+          <div className="grid grid-cols-[1fr_80px_80px_80px] gap-x-4 gap-y-0 items-center max-w-xl mx-auto">
+            {/* Row 1: PWR bar + labels */}
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 text-xs w-8">PWR</span>
+              <div className="flex-1 h-2.5 bg-gray-800 rounded-full overflow-hidden">
                 {power !== null && (
                   <div className="h-full rounded-full transition-all duration-700"
                     style={{ width: `${power}%`, background: powerColor }} />
                 )}
               </div>
-            </div>
-
-            {/* Tasks */}
-            <div className="text-center">
-              <span className="text-gray-400 text-xs block">TASKS</span>
-              <span className="text-lg font-bold">{metrics.pendingTasks >= 0 ? metrics.pendingTasks : "--"}</span>
-            </div>
-
-            {/* Cost */}
-            <div className="text-center">
-              <span className="text-gray-400 text-xs block">COST</span>
-              <span className="text-sm font-bold text-amber-400">
-                {metrics.totalCostUsd !== undefined && metrics.totalCostUsd >= 0
-                  ? `$${metrics.totalCostUsd.toFixed(0)}` : "--"}
+              <span className="text-xs font-bold w-10 text-right" style={{ color: powerColor }}>
+                {power !== null ? `${power}%` : "--"}
               </span>
             </div>
+            <span className="text-gray-500 text-xs text-center">TASKS</span>
+            <span className="text-gray-500 text-xs text-center">MODEL</span>
+            <span className="text-gray-500 text-xs text-center">COST</span>
 
-            {/* Model */}
-            <div className="text-center">
-              <span className="text-gray-400 text-xs block">MODEL</span>
-              <span className="text-xs text-cyan-400">{metrics.modelName ? (metrics.modelName.match(/(Opus|Sonnet|Haiku)\s*[\d.]+/i)?.[0] ?? metrics.modelName.replace(/\s*\(.*?\)\s*/g, "")) : "--"}</span>
-            </div>
-
-            {/* Context */}
-            <div className="flex-1">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-gray-400 text-xs">CTX</span>
-                <span className="text-sm font-bold">
-                  {metrics.contextUsedPercent !== undefined && metrics.contextUsedPercent >= 0
-                    ? `${metrics.contextUsedPercent}%` : "--"}
-                </span>
-              </div>
-              <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+            {/* Row 2: CTX bar + values */}
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 text-xs w-8">CTX</span>
+              <div className="flex-1 h-2.5 bg-gray-800 rounded-full overflow-hidden">
                 {metrics.contextUsedPercent !== undefined && metrics.contextUsedPercent >= 0 && (
-                  <div className="h-full rounded-full" style={{
+                  <div className="h-full rounded-full transition-all duration-700" style={{
                     width: `${metrics.contextUsedPercent}%`,
                     background: metrics.contextUsedPercent > 80 ? "#ef4444" : metrics.contextUsedPercent > 50 ? "#eab308" : "#22c55e"
                   }} />
                 )}
               </div>
+              <span className="text-xs font-bold w-10 text-right">
+                {metrics.contextUsedPercent !== undefined && metrics.contextUsedPercent >= 0
+                  ? `${metrics.contextUsedPercent}%` : "--"}
+              </span>
             </div>
+            <span className="text-white text-lg font-bold text-center">
+              {metrics.pendingTasks >= 0 ? metrics.pendingTasks : "--"}
+            </span>
+            <span className="text-cyan-400 text-sm text-center">
+              {metrics.modelName
+                ? (metrics.modelName.match(/(Opus|Sonnet|Haiku)\s*[\d.]+/i)?.[0] ?? metrics.modelName.replace(/\s*\(.*?\)\s*/g, ""))
+                : "--"}
+            </span>
+            <span className="text-amber-400 text-sm font-bold text-center">
+              {metrics.totalCostUsd !== undefined && metrics.totalCostUsd >= 0
+                ? `$${metrics.totalCostUsd.toFixed(0)}` : "--"}
+            </span>
           </div>
         </div>
       )}
