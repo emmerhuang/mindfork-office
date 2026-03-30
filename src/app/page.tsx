@@ -18,7 +18,7 @@ interface Metrics {
 export default function Home() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [memberStatuses, setMemberStatuses] = useState<Record<string, { status: MemberStatus; task: string }>>({});
-  const [memberOs, setMemberOs] = useState<Record<string, string[]>>({});
+  const [memberOs, setMemberOs] = useState<Record<string, Array<{text: string; task?: string; at?: string}>>>({});
 
   useEffect(() => {
     async function fetchStatus() {

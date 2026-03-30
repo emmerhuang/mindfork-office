@@ -4,9 +4,15 @@ import { useEffect, useRef } from "react";
 import { OfficeEngine } from "./OfficeEngine";
 import { CANVAS_W, CANVAS_H } from "./officeData";
 
+export interface OsEntry {
+  text: string;
+  task?: string;
+  at?: string;
+}
+
 interface Props {
   memberStatuses?: Record<string, { status: string; task: string }>;
-  memberOs?: Record<string, string[]>;
+  memberOs?: Record<string, OsEntry[]>;
   onCharacterClick?: (charId: string) => void;
   className?: string;
 }

@@ -6,6 +6,7 @@ import { drawCharacter } from "./CharacterRenderer";
 import { DialogueSystem } from "./DialogueSystem";
 import { CharacterManager } from "./CharacterManager";
 import { PIXELLAB_CHARACTERS } from "./spriteAtlas";
+import type { OsEntry } from "./OfficeCanvas";
 
 export interface EngineOptions {
   onCharacterClick?: (charId: string) => void;
@@ -103,7 +104,7 @@ export class OfficeEngine {
         let osText: string;
         if (osList && osList.length > 0) {
           const idx = this.memberOsIndex[hit.def.id] ?? 0;
-          osText = osList[idx];
+          osText = osList[idx].text;
           // 下次點擊顯示下一筆（循環）
           this.memberOsIndex[hit.def.id] = (idx + 1) % osList.length;
         } else {
@@ -148,7 +149,7 @@ export class OfficeEngine {
   }
 
   private memberStatuses: Record<string, { status: string; task: string }> = {};
-  private memberOsData: Record<string, string[]> = {};
+  private memberOsData: Record<string, OsEntry[]> = {};
   private memberOsIndex: Record<string, number> = {};
 
   updateStatuses(data: Record<string, { status: string; task: string }>) {
@@ -156,9 +157,14 @@ export class OfficeEngine {
     this.mgr.updateStatuses(data);
   }
 
-  updateMemberOs(osData: Record<string, string[]>) {
+  updateMemberOs(osData: Record<string, OsEntry[]>) {
     this.memberOsData = osData;
-    this.mgr.updateOs(osData);
+    // Pass text-only array to CharacterManager for dialogue
+    const textOnly: Record<string, string[]> = {};
+    for (const [k, v] of Object.entries(osData)) {
+      textOnly[k] = v.map((e) => e.text);
+    }
+    this.mgr.updateOs(textOnly);
   }
 
   private loop = (now: number) => {

@@ -54,7 +54,8 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [members, setMembers] = useState<Record<string, MemberStatus>>({});
-  const [memberOs, setMemberOs] = useState<Record<string, string[]>>({});
+  const [memberOs, setMemberOs] = useState<Record<string, Array<{text: string; task?: string; at?: string}>>>({});
+  const [expandedOs, setExpandedOs] = useState<Record<string, boolean>>({});
   const [lastFetch, setLastFetch] = useState("");
 
   useEffect(() => {
@@ -195,12 +196,38 @@ export default function Dashboard() {
                     {ms?.task && (
                       <p className="text-gray-400 text-sm truncate">{ms.task}</p>
                     )}
-                    {/* Inner OS (show latest) */}
-                    {os && os.length > 0 && (
-                      <p className="text-amber-400/80 text-base mt-2 italic leading-snug">
-                        &ldquo;{os[0]}&rdquo;
-                      </p>
-                    )}
+                    {/* Inner OS */}
+                    {os && os.length > 0 && (() => {
+                      const isExpanded = expandedOs[m.id] ?? false;
+                      const visible = isExpanded ? os : os.slice(0, 3);
+                      const hasMore = os.length > 3;
+                      return (
+                        <div className="mt-2 space-y-1">
+                          {visible.map((entry, i) => {
+                            const timeStr = entry.at ? entry.at.replace(/^\d{4}-\d{2}-\d{2}\s*/, "") : "";
+                            const taskStr = entry.task || "";
+                            return (
+                              <div key={i} className="text-sm leading-snug">
+                                <span className="text-amber-400/80 italic">&ldquo;{entry.text}&rdquo;</span>
+                                {(timeStr || taskStr) && (
+                                  <span className="text-gray-500 ml-1">
+                                    &mdash; {timeStr}{taskStr ? ` ${taskStr}` : ""}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                          {hasMore && (
+                            <button
+                              onClick={() => setExpandedOs(prev => ({ ...prev, [m.id]: !isExpanded }))}
+                              className="text-gray-600 text-xs hover:text-gray-400 transition-colors"
+                            >
+                              {isExpanded ? "收合" : `+${os.length - 3} 更多`}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })}
