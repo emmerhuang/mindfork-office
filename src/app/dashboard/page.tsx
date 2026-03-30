@@ -2,6 +2,15 @@
 
 import { useState, useEffect } from "react";
 
+function formatTW(iso: string): string {
+  const d = new Date(iso);
+  const tw = new Date(d.getTime() + 8 * 3600000 - d.getTimezoneOffset() * 60000);
+  // If the stored time already has +08:00, just extract HH:MM:SS
+  const match = iso.match(/(\d{2}:\d{2}:\d{2})/);
+  if (match && iso.includes("+08:00")) return match[1];
+  return tw.toISOString().slice(11, 19);
+}
+
 interface Metrics {
   rateLimitPercent: number;
   pendingTasks: number;
@@ -149,7 +158,7 @@ export default function Dashboard() {
             </div>
 
             <p className="text-gray-700 text-sm text-center mt-1">
-              DB: {metrics.updatedAt ? new Date(metrics.updatedAt).toLocaleTimeString("zh-TW", { timeZone: "Asia/Taipei" }) : "--"}
+              DB: {metrics.updatedAt ? formatTW(metrics.updatedAt) : "--"}
             </p>
           </div>
 
