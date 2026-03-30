@@ -4,12 +4,12 @@ import { CharacterDef } from "./officeData";
 import { CHAR_SPRITES, PIXELLAB_CHARACTERS, PIXELLAB_DIRS } from "./spriteAtlas";
 
 // 顯示大小（依 sprite 來源分開，避免變形）
-// Gemini atlas sprites ~115x203 → 117x198（等比 x1.5）
-const GEMINI_W = 117, GEMINI_H = 198;
-// PixelLab sprites 48x48 → 144x144（等比 3x，保持正方形）
+// PixelLab sprites 48x48 → 144x144（等比 3x，最大組）
 const PIXELLAB_W = 144, PIXELLAB_H = 144;
-// Waffles (Gemini atlas ~112x170 → 117x180)
-const DOG_W = 117, DOG_H = 180;
+// Gemini atlas sprites — 比 PixelLab 小一級
+const GEMINI_W = 80, GEMINI_H = 135;
+// Waffles（柯基稍小）
+const DOG_W = 80, DOG_H = 120;
 
 export function drawCharacter(
   ctx: CanvasRenderingContext2D,
