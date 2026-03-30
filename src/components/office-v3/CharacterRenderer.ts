@@ -3,8 +3,12 @@
 import { CharacterDef } from "./officeData";
 import { CHAR_SPRITES, PIXELLAB_CHARACTERS, PIXELLAB_DIRS } from "./spriteAtlas";
 
-// 顯示大小：人 64x80，Waffles 64x56
-const HUMAN_W = 78, HUMAN_H = 132;
+// 顯示大小（依 sprite 來源分開，避免變形）
+// Gemini atlas sprites ~115x203 → 78x132（等比）
+const GEMINI_W = 78, GEMINI_H = 132;
+// PixelLab sprites 48x48 → 96x96（等比 2x，保持正方形）
+const PIXELLAB_W = 96, PIXELLAB_H = 96;
+// Waffles (Gemini atlas ~112x170)
 const DOG_W = 78, DOG_H = 120;
 
 /** 從移動向量推算面朝方向 */
@@ -25,22 +29,30 @@ export function drawCharacter(
   dy: number = 0,
 ) {
   const isWaff = !!char.isWaffles;
-  const dw = isWaff ? DOG_W : HUMAN_W;
-  const dh = isWaff ? DOG_H : HUMAN_H;
+  const isPixelLab = PIXELLAB_CHARACTERS.has(char.id);
 
-  // 地面陰影
+  // 依 sprite 來源選擇顯示尺寸
+  const dw = isWaff ? DOG_W : isPixelLab ? PIXELLAB_W : GEMINI_W;
+  const dh = isWaff ? DOG_H : isPixelLab ? PIXELLAB_H : GEMINI_H;
+
+  // 所有角色以「腳底」對齊：cy 視為角色底部基準
+  // 繪製區域 top-left = (cx - dw/2, cy - dh + footOffset)
+  // footOffset 讓腳底保持在統一的 cy + GEMINI_H/2 位置
+  const footY = cy + GEMINI_H / 2;  // 統一地面基準線
+
+  // 地面陰影（統一在地面基準線）
   ctx.fillStyle = "rgba(0,0,0,0.15)";
   ctx.beginPath();
-  ctx.ellipse(cx, cy + dh / 2 - 2, dw / 2 - 4, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, footY - 2, dw / 2 - 4, 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // --- PixelLab characters ---
-  if (PIXELLAB_CHARACTERS.has(char.id)) {
+  if (isPixelLab) {
     const img = pixelLabImgs[char.id];
     if (img) {
       const dir = facingDir(dx, dy);
       const f = PIXELLAB_DIRS[dir];
-      ctx.drawImage(img, f.sx, f.sy, f.sw, f.sh, cx - dw / 2, cy - dh / 2, dw, dh);
+      ctx.drawImage(img, f.sx, f.sy, f.sw, f.sh, cx - dw / 2, footY - dh, dw, dh);
       return;
     }
     // fallback if image not loaded
@@ -53,7 +65,7 @@ export function drawCharacter(
   if (geminiAtlasImg && sprites) {
     const frames = sprites.front;
     const f = frames[animFrame % frames.length];
-    ctx.drawImage(geminiAtlasImg, f.sx, f.sy, f.sw, f.sh, cx - dw / 2, cy - dh / 2, dw, dh);
+    ctx.drawImage(geminiAtlasImg, f.sx, f.sy, f.sw, f.sh, cx - dw / 2, footY - dh, dw, dh);
     return;
   }
 
