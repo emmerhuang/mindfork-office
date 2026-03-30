@@ -280,6 +280,22 @@ function drawLabels(ctx: CanvasRenderingContext2D) {
   ctx.stroke();
 }
 
+// ── 地板浮水印 ──────────────────────────────────────────────
+
+function drawWatermark(ctx: CanvasRenderingContext2D) {
+  ctx.save();
+  const centerX = tx(6);   // 地板中央附近 (col 6)
+  const centerY = ty(7);   // row 5-6 空白處
+  ctx.translate(centerX, centerY);
+  ctx.rotate(-5 * Math.PI / 180); // 微微傾斜 -5 度
+  ctx.font = "bold 72px 'Courier New', monospace";
+  ctx.fillStyle = "rgba(255,255,255,0.07)";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("MindFork Office", 0, 0);
+  ctx.restore();
+}
+
 // ── 公開 API ──────────────────────────────────────────────
 
 export function renderStaticScene(
@@ -290,6 +306,7 @@ export function renderStaticScene(
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
   drawFloor(ctx, tileImg);
+  drawWatermark(ctx);
   drawWalls(ctx, tileImg);
   drawWhiteboardPostIts(ctx);
   drawDesks(ctx, tileImg);

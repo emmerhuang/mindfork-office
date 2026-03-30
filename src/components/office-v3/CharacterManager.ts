@@ -441,9 +441,8 @@ export class CharacterManager {
     c.py = c.homePy;
   }
 
-  // idle_home coffee toggle timers per character
-  private idleCoffeeTimers: Record<string, number> = {};
-  private idleCoffeeOn: Record<string, boolean> = {};
+  // idle icon assignment — 固定在進入 idle 時隨機選一次，站定期間不切換
+  private idleIcons: Record<string, string> = {};
 
   private updateStatusIcon(c: CharInstance) {
     switch (c.state) {
@@ -455,17 +454,20 @@ export class CharacterManager {
         break;
       case "walking":
         c.statusIcon = ""; // 走路有動畫，不需額外圖示
+        // 清除 idle icon 快取，下次 idle 重新選
+        delete this.idleIcons[c.def.id];
         break;
       case "idle_home": {
-        // 每 60 秒（1800 ticks @ 30fps）隨機 on/off 咖啡
-        const timer = (this.idleCoffeeTimers[c.def.id] ?? 0) + 1;
-        if (timer >= 1800) {
-          this.idleCoffeeOn[c.def.id] = !this.idleCoffeeOn[c.def.id] && Math.random() < 0.5;
-          this.idleCoffeeTimers[c.def.id] = 0;
-        } else {
-          this.idleCoffeeTimers[c.def.id] = timer;
+        // 固定顯示 ☕ 或 💭，進入狀態時隨機選一次
+        if (!this.idleIcons[c.def.id]) {
+          this.idleIcons[c.def.id] = Math.random() < 0.5 ? "\u2615" : "\uD83D\uDCAD"; // ☕ or 💭
         }
-        c.statusIcon = this.idleCoffeeOn[c.def.id] ? "\u2615" : ""; // ☕
+        c.statusIcon = this.idleIcons[c.def.id];
+        break;
+      }
+      case "idle_away": {
+        // 固定顯示 💭
+        c.statusIcon = "\uD83D\uDCAD"; // 💭
         break;
       }
       default:

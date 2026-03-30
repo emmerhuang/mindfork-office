@@ -45,16 +45,7 @@ export default function Home() {
 
   return (
     <div className="h-screen w-screen bg-gray-950 flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="py-1.5 text-center shrink-0">
-        <h1 className="text-lg font-bold tracking-wider font-mono">
-          <span className="text-blue-400">Mind</span>
-          <span className="text-orange-400">Fork</span>
-          <span className="text-gray-500 ml-1.5 text-sm">Office</span>
-        </h1>
-      </header>
-
-      {/* Office Canvas */}
+      {/* Office Canvas — title rendered as watermark on floor */}
       <main className="flex-1 min-h-0">
         {isSleeping ? (
           <div className="h-full flex items-center justify-center">

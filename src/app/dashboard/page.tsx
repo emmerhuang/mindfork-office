@@ -34,14 +34,14 @@ interface MemberStatus {
 }
 
 const TEAM = [
-  { id: "boss", name: "老大", role: "Founder", color: "#8B0000", emoji: "👔" },
-  { id: "secretary", name: "秘書長", role: "Coordinator", color: "#1E3A5F", emoji: "📋" },
-  { id: "sherlock", name: "Sherlock", role: "需求分析", color: "#C0392B", emoji: "🔍" },
-  { id: "lego", name: "Lego", role: "架構設計", color: "#E87D20", emoji: "🏗️" },
-  { id: "vault", name: "Vault", role: "資料庫", color: "#2D5A3D", emoji: "🔐" },
-  { id: "forge", name: "Forge", role: "實作", color: "#6C3483", emoji: "🔨" },
-  { id: "lens", name: "Lens", role: "測試", color: "#2980B9", emoji: "🔬" },
-  { id: "waffles", name: "Waffles", role: "柯基", color: "#F39C12", emoji: "🐕" },
+  { id: "boss", name: "老大", role: "總指揮", color: "#8B0000", emoji: "👔" },
+  { id: "secretary", name: "秘書長", role: "協調與調度", color: "#1E3A5F", emoji: "📋" },
+  { id: "sherlock", name: "Sherlock", role: "需求分析師", color: "#C0392B", emoji: "🔍" },
+  { id: "lego", name: "Lego", role: "架構設計師", color: "#E87D20", emoji: "🏗️" },
+  { id: "vault", name: "Vault", role: "資料庫設計師", color: "#2D5A3D", emoji: "🔐" },
+  { id: "forge", name: "Forge", role: "實作工程師", color: "#6C3483", emoji: "🔨" },
+  { id: "lens", name: "Lens", role: "測試工程師", color: "#2980B9", emoji: "🔬" },
+  { id: "waffles", name: "Waffles", role: "柯基督察", color: "#F39C12", emoji: "🐕" },
 ];
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
@@ -172,14 +172,14 @@ export default function Dashboard() {
                 const st = ms ? STATUS_MAP[ms.status] ?? { label: ms.status, color: "#6b7280" } : null;
                 const os = memberOs[m.id];
                 return (
-                  <div key={m.id} className="bg-gray-900 border border-gray-800 rounded-lg p-3">
-                    {/* Avatar — same size as office canvas */}
-                    <div className="flex justify-center mb-2">
+                  <div key={m.id} className="bg-gray-900 border border-gray-800 rounded-lg p-2.5">
+                    {/* Avatar — 70% of original (90x90) */}
+                    <div className="flex justify-center mb-1.5">
                       <div
                         className="rounded-lg"
                         style={{
-                          width: 128,
-                          height: 128,
+                          width: 90,
+                          height: 90,
                           backgroundImage: `url(/sprites/${m.id}-pixellab.png)`,
                           backgroundPosition: "0 0",
                           backgroundSize: "400% 100%",
@@ -191,9 +191,8 @@ export default function Dashboard() {
                         title={m.emoji}
                       />
                     </div>
-                    <div className="text-center mb-2">
-                      <p className="text-lg font-bold">{m.name}</p>
-                      <p className="text-gray-500 text-sm">{m.role}</p>
+                    <div className="text-center mb-1.5">
+                      <p className="text-base font-bold">{m.role} {m.name}</p>
                     </div>
                     {/* Status */}
                     {st ? (
@@ -211,7 +210,7 @@ export default function Dashboard() {
                     {/* Inner OS — 列表顯示 */}
                     {os && os.length > 0 && (
                       <div className="mt-2 flex flex-col gap-1">
-                        {os.map((entry, i) => {
+                        {os.slice(0, 3).map((entry, i) => {
                           const timeStr = entry.at ? entry.at.replace(/^\d{4}-\d{2}-\d{2}\s*/, "") : "";
                           const taskStr = entry.task || "";
                           return (
