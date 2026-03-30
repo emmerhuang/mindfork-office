@@ -55,7 +55,7 @@ export default function Dashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [members, setMembers] = useState<Record<string, MemberStatus>>({});
   const [memberOs, setMemberOs] = useState<Record<string, Array<{text: string; task?: string; at?: string}>>>({});
-  const [expandedOs, setExpandedOs] = useState<Record<string, boolean>>({});
+  const [osIndex, setOsIndex] = useState<Record<string, number>>({});
   const [lastFetch, setLastFetch] = useState("");
 
   useEffect(() => {
@@ -75,6 +75,23 @@ export default function Dashboard() {
     const interval = setInterval(fetchStatus, 15_000);
     return () => clearInterval(interval);
   }, []);
+
+  // OS 輪播：每 5 秒切換下一筆
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setOsIndex(prev => {
+        const next = { ...prev };
+        for (const m of TEAM) {
+          const os = memberOs[m.id];
+          if (os && os.length > 1) {
+            next[m.id] = ((prev[m.id] ?? 0) + 1) % os.length;
+          }
+        }
+        return next;
+      });
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [memberOs]);
 
   const power = metrics && metrics.rateLimitPercent >= 0 ? 100 - metrics.rateLimitPercent : null;
   const powerColor = power === null ? "#999" : power > 60 ? "#22c55e" : power > 30 ? "#eab308" : "#ef4444";
@@ -196,34 +213,24 @@ export default function Dashboard() {
                     {ms?.task && (
                       <p className="text-gray-400 text-sm truncate">{ms.task}</p>
                     )}
-                    {/* Inner OS */}
+                    {/* Inner OS — 輪播，一次一筆 */}
                     {os && os.length > 0 && (() => {
-                      const isExpanded = expandedOs[m.id] ?? false;
-                      const visible = isExpanded ? os : os.slice(0, 3);
-                      const hasMore = os.length > 3;
+                      const idx = osIndex[m.id] ?? 0;
+                      const entry = os[idx];
+                      const timeStr = entry.at ? entry.at.replace(/^\d{4}-\d{2}-\d{2}\s*/, "") : "";
+                      const taskStr = entry.task || "";
                       return (
-                        <div className="mt-2 space-y-1">
-                          {visible.map((entry, i) => {
-                            const timeStr = entry.at ? entry.at.replace(/^\d{4}-\d{2}-\d{2}\s*/, "") : "";
-                            const taskStr = entry.task || "";
-                            return (
-                              <div key={i} className="text-sm leading-snug">
-                                <span className="text-amber-400/80 italic">&ldquo;{entry.text}&rdquo;</span>
-                                {(timeStr || taskStr) && (
-                                  <span className="text-gray-500 ml-1">
-                                    &mdash; {timeStr}{taskStr ? ` ${taskStr}` : ""}
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })}
-                          {hasMore && (
-                            <button
-                              onClick={() => setExpandedOs(prev => ({ ...prev, [m.id]: !isExpanded }))}
-                              className="text-gray-600 text-xs hover:text-gray-400 transition-colors"
-                            >
-                              {isExpanded ? "收合" : `+${os.length - 3} 更多`}
-                            </button>
+                        <div className="mt-2">
+                          <div className="text-sm leading-snug">
+                            <span className="text-amber-400/80 italic">&ldquo;{entry.text}&rdquo;</span>
+                            {(timeStr || taskStr) && (
+                              <span className="text-gray-500 ml-1">
+                                &mdash; {timeStr}{taskStr ? ` ${taskStr}` : ""}
+                              </span>
+                            )}
+                          </div>
+                          {os.length > 1 && (
+                            <span className="text-gray-600 text-xs">{idx + 1}/{os.length}</span>
                           )}
                         </div>
                       );
