@@ -1,16 +1,21 @@
 // OfficeEngine.ts — 主迴圈：init 載入圖片 → start rAF → render
+// 含公告欄/Boss 螢幕點擊事件、Waffles 點擊隨機動畫
 
-import { CANVAS_W, CANVAS_H, TILE, TARGET_FPS } from "./officeData";
+import { CANVAS_W, CANVAS_H, TILE, TARGET_FPS, BULLETIN_BOARD, BOSS_SCREEN } from "./officeData";
 import { renderStaticScene } from "./TileRenderer";
 import { drawCharacter } from "./CharacterRenderer";
 import { DialogueSystem } from "./DialogueSystem";
 import { CharacterManager } from "./CharacterManager";
-import { PIXELLAB_CHARACTERS } from "./spriteAtlas";
+import { PIXELLAB_CHARACTERS, WAFFLES_ANIM_FRAMES, getWafflesFrame } from "./spriteAtlas";
 import type { OsEntry } from "./OfficeCanvas";
+import type { WafflesAnim } from "./spriteAtlas";
 
 export interface EngineOptions {
   onCharacterClick?: (charId: string) => void;
   onDialogue?: (charId: string, text: string) => void;
+  onBulletinClick?: () => void;
+  onBossScreenClick?: () => void;
+  onWafflesZoom?: (anim: WafflesAnim) => void;
 }
 
 export class OfficeEngine {
@@ -24,10 +29,25 @@ export class OfficeEngine {
   private charImg: HTMLImageElement | null = null;
   private tileImg: HTMLImageElement | null = null;
   private pixelLabImgs: Record<string, HTMLImageElement> = {};
+  private walkImgs: Record<string, HTMLImageElement> = {};
+  private celebrateImgs: Record<string, HTMLImageElement> = {};
+  private wafflesExtraImgs: Record<string, HTMLImageElement> = {};
   private tick = 0;
   private rafId: number | null = null;
   private lastT = 0;
   private readonly interval = 1000 / TARGET_FPS;
+
+  // Waffles click animation state (random anim on click)
+  private wafflesClickAnim: WafflesAnim | null = null;
+  private wafflesClickFrame = 0;
+  private wafflesClickTimer = 0;
+  private wafflesClickHold = 0; // ticks to hold last frame before clearing
+
+  // Waffles click particles (hearts/stars)
+  private wafflesParticles: Array<{
+    x: number; y: number; vx: number; vy: number;
+    life: number; maxLife: number; emoji: string;
+  }> = [];
 
   constructor(canvas: HTMLCanvasElement, opts: EngineOptions = {}) {
     this.canvas = canvas;
@@ -38,6 +58,7 @@ export class OfficeEngine {
     this.offscreen.width = CANVAS_W;
     this.offscreen.height = CANVAS_H;
     this.offCtx = this.offscreen.getContext("2d")!;
+    this.offCtx.imageSmoothingEnabled = false;
 
     this.dlg = new DialogueSystem();
     this.mgr = new CharacterManager((id, text) => {
@@ -51,18 +72,16 @@ export class OfficeEngine {
 
   private onClick = (e: MouseEvent) => {
     const r = this.canvas.getBoundingClientRect();
-    // object-fit: contain 的正確座標轉換
+    // object-fit: contain 座標轉換
     const canvasAspect = CANVAS_W / CANVAS_H;
     const boxAspect = r.width / r.height;
     let renderW: number, renderH: number, offsetX: number, offsetY: number;
     if (boxAspect > canvasAspect) {
-      // 上下填滿，左右有留白
       renderH = r.height;
       renderW = r.height * canvasAspect;
       offsetX = (r.width - renderW) / 2;
       offsetY = 0;
     } else {
-      // 左右填滿，上下有留白
       renderW = r.width;
       renderH = r.width / canvasAspect;
       offsetX = 0;
@@ -70,49 +89,73 @@ export class OfficeEngine {
     }
     const px = ((e.clientX - r.left - offsetX) / renderW) * CANVAS_W;
     const py = ((e.clientY - r.top - offsetY) / renderH) * CANVAS_H;
-    // 書櫃點擊（牆面區域 y < TILE*3，書架在左右兩端）
-    if (py < TILE * 3 && (px < TILE * 2 || px > CANVAS_W - TILE * 2)) {
-      const projects = [
-        "rotaryCredit — 扶輪信用稽核預警系統",
-        "account-rotary — 扶輪會計系統",
-        "WaHoot Rotary — 互動問答系統",
-        "rotarysso — 扶輪 SSO 單一登入",
-      ];
-      this.dlg.show("bookshelf", "📚 已完成專案：\n" + projects.join("\n"), CANVAS_W / 2, TILE * 4, this.tick);
+
+    // 公告欄點擊
+    const bb = BULLETIN_BOARD;
+    if (px >= bb.x * TILE && px <= (bb.x + bb.w) * TILE &&
+        py >= bb.y * TILE && py <= (bb.y + bb.h) * TILE) {
+      this.opts.onBulletinClick?.();
+      return;
+    }
+
+    // Boss 桌子螢幕點擊
+    const bs = BOSS_SCREEN;
+    if (px >= bs.x * TILE && px <= (bs.x + bs.w) * TILE &&
+        py >= bs.y * TILE && py <= (bs.y + bs.h) * TILE) {
+      this.opts.onBossScreenClick?.();
       return;
     }
 
     const hit = this.mgr.findCharacterAt(px, py);
     if (hit) {
       if (hit.def.isWaffles) {
-        // Waffles 特殊反應：快速搖動 + 特殊台詞
-        const waffleReacts = ["汪汪汪！（好開心被摸！）", "（翻肚）再摸一次！", "（瘋狂搖尾巴）", "汪！你好你好！", "（舔手）嘿嘿～"];
-        const text = waffleReacts[Math.floor(Math.random() * waffleReacts.length)];
+        // Waffles 隨機動畫
+        const clickAnims: WafflesAnim[] = ["bark", "idle", "running", "sneaking", "walk"];
+        this.wafflesClickAnim = clickAnims[Math.floor(Math.random() * clickAnims.length)];
+        this.wafflesClickFrame = 0;
+        this.wafflesClickTimer = 0;
+        this.wafflesClickHold = 0;
+
+        // Spawn particles around Waffles
+        const particleEmojis = ["\u2764\uFE0F", "\u2B50", "\u2728", "\uD83D\uDC95", "\uD83C\uDF1F"];
+        this.wafflesParticles = [];
+        for (let i = 0; i < 6; i++) {
+          const angle = (Math.PI * 2 * i) / 6 + (Math.random() - 0.5) * 0.5;
+          this.wafflesParticles.push({
+            x: hit.px, y: hit.py - 40,
+            vx: Math.cos(angle) * (1.5 + Math.random()),
+            vy: Math.sin(angle) * (1.5 + Math.random()) - 1.5,
+            life: 0,
+            maxLife: 40 + Math.floor(Math.random() * 20),
+            emoji: particleEmojis[Math.floor(Math.random() * particleEmojis.length)],
+          });
+        }
+
+        // Notify overlay for zoomed Waffles animation
+        this.opts.onWafflesZoom?.(this.wafflesClickAnim!);
+
+        const waffleReactMap: Record<WafflesAnim, string> = {
+          bark: "汪汪汪！",
+          idle: "（發呆中...）",
+          running: "（興奮亂跑！）",
+          sneaking: "（偷偷摸摸...嘿嘿）",
+          walk: "（散步中～）",
+        };
+        const text = waffleReactMap[this.wafflesClickAnim!];
         this.dlg.show(hit.def.id, text, hit.px, hit.py, this.tick);
-        // 快速切換動畫模擬搖擺
-        hit.animFrame = 0;
-        hit.animTimer = 0;
-        const origTick = hit.animTimer;
-        let count = 0;
-        const wag = setInterval(() => {
-          hit.animFrame ^= 1;
-          if (++count > 8) { clearInterval(wag); hit.animTimer = origTick; }
-        }, 100);
       } else {
-        // 顯示角色資訊 + OS 輪播
         const osList = this.memberOsData[hit.def.id];
         let osText: string;
         if (osList && osList.length > 0) {
           const idx = this.memberOsIndex[hit.def.id] ?? 0;
           const entry = osList[idx];
           osText = entry?.text ?? String(entry);
-          // 下次點擊顯示下一筆（循環）
           this.memberOsIndex[hit.def.id] = (idx + 1) % osList.length;
         } else {
           const status = this.memberStatuses[hit.def.id];
-          osText = status?.task || "待命中";
+          osText = status?.task || "\u5F85\u547D\u4E2D";
         }
-        const info = `${hit.def.nameCn}（${hit.def.role}）\n"${osText}"`;
+        const info = `${hit.def.role}\nOS: ${osText}`;
         this.dlg.show(hit.def.id, info, hit.px, hit.py, this.tick);
       }
       this.opts.onCharacterClick?.(hit.def.id);
@@ -129,7 +172,8 @@ export class OfficeEngine {
         load("/sprites/tileset-clean.png"),
       ]);
     } catch { /* fallback to programmatic rendering */ }
-    // Load PixelLab character sprite sheets
+
+    // Load PixelLab idle direction sprite sheets
     const plNames = Array.from(PIXELLAB_CHARACTERS);
     const plResults = await Promise.allSettled(
       plNames.map((n) => load(`/sprites/${n}-pixellab.png`))
@@ -138,6 +182,35 @@ export class OfficeEngine {
       const r = plResults[i];
       if (r.status === "fulfilled") this.pixelLabImgs[plNames[i]] = r.value;
     }
+
+    // Load walking sprite sheets
+    const walkResults = await Promise.allSettled(
+      plNames.map((n) => load(`/sprites/${n}-walk.png`))
+    );
+    for (let i = 0; i < plNames.length; i++) {
+      const r = walkResults[i];
+      if (r.status === "fulfilled") this.walkImgs[plNames[i]] = r.value;
+    }
+
+    // Load celebrate sprite sheets
+    const celResults = await Promise.allSettled(
+      plNames.map((n) => load(`/sprites/${n}-celebrate.png`))
+    );
+    for (let i = 0; i < plNames.length; i++) {
+      const r = celResults[i];
+      if (r.status === "fulfilled") this.celebrateImgs[plNames[i]] = r.value;
+    }
+
+    // Load Waffles extra animations
+    const wafflesAnims: WafflesAnim[] = ["walk", "bark", "idle", "running", "sneaking"];
+    const wafflesResults = await Promise.allSettled(
+      wafflesAnims.map((a) => load(`/sprites/waffles-${a}.png`))
+    );
+    for (let i = 0; i < wafflesAnims.length; i++) {
+      const r = wafflesResults[i];
+      if (r.status === "fulfilled") this.wafflesExtraImgs[wafflesAnims[i]] = r.value;
+    }
+
     renderStaticScene(this.offCtx, this.tileImg);
   }
 
@@ -160,12 +233,16 @@ export class OfficeEngine {
 
   updateMemberOs(osData: Record<string, OsEntry[]>) {
     this.memberOsData = osData;
-    // Pass text-only array to CharacterManager for dialogue
     const textOnly: Record<string, string[]> = {};
     for (const [k, v] of Object.entries(osData)) {
       textOnly[k] = v.map((e) => e.text);
     }
     this.mgr.updateOs(textOnly);
+  }
+
+  /** Trigger celebrate animation for a character (called externally) */
+  triggerCelebrate(charId: string) {
+    this.mgr.triggerCelebrate(charId);
   }
 
   private loop = (now: number) => {
@@ -175,6 +252,32 @@ export class OfficeEngine {
       this.mgr.update(this.tick);
       this.dlg.update(this.tick);
       for (const c of this.mgr.characters) this.dlg.updatePosition(c.def.id, c.px, c.py);
+      // Update Waffles click animation (slower: 8 ticks per frame, hold last frame 15 ticks)
+      if (this.wafflesClickAnim) {
+        const totalFrames = WAFFLES_ANIM_FRAMES[this.wafflesClickAnim] ?? 6;
+        if (this.wafflesClickFrame >= totalFrames) {
+          // Holding on last frame
+          if (++this.wafflesClickHold >= 15) {
+            this.wafflesClickAnim = null;
+            this.wafflesClickFrame = 0;
+            this.wafflesClickHold = 0;
+          }
+        } else if (++this.wafflesClickTimer >= 8) {
+          this.wafflesClickFrame++;
+          this.wafflesClickTimer = 0;
+        }
+      }
+      // Update Waffles particles
+      for (let i = this.wafflesParticles.length - 1; i >= 0; i--) {
+        const p = this.wafflesParticles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.03; // slight gravity
+        p.life++;
+        if (p.life >= p.maxLife) {
+          this.wafflesParticles.splice(i, 1);
+        }
+      }
       this.render();
       this.tick++;
     }
@@ -183,12 +286,58 @@ export class OfficeEngine {
 
   private render() {
     const { ctx } = this;
+    ctx.imageSmoothingEnabled = false;
     ctx.drawImage(this.offscreen, 0, 0);
 
     // 角色（依 y 排序模擬深度）
     const sorted = [...this.mgr.characters].sort((a, b) => a.py - b.py);
     for (const c of sorted) {
-      drawCharacter(ctx, c.px, c.py, c.def, c.animFrame, this.charImg, this.pixelLabImgs, c.facing);
+      // Waffles click animation override
+      if (c.def.isWaffles && this.wafflesClickAnim) {
+        const animImg = this.wafflesExtraImgs[this.wafflesClickAnim];
+        if (animImg) {
+          const dw = 180, dh = 180;
+          const footY = c.py + 51;
+          // Draw shadow
+          ctx.fillStyle = "rgba(0,0,0,0.15)";
+          ctx.beginPath();
+          ctx.ellipse(c.px, footY - 2, dw / 2 - 4, 5, 0, 0, Math.PI * 2);
+          ctx.fill();
+          // Draw click animation frame (clamp to last frame during hold)
+          const clickTotalFrames = WAFFLES_ANIM_FRAMES[this.wafflesClickAnim] ?? 6;
+          const displayFrame = Math.min(this.wafflesClickFrame, clickTotalFrames - 1);
+          const f = getWafflesFrame(this.wafflesClickAnim, c.facing, displayFrame);
+          ctx.drawImage(animImg, f.sx, f.sy, f.sw, f.sh, c.px - dw / 2, footY - dh, dw, dh);
+          // Draw status icon (don't skip during animation)
+          if (c.statusIcon) {
+            const floatY = Math.sin((this.tick / 60) * Math.PI * 2) * 6;
+            ctx.save();
+            ctx.font = "56px serif";
+            ctx.textAlign = "center";
+            ctx.fillText(c.statusIcon, c.px, footY - dh - 12 + floatY);
+            ctx.restore();
+          }
+          continue;
+        }
+      }
+
+      drawCharacter(
+        ctx, c.px, c.py, c.def,
+        {
+          state: c.state,
+          facing: c.facing,
+          animFrame: c.animFrame,
+          celebrateFrame: c.celebrateFrame,
+          wafflesAnim: c.wafflesAnim,
+          statusIcon: c.statusIcon,
+          tick: this.tick,
+        },
+        this.charImg,
+        this.pixelLabImgs,
+        this.walkImgs,
+        this.celebrateImgs,
+        this.wafflesExtraImgs,
+      );
     }
 
     // 名字標籤
@@ -197,17 +346,29 @@ export class OfficeEngine {
     ctx.textAlign = "left";
     for (const c of this.mgr.characters) {
       const label = c.def.nameCn || c.def.name;
-      const nx = c.px + 50;
-      const ny = c.py + 60;
+      const nx = c.px + 40;
+      const ny = c.py + 10;
       const tw = ctx.measureText(label).width;
-      // 底色背景
       ctx.fillStyle = "rgba(0,0,0,0.55)";
       ctx.fillRect(nx - 3, ny - 34, tw + 6, 42);
-      // 文字
       ctx.fillStyle = "#FFFFFF";
       ctx.fillText(label, nx, ny);
     }
     ctx.restore();
+
+    // Waffles click particles
+    if (this.wafflesParticles.length > 0) {
+      ctx.save();
+      ctx.font = "36px serif";
+      ctx.textAlign = "center";
+      for (const p of this.wafflesParticles) {
+        const alpha = 1 - p.life / p.maxLife;
+        ctx.globalAlpha = alpha;
+        ctx.fillText(p.emoji, p.x, p.y);
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
 
     // 對話泡泡
     this.dlg.render(ctx, this.tick);

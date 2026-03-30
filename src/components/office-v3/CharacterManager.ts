@@ -1,8 +1,10 @@
-// CharacterManager.ts — 角色狀態機（working / idle_home / walking / idle_away）
+// CharacterManager.ts — 角色狀態機（working / idle_home / walking / idle_away / celebrating）
+// 含 A* tile-level pathfinding + Waffles 多動畫支援
 
-import { CHARACTERS, CharacterDef, TILE, ROOMS, CANVAS_W, CANVAS_H } from "./officeData";
+import { CHARACTERS, CharacterDef, TILE, ROOMS, CANVAS_W, CANVAS_H, COLS, ROWS, WALKABLE_MAP } from "./officeData";
+import { CELEBRATE_FRAME_COUNTS, WafflesAnim } from "./spriteAtlas";
 
-export type CharState = "working" | "idle_home" | "walking" | "idle_away";
+export type CharState = "working" | "idle_home" | "walking" | "idle_away" | "celebrating";
 
 export interface CharInstance {
   def: CharacterDef;
@@ -16,10 +18,23 @@ export interface CharInstance {
   dialogueTimer: number;
   walkTimer: number;
   goingHome: boolean;
+  // A* path (tile coords)
+  path: Array<{ x: number; y: number }>;
+  pathIndex: number;
+  // Celebrate state
+  celebrateFrame: number;
+  celebrateTimer: number;
+  celebrateTotal: number;
+  // Waffles special animation
+  wafflesAnim: WafflesAnim;
+  // Status icon
+  statusIcon: string; // emoji to show above head
 }
 
 const SPEED = 2;                    // px/tick
-const ANIM_TICK = 10;               // 每 30 ticks 切 frame
+const ANIM_TICK = 10;               // 每 10 ticks 切 frame（idle）
+const ANIM_TICK_WALK = 6;           // 走路時更快切 frame
+const ANIM_TICK_CELEBRATE = 5;      // 慶祝動畫更快
 const DLG_MIN = 30 * 30;            // 30s
 const DLG_MAX = 90 * 30;            // 90s
 const WALK_MIN = 20 * 30;           // 20s
@@ -53,6 +68,140 @@ function randomDest(charId?: string) {
   };
 }
 
+// ── A* Pathfinding ──────────────────────────────────────────
+
+interface TileNode {
+  x: number; y: number;
+  g: number; h: number; f: number;
+  parent: TileNode | null;
+}
+
+function heuristic(ax: number, ay: number, bx: number, by: number): number {
+  return Math.abs(ax - bx) + Math.abs(ay - by);
+}
+
+function findPath(
+  startPx: number, startPy: number,
+  endPx: number, endPy: number,
+  dynamicBlocked?: Set<string>,
+): Array<{ x: number; y: number }> {
+  const sx = Math.floor(startPx / TILE);
+  const sy = Math.floor(startPy / TILE);
+  const ex = Math.floor(endPx / TILE);
+  const ey = Math.floor(endPy / TILE);
+
+  // If start or end is same tile, just go direct
+  if (sx === ex && sy === ey) return [];
+
+  // Clamp to bounds
+  const clampX = (v: number) => Math.max(0, Math.min(COLS - 1, v));
+  const clampY = (v: number) => Math.max(0, Math.min(ROWS - 1, v));
+
+  const startX = clampX(sx), startY = clampY(sy);
+  const endX = clampX(ex), endY = clampY(ey);
+
+  // If destination is not walkable, find nearest walkable tile
+  let targetX = endX, targetY = endY;
+  if (!isWalkable(targetX, targetY)) {
+    let bestDist = Infinity;
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        const nx = clampX(targetX + dx);
+        const ny = clampY(targetY + dy);
+        if (isWalkable(nx, ny)) {
+          const d = Math.abs(dx) + Math.abs(dy);
+          if (d < bestDist) { bestDist = d; targetX = nx; targetY = ny; }
+        }
+      }
+    }
+  }
+
+  const open: TileNode[] = [];
+  const closed = new Set<string>();
+  const key = (x: number, y: number) => `${x},${y}`;
+
+  const start: TileNode = {
+    x: startX, y: startY,
+    g: 0, h: heuristic(startX, startY, targetX, targetY),
+    f: heuristic(startX, startY, targetX, targetY),
+    parent: null,
+  };
+  open.push(start);
+
+  const DIRS = [
+    { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
+    { dx: -1, dy: 0 }, { dx: 1, dy: 0 },
+  ];
+
+  let iterations = 0;
+  while (open.length > 0 && iterations < 500) {
+    iterations++;
+    // Find lowest f
+    let bestIdx = 0;
+    for (let i = 1; i < open.length; i++) {
+      if (open[i].f < open[bestIdx].f) bestIdx = i;
+    }
+    const current = open[bestIdx];
+    open.splice(bestIdx, 1);
+
+    if (current.x === targetX && current.y === targetY) {
+      // Reconstruct path
+      const path: Array<{ x: number; y: number }> = [];
+      let node: TileNode | null = current;
+      while (node) {
+        path.unshift({ x: node.x, y: node.y });
+        node = node.parent;
+      }
+      return path;
+    }
+
+    closed.add(key(current.x, current.y));
+
+    for (const dir of DIRS) {
+      const nx = current.x + dir.dx;
+      const ny = current.y + dir.dy;
+      if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) continue;
+      if (!isWalkable(nx, ny)) continue;
+      // Dynamic obstacles: other characters' tiles (but allow target tile)
+      if (dynamicBlocked && dynamicBlocked.has(key(nx, ny)) &&
+          !(nx === targetX && ny === targetY)) continue;
+      if (closed.has(key(nx, ny))) continue;
+
+      const g = current.g + 1;
+      const h = heuristic(nx, ny, targetX, targetY);
+      const existing = open.find((n) => n.x === nx && n.y === ny);
+      if (existing) {
+        if (g < existing.g) {
+          existing.g = g;
+          existing.f = g + h;
+          existing.parent = current;
+        }
+      } else {
+        open.push({ x: nx, y: ny, g, h, f: g + h, parent: current });
+      }
+    }
+  }
+
+  // No path found — fallback to direct movement
+  return [];
+}
+
+function isWalkable(tx: number, ty: number): boolean {
+  if (tx < 0 || tx >= COLS || ty < 0 || ty >= ROWS) return false;
+  return WALKABLE_MAP[ty]?.[tx] ?? false;
+}
+
+// ── Waffles walk animation selection ────────────────────────
+
+function pickWafflesWalkAnim(): WafflesAnim {
+  const r = Math.random();
+  if (r < 0.5) return "walk";
+  if (r < 0.75) return "running";
+  return "sneaking";
+}
+
+// ── CharacterManager ────────────────────────────────────────
+
 export class CharacterManager {
   characters: CharInstance[];
   private onDialogue: (id: string, text: string) => void;
@@ -61,17 +210,24 @@ export class CharacterManager {
     this.onDialogue = onDialogue;
     this.characters = CHARACTERS.map((def) => {
       const h = homePos(def);
-      // boss 和 secretary 預設 working，其他人 idle_home（會走動）
+      // boss 和 secretary 預設 working，其他人 idle_home
       const initState: CharState = (def.id === "boss" || def.id === "secretary") ? "working" : "idle_home";
       return {
         def, ...h, targetPx: h.px, targetPy: h.py,
         homePx: h.px, homePy: h.py,
         state: initState,
-        facing: "south",
+        facing: initState === "working" ? "north" : "south",
         animFrame: 0, animTimer: 0,
         dialogueTimer: rand(DLG_MIN, DLG_MAX),
-        walkTimer: rand(WALK_MIN, WALK_MAX),
+        walkTimer: rand(60, 450), // 初始 2-15 秒就開始動（而非 20-60 秒）
         goingHome: false,
+        path: [],
+        pathIndex: 0,
+        celebrateFrame: 0,
+        celebrateTimer: 0,
+        celebrateTotal: 0,
+        wafflesAnim: "walk" as WafflesAnim,
+        statusIcon: "",
       };
     });
   }
@@ -81,8 +237,27 @@ export class CharacterManager {
   }
 
   private step(c: CharInstance, _tick: number) {
-    // anim frame
-    if (++c.animTimer >= ANIM_TICK) { c.animFrame ^= 1; c.animTimer = 0; }
+    // Update status icon
+    this.updateStatusIcon(c);
+
+    // Celebrate state has its own anim timer
+    if (c.state === "celebrating") {
+      if (++c.celebrateTimer >= ANIM_TICK_CELEBRATE) {
+        c.celebrateFrame++;
+        c.celebrateTimer = 0;
+        if (c.celebrateFrame >= c.celebrateTotal) {
+          // Celebrate done, return to idle_home
+          c.state = "idle_home";
+          c.facing = "south";
+          c.celebrateFrame = 0;
+        }
+      }
+      return;
+    }
+
+    // Anim frame tick
+    const animSpeed = c.state === "walking" ? ANIM_TICK_WALK : ANIM_TICK;
+    if (++c.animTimer >= animSpeed) { c.animFrame = (c.animFrame + 1) % 4; c.animTimer = 0; }
 
     // dialogue countdown
     if (--c.dialogueTimer <= 0) {
@@ -94,81 +269,212 @@ export class CharacterManager {
     // state machine
     switch (c.state) {
       case "working":
-        break; // working 狀態不離開座位
+        // Boss / Secretary 偶爾站起來走一圈
+        if (c.def.id === "boss" || c.def.id === "secretary") {
+          if (--c.walkTimer <= 0) {
+            // 30% 機率站起來走走
+            if (Math.random() < 0.3) {
+              const d = randomDest(c.def.id);
+              this.startWalkTo(c, d.px, d.py, false);
+              // 走到目的地 -> idle_away -> 回家 -> idle_home -> updateStatuses 恢復 working
+            }
+            c.walkTimer = rand(60 * 30, 120 * 30); // 60-120 秒 @ 30fps
+          }
+        }
+        break;
       case "idle_home":
         if (--c.walkTimer <= 0) {
           const d = randomDest(c.def.id);
-          c.targetPx = d.px; c.targetPy = d.py;
-          c.state = "walking"; c.goingHome = false;
+          this.startWalkTo(c, d.px, d.py, false);
           c.walkTimer = rand(WALK_MIN, WALK_MAX);
         }
         break;
       case "walking":
-        this.move(c);
+        this.moveAlongPath(c);
         break;
       case "idle_away":
         if (--c.walkTimer <= 0) {
-          c.targetPx = c.homePx; c.targetPy = c.homePy;
-          c.state = "walking"; c.goingHome = true;
+          this.startWalkTo(c, c.homePx, c.homePy, true);
           c.walkTimer = rand(WALK_MIN, WALK_MAX);
         }
         break;
     }
   }
 
-  private move(c: CharInstance) {
+  private startWalkTo(c: CharInstance, destPx: number, destPy: number, goingHome: boolean) {
+    c.targetPx = destPx;
+    c.targetPy = destPy;
+    c.goingHome = goingHome;
+    c.state = "walking";
+    c.path = findPath(c.px, c.py, destPx, destPy, this.buildDynamicBlocked(c));
+    c.pathIndex = 0;
+    // Waffles picks a random walk animation
+    if (c.def.isWaffles) {
+      c.wafflesAnim = pickWafflesWalkAnim();
+    }
+  }
+
+  /** Build a set of tile keys occupied by other walking characters */
+  private buildDynamicBlocked(exclude: CharInstance): Set<string> {
+    const blocked = new Set<string>();
+    for (const other of this.characters) {
+      if (other === exclude) continue;
+      if (other.state !== "walking") continue;
+      const tx = Math.floor(other.px / TILE);
+      const ty = Math.floor(other.py / TILE);
+      blocked.add(`${tx},${ty}`);
+    }
+    return blocked;
+  }
+
+  private moveAlongPath(c: CharInstance) {
+    if (c.path.length > 0 && c.pathIndex < c.path.length) {
+      // Move toward next tile center
+      const nextTile = c.path[c.pathIndex];
+      const goalPx = nextTile.x * TILE + TILE / 2;
+      const goalPy = nextTile.y * TILE + TILE / 2;
+      const dx = goalPx - c.px;
+      const dy = goalPy - c.py;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist <= SPEED) {
+        c.px = goalPx;
+        c.py = goalPy;
+        c.pathIndex++;
+        if (c.pathIndex >= c.path.length) {
+          this.arriveAtDest(c);
+        }
+      } else {
+        c.px += (dx / dist) * SPEED;
+        c.py += (dy / dist) * SPEED;
+        // Update facing
+        if (Math.abs(dx) > Math.abs(dy)) {
+          c.facing = dx > 0 ? "east" : "west";
+        } else {
+          c.facing = dy > 0 ? "south" : "north";
+        }
+      }
+    } else {
+      // No path (direct movement fallback)
+      this.moveDirect(c);
+    }
+
+    // Collision avoidance with other characters
+    for (const other of this.characters) {
+      if (other === c) continue;
+      const odx = c.px - other.px;
+      const ody = c.py - other.py;
+      const od = Math.sqrt(odx * odx + ody * ody);
+      const MIN_DIST = 50;
+      if (od < MIN_DIST && od > 0) {
+        if (c.state === "walking" && other.state === "walking") {
+          // Both walking: deflect perpendicular to the line between them
+          const perpX = -ody / od;
+          const perpY = odx / od;
+          const push = MIN_DIST * 0.4;
+          // Use ID comparison to decide direction: lower ID goes right, higher goes left
+          if (c.def.id < other.def.id) {
+            c.px += perpX * push;
+            c.py += perpY * push;
+          } else {
+            c.px -= perpX * push;
+            c.py -= perpY * push;
+          }
+          // Recalculate path from new position
+          c.path = findPath(c.px, c.py, c.targetPx, c.targetPy, this.buildDynamicBlocked(c));
+          c.pathIndex = 0;
+        } else {
+          // One is stationary: simple push avoidance
+          c.px += (odx / od) * (MIN_DIST - od) * 0.3;
+          c.py += (ody / od) * (MIN_DIST - od) * 0.3;
+        }
+      }
+    }
+
+    // Boundary clamp
+    c.px = Math.max(30, Math.min(CANVAS_W - 30, c.px));
+    c.py = Math.max(TILE * 3 + 20, Math.min(CANVAS_H - 20, c.py));
+  }
+
+  private moveDirect(c: CharInstance) {
     const dx = c.targetPx - c.px;
     const dy = c.targetPy - c.py;
 
-    // L 型路徑：先水平移動，再垂直移動
     if (Math.abs(dx) > SPEED) {
-      // 水平移動階段
-      let nx = c.px + Math.sign(dx) * SPEED;
-      const ny = c.py;
+      c.px += Math.sign(dx) * SPEED;
       c.facing = dx > 0 ? "east" : "west";
-
-      // 碰撞避免
-      const adjusted = this.avoidCollision(c, nx, ny);
-      c.px = adjusted.x;
-      c.py = adjusted.y;
     } else if (Math.abs(dy) > SPEED) {
-      // 垂直移動階段（snap x 到目標）
-      const nx = c.targetPx;
-      let ny = c.py + Math.sign(dy) * SPEED;
+      c.px = c.targetPx;
+      c.py += Math.sign(dy) * SPEED;
       c.facing = dy > 0 ? "south" : "north";
-
-      // 碰撞避免
-      const adjusted = this.avoidCollision(c, nx, ny);
-      c.px = adjusted.x;
-      c.py = adjusted.y;
     } else {
-      // 到達目標
       c.px = c.targetPx;
       c.py = c.targetPy;
-      if (c.goingHome) { c.state = "idle_home"; c.goingHome = false; }
-      else { c.state = "idle_away"; c.walkTimer = rand(STAY_MIN, STAY_MAX); }
+      this.arriveAtDest(c);
     }
   }
 
-  private avoidCollision(c: CharInstance, nx: number, ny: number) {
-    const MIN_DIST = 50;
-    for (const other of this.characters) {
-      if (other === c) continue;
-      const odx = nx - other.px, ody = ny - other.py;
-      const od = Math.sqrt(odx * odx + ody * ody);
-      if (od < MIN_DIST && od > 0) {
-        nx += (odx / od) * (MIN_DIST - od) * 0.5;
-        ny += (ody / od) * (MIN_DIST - od) * 0.5;
-      }
+  private arriveAtDest(c: CharInstance) {
+    if (c.goingHome) {
+      c.state = "idle_home";
+      c.facing = "north";
+      c.goingHome = false;
+    } else {
+      c.state = "idle_away";
+      c.walkTimer = rand(STAY_MIN, STAY_MAX);
     }
-    // 邊界限制
-    nx = Math.max(30, Math.min(CANVAS_W - 30, nx));
-    ny = Math.max(TILE * 3 + 20, Math.min(CANVAS_H - 20, ny));
-    return { x: nx, y: ny };
+    c.path = [];
+    c.pathIndex = 0;
+  }
+
+  /** Trigger celebrate animation for a character */
+  triggerCelebrate(charId: string) {
+    const c = this.characters.find((ch) => ch.def.id === charId);
+    if (!c) return;
+    c.state = "celebrating";
+    c.facing = "south";
+    c.celebrateFrame = 0;
+    c.celebrateTimer = 0;
+    c.celebrateTotal = CELEBRATE_FRAME_COUNTS[charId] ?? 6;
+    // Move back home first
+    c.px = c.homePx;
+    c.py = c.homePy;
+  }
+
+  // idle_home coffee toggle timers per character
+  private idleCoffeeTimers: Record<string, number> = {};
+  private idleCoffeeOn: Record<string, boolean> = {};
+
+  private updateStatusIcon(c: CharInstance) {
+    switch (c.state) {
+      case "working":
+        c.statusIcon = "\u2328\uFE0F"; // ⌨️
+        break;
+      case "celebrating":
+        c.statusIcon = "\uD83C\uDF89"; // 🎉
+        break;
+      case "walking":
+        c.statusIcon = "\uD83D\uDC63"; // 👣
+        break;
+      case "idle_home": {
+        // 每 60 秒（1800 ticks @ 30fps）隨機 on/off 咖啡
+        const timer = (this.idleCoffeeTimers[c.def.id] ?? 0) + 1;
+        if (timer >= 1800) {
+          this.idleCoffeeOn[c.def.id] = !this.idleCoffeeOn[c.def.id] && Math.random() < 0.5;
+          this.idleCoffeeTimers[c.def.id] = 0;
+        } else {
+          this.idleCoffeeTimers[c.def.id] = timer;
+        }
+        c.statusIcon = this.idleCoffeeOn[c.def.id] ? "\u2615" : ""; // ☕
+        break;
+      }
+      default:
+        c.statusIcon = "";
+    }
   }
 
   findCharacterAt(px: number, py: number): CharInstance | null {
-    let best: CharInstance | null = null, bestD = 80; // hit radius（配合 TILE=96）
+    let best: CharInstance | null = null, bestD = 80;
     for (const c of this.characters) {
       const d = Math.sqrt((c.px - px) ** 2 + (c.py - py) ** 2);
       if (d < bestD) { best = c; bestD = d; }
@@ -183,11 +489,9 @@ export class CharacterManager {
   }
 
   getDialogue(charId: string): string {
-    // 優先用動態 OS（最新一筆），否則用固定台詞池
     const osList = this.dynamicOs[charId];
     if (osList && osList.length > 0) {
       const item = osList[0];
-      // 防護：即使上游誤傳 object 也不 crash
       return typeof item === "string" ? item : String(item);
     }
     const def = CHARACTERS.find(c => c.id === charId);
@@ -201,16 +505,18 @@ export class CharacterManager {
       if (!d) continue;
       if (d.status === "working" && c.state !== "working") {
         c.state = "working";
+        c.facing = "north";
         c.px = c.homePx; c.py = c.homePy;
         c.targetPx = c.homePx; c.targetPy = c.homePy;
       } else if (d.status === "idle" && c.state === "working") {
         c.state = "idle_home";
+      } else if (d.status === "celebrating") {
+        this.triggerCelebrate(c.def.id);
       } else if (d.status === "meeting") {
         const dest = ROOMS.meetingRoom.dest;
-        c.targetPx = dest.x * TILE + (Math.random() - 0.5) * TILE * 2;
-        c.targetPy = dest.y * TILE + (Math.random() - 0.5) * TILE;
-        c.state = "walking";
-        c.goingHome = false;
+        const destPx = dest.x * TILE + (Math.random() - 0.5) * TILE * 2;
+        const destPy = dest.y * TILE + (Math.random() - 0.5) * TILE;
+        this.startWalkTo(c, destPx, destPy, false);
       }
     }
   }

@@ -1,4 +1,4 @@
-// DialogueSystem.ts — 對話泡泡（白色圓角矩形 + 三角指針）
+// DialogueSystem.ts — 對話泡泡（漫畫風格氣泡 + 彎曲尾巴）
 import { CANVAS_W } from "./officeData";
 
 interface Bubble {
@@ -11,7 +11,7 @@ interface Bubble {
 const DURATION = 120;   // 4 秒 @ 30fps
 const FADE = 20;
 const MAX_W = 350;
-const FONT = "40px 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
+const FONT = "30px 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
 
 export class DialogueSystem {
   private bubbles = new Map<string, Bubble>();
@@ -48,49 +48,65 @@ export class DialogueSystem {
     ctx.font = FONT;
 
     // 自動換行
-    const pad = 10;
-    const lineH = 48;
+    const pad = 7;
+    const lineH = 38;
     const lines = wrapText(ctx, b.text, MAX_W - pad * 2);
     const maxLineW = Math.max(...lines.map(l => ctx.measureText(l).width));
-    const bw = Math.min(maxLineW + pad * 2, MAX_W);
-    const bh = lines.length * lineH + pad;
+    const bw = maxLineW + pad * 2;
+    const bh = lines.length * lineH + pad * 2;
     const bx = Math.max(4, Math.min(b.cx - bw / 2, CANVAS_W - bw - 4));
-    const by = b.cy - 50 - bh;
+    const by = b.cy - 150 - bh;
 
     // shadow
-    ctx.shadowColor = "rgba(0,0,0,0.2)";
-    ctx.shadowBlur = 4;
-    ctx.shadowOffsetY = 2;
+    ctx.shadowColor = "rgba(0,0,0,0.25)";
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetY = 3;
 
-    // bubble rect
-    ctx.fillStyle = "#FFF";
-    roundRect(ctx, bx, by, bw, bh, 6);
-    ctx.fill();
+    // comic bubble body (rounded rect + curved tail as one path)
+    const r = 12;
+    const triX = Math.max(bx + 16, Math.min(b.cx, bx + bw - 16));
+    const tailW = 10;   // half-width of tail base
+    const tailH = 14;   // tail length
+    const tailCurve = 6; // bezier curve offset for comic feel
 
-    // border
-    ctx.shadowColor = "transparent";
-    ctx.strokeStyle = "rgba(0,0,0,0.15)";
-    ctx.lineWidth = 1;
-    roundRect(ctx, bx, by, bw, bh, 6);
-    ctx.stroke();
-
-    // triangle pointer
-    const triX = Math.max(bx + 8, Math.min(b.cx, bx + bw - 8));
-    ctx.fillStyle = "#FFF";
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
     ctx.beginPath();
-    ctx.moveTo(triX - 5, by + bh);
-    ctx.lineTo(triX + 5, by + bh);
-    ctx.lineTo(triX, by + bh + 7);
+    // top-left corner
+    ctx.moveTo(bx + r, by);
+    // top edge
+    ctx.lineTo(bx + bw - r, by);
+    // top-right corner
+    ctx.arcTo(bx + bw, by, bx + bw, by + r, r);
+    // right edge
+    ctx.lineTo(bx + bw, by + bh - r);
+    // bottom-right corner
+    ctx.arcTo(bx + bw, by + bh, bx + bw - r, by + bh, r);
+    // bottom edge — right of tail
+    ctx.lineTo(triX + tailW, by + bh);
+    // curved tail: right side down to tip, left side back up
+    ctx.quadraticCurveTo(triX + tailCurve, by + bh + tailH * 0.4, triX, by + bh + tailH);
+    ctx.quadraticCurveTo(triX - tailCurve, by + bh + tailH * 0.3, triX - tailW, by + bh);
+    // bottom edge — left of tail
+    ctx.lineTo(bx + r, by + bh);
+    // bottom-left corner
+    ctx.arcTo(bx, by + bh, bx, by + bh - r, r);
+    // left edge
+    ctx.lineTo(bx, by + r);
+    // top-left corner
+    ctx.arcTo(bx, by, bx + r, by, r);
     ctx.closePath();
     ctx.fill();
 
-    // cover seam
-    ctx.fillRect(triX - 4, by + bh - 1, 8, 2);
+    // comic border (2px black outline)
+    ctx.shadowColor = "transparent";
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 2;
+    ctx.stroke();
 
     // text (multi-line)
     ctx.fillStyle = "#222";
     for (let i = 0; i < lines.length; i++) {
-      ctx.fillText(lines[i], bx + pad, by + pad + 24 + i * lineH);
+      ctx.fillText(lines[i], bx + pad, by + pad + lineH * 0.75 + i * lineH);
     }
 
     ctx.restore();

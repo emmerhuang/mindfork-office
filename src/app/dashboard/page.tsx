@@ -55,7 +55,6 @@ export default function Dashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [members, setMembers] = useState<Record<string, MemberStatus>>({});
   const [memberOs, setMemberOs] = useState<Record<string, Array<{text: string; task?: string; at?: string}>>>({});
-  const [osIndex, setOsIndex] = useState<Record<string, number>>({});
   const [lastFetch, setLastFetch] = useState("");
 
   useEffect(() => {
@@ -76,22 +75,6 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // OS 輪播：每 5 秒切換下一筆
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setOsIndex(prev => {
-        const next = { ...prev };
-        for (const m of TEAM) {
-          const os = memberOs[m.id];
-          if (os && os.length > 1) {
-            next[m.id] = ((prev[m.id] ?? 0) + 1) % os.length;
-          }
-        }
-        return next;
-      });
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [memberOs]);
 
   const power = metrics && metrics.rateLimitPercent >= 0 ? 100 - metrics.rateLimitPercent : null;
   const powerColor = power === null ? "#999" : power > 60 ? "#22c55e" : power > 30 ? "#eab308" : "#ef4444";
@@ -190,15 +173,27 @@ export default function Dashboard() {
                 const os = memberOs[m.id];
                 return (
                   <div key={m.id} className="bg-gray-900 border border-gray-800 rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl shrink-0"
-                        style={{ background: m.color + "33", borderLeft: `3px solid ${m.color}` }}>
-                        {m.emoji}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-lg font-bold truncate">{m.name}</p>
-                        <p className="text-gray-500 text-sm">{m.role}</p>
-                      </div>
+                    {/* Avatar — same size as office canvas */}
+                    <div className="flex justify-center mb-2">
+                      <div
+                        className="rounded-lg"
+                        style={{
+                          width: 128,
+                          height: 128,
+                          backgroundImage: `url(/sprites/${m.id}-pixellab.png)`,
+                          backgroundPosition: "0 0",
+                          backgroundSize: "400% 100%",
+                          backgroundRepeat: "no-repeat",
+                          imageRendering: "pixelated",
+                          border: `2px solid ${m.color}`,
+                          backgroundColor: "#ffffff",
+                        }}
+                        title={m.emoji}
+                      />
+                    </div>
+                    <div className="text-center mb-2">
+                      <p className="text-lg font-bold">{m.name}</p>
+                      <p className="text-gray-500 text-sm">{m.role}</p>
                     </div>
                     {/* Status */}
                     {st ? (
@@ -213,28 +208,25 @@ export default function Dashboard() {
                     {ms?.task && (
                       <p className="text-gray-400 text-sm truncate">{ms.task}</p>
                     )}
-                    {/* Inner OS — 輪播，一次一筆 */}
-                    {os && os.length > 0 && (() => {
-                      const idx = osIndex[m.id] ?? 0;
-                      const entry = os[idx];
-                      const timeStr = entry.at ? entry.at.replace(/^\d{4}-\d{2}-\d{2}\s*/, "") : "";
-                      const taskStr = entry.task || "";
-                      return (
-                        <div className="mt-2">
-                          <div className="text-sm leading-snug">
-                            <span className="text-amber-400/80 italic">&ldquo;{entry.text}&rdquo;</span>
-                            {(timeStr || taskStr) && (
-                              <span className="text-gray-500 ml-1">
-                                &mdash; {timeStr}{taskStr ? ` ${taskStr}` : ""}
-                              </span>
-                            )}
-                          </div>
-                          {os.length > 1 && (
-                            <span className="text-gray-600 text-xs">{idx + 1}/{os.length}</span>
-                          )}
-                        </div>
-                      );
-                    })()}
+                    {/* Inner OS — 列表顯示 */}
+                    {os && os.length > 0 && (
+                      <div className="mt-2 flex flex-col gap-1">
+                        {os.map((entry, i) => {
+                          const timeStr = entry.at ? entry.at.replace(/^\d{4}-\d{2}-\d{2}\s*/, "") : "";
+                          const taskStr = entry.task || "";
+                          return (
+                            <div key={i} className="text-sm leading-snug">
+                              <span className="text-amber-400/80 italic">&ldquo;{entry.text}&rdquo;</span>
+                              {(timeStr || taskStr) && (
+                                <span className="text-gray-500 ml-1">
+                                  &mdash; {timeStr}{taskStr ? ` ${taskStr}` : ""}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}

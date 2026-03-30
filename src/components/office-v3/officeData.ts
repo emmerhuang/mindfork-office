@@ -138,3 +138,65 @@ export const ROOMS = {
   tearoom:     { x: 0, y: 13, w: 6,  h: 3, dest: { x: 3, y: 14 } },
   meetingRoom: { x: 6, y: 13, w: 6,  h: 3, dest: { x: 9, y: 14 } },
 } as const;
+
+// ── Walkable tile map (true = walkable) ────────────────────
+// 12 cols x 16 rows. Wall (rows 0-2) = blocked.
+// Desks occupy 2-tile width at each character's deskTile position.
+// Tearoom equipment occupies left side (cols 0-2, rows 13-14).
+// Meeting table occupies center-right area (cols 8-10, row 14).
+
+function buildWalkableMap(): boolean[][] {
+  const map: boolean[][] = [];
+  for (let r = 0; r < ROWS; r++) {
+    map[r] = [];
+    for (let c = 0; c < COLS; c++) {
+      if (r < 3) {
+        // Wall area — blocked
+        map[r][c] = false;
+      } else if (r >= 3 && r < 13) {
+        // Work area — default walkable
+        map[r][c] = true;
+      } else {
+        // Tearoom + meeting room — default walkable
+        map[r][c] = true;
+      }
+    }
+  }
+
+  // Block desk tiles (each desk is 2 tiles wide)
+  for (const ch of CHARACTERS) {
+    if (ch.isWaffles) {
+      // Dog bed: 2 tiles wide
+      map[ch.deskTile.y][ch.deskTile.x] = false;
+      if (ch.deskTile.x + 1 < COLS) map[ch.deskTile.y][ch.deskTile.x + 1] = false;
+    } else {
+      // Desk: 2 tiles wide
+      map[ch.deskTile.y][ch.deskTile.x] = false;
+      if (ch.deskTile.x + 1 < COLS) map[ch.deskTile.y][ch.deskTile.x + 1] = false;
+    }
+  }
+
+  // Block tearoom equipment (fridge, water cooler, coffee machine — rows 13-14, cols 0-2)
+  map[13][0] = false; map[13][1] = false; map[13][2] = false;
+  map[14][0] = false; map[14][1] = false; map[14][2] = false;
+
+  // Block meeting table area (cols 8-10, row 14)
+  map[14][8] = false; map[14][9] = false; map[14][10] = false;
+
+  // Block plant tile (col 5, row 4)
+  map[4][5] = false;
+
+  // Bulletin board on wall: clickable area (row 2, cols 4-7) — not blocking but marked
+  // (Wall is already blocked, this is just for click detection in engine)
+
+  return map;
+}
+
+export const WALKABLE_MAP = buildWalkableMap();
+
+// Bulletin board position on wall (for click detection)
+export const BULLETIN_BOARD = { x: 4, y: 1, w: 4, h: 2 } as const;
+
+// Boss desk screen position (for click detection)
+// 覆蓋 row 3-4，讓桌上螢幕的視覺區域都能被點到
+export const BOSS_SCREEN = { x: 1, y: 3, w: 2, h: 2 } as const;

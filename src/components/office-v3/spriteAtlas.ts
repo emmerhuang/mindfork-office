@@ -1,47 +1,107 @@
 export interface SpriteFrame { sx: number; sy: number; sw: number; sh: number; }
 
 // ────────────────────────────────────────────────────────────
-// PixelLab characters: individual sprite sheets (192x48, 4 directions)
-// Layout: south(0) | east(48) | north(96) | west(144), each 48x48
+// PixelLab characters: individual sprite sheets (512x128, 4 directions)
+// Layout: south(0) | east(128) | north(256) | west(384), each 128x128
 // ────────────────────────────────────────────────────────────
 
-export const PIXELLAB_CHARACTERS = new Set(["boss", "secretary", "sherlock", "lego"]);
+export const PIXELLAB_CHARACTERS = new Set(["boss", "secretary", "sherlock", "lego", "vault", "forge", "lens", "waffles"]);
 
-export interface PixelLabFrame { sx: number; sy: number; sw: 48; sh: 48; }
+export interface PixelLabFrame { sx: number; sy: number; sw: 128; sh: 128; }
 
 export const PIXELLAB_DIRS: Record<string, PixelLabFrame> = {
-  south: { sx: 0,   sy: 0, sw: 48, sh: 48 },
-  east:  { sx: 48,  sy: 0, sw: 48, sh: 48 },
-  north: { sx: 96,  sy: 0, sw: 48, sh: 48 },
-  west:  { sx: 144, sy: 0, sw: 48, sh: 48 },
+  south: { sx: 0,   sy: 0, sw: 128, sh: 128 },
+  east:  { sx: 128, sy: 0, sw: 128, sh: 128 },
+  north: { sx: 256, sy: 0, sw: 128, sh: 128 },
+  west:  { sx: 384, sy: 0, sw: 128, sh: 128 },
 };
+
+// ────────────────────────────────────────────────────────────
+// Walking animation: {name}-walk.png (2048x128)
+// Layout: [south_f0..f3 | east_f0..f3 | north_f0..f3 | west_f0..f3]
+// 16 frames, each 128x128
+// ────────────────────────────────────────────────────────────
+
+const WALK_DIRS = ["south", "east", "north", "west"] as const;
+const WALK_FRAMES_PER_DIR = 4;
+
+/** Get walking animation frame for a given direction and frame index */
+export function getWalkFrame(dir: string, frameIdx: number): PixelLabFrame {
+  const dirIndex = WALK_DIRS.indexOf(dir as typeof WALK_DIRS[number]);
+  const di = dirIndex >= 0 ? dirIndex : 0; // fallback to south
+  const fi = frameIdx % WALK_FRAMES_PER_DIR;
+  return {
+    sx: (di * WALK_FRAMES_PER_DIR + fi) * 128,
+    sy: 0,
+    sw: 128,
+    sh: 128,
+  };
+}
+
+// ────────────────────────────────────────────────────────────
+// Celebrate animation: {name}-celebrate.png (Nx128, south only)
+// Variable frame counts per character
+// ────────────────────────────────────────────────────────────
+
+export const CELEBRATE_FRAME_COUNTS: Record<string, number> = {
+  boss: 6,
+  secretary: 7,
+  sherlock: 10,
+  lego: 7,
+  vault: 9,
+  forge: 6,
+  lens: 8,
+  waffles: 8,
+};
+
+/** Get celebrate animation frame (south only) */
+export function getCelebrateFrame(charId: string, frameIdx: number): PixelLabFrame {
+  const total = CELEBRATE_FRAME_COUNTS[charId] ?? 6;
+  const fi = frameIdx % total;
+  return { sx: fi * 128, sy: 0, sw: 128, sh: 128 };
+}
+
+// ────────────────────────────────────────────────────────────
+// Waffles extra animations
+// ────────────────────────────────────────────────────────────
+
+// bark: waffles-bark.png (3072x128, 6f x 4dirs)
+// idle: waffles-idle.png (4096x128, 8f x 4dirs)
+// running: waffles-running.png (2048x128, 4f x 4dirs)
+// sneaking: waffles-sneaking.png (4096x128, 8f x 4dirs)
+
+export type WafflesAnim = "walk" | "bark" | "idle" | "running" | "sneaking";
+
+const WAFFLES_ANIM_FRAMES: Record<WafflesAnim, number> = {
+  walk: 4,
+  bark: 6,
+  idle: 8,
+  running: 4,
+  sneaking: 8,
+};
+
+/** Get Waffles animation frame for any of its special animations */
+export function getWafflesFrame(anim: WafflesAnim, dir: string, frameIdx: number): PixelLabFrame {
+  const dirIndex = WALK_DIRS.indexOf(dir as typeof WALK_DIRS[number]);
+  const di = dirIndex >= 0 ? dirIndex : 0;
+  const framesPerDir = WAFFLES_ANIM_FRAMES[anim];
+  const fi = frameIdx % framesPerDir;
+  return {
+    sx: (di * framesPerDir + fi) * 128,
+    sy: 0,
+    sw: 128,
+    sh: 128,
+  };
+}
+
+export { WAFFLES_ANIM_FRAMES };
 
 // ────────────────────────────────────────────────────────────
 // Gemini characters: atlas from characters-clean.png (unchanged)
 // ────────────────────────────────────────────────────────────
 
-export const CHAR_SPRITES: Record<string, Record<string, SpriteFrame[]>> = {
-  vault: {
-    front: [{ sx: 62, sy: 879, sw: 115, sh: 202 }, { sx: 296, sy: 879, sw: 115, sh: 202 }, { sx: 525, sy: 879, sw: 115, sh: 202 }],
-    walk: [{ sx: 71, sy: 1100, sw: 101, sh: 203 }, { sx: 306, sy: 1100, sw: 99, sh: 203 }, { sx: 530, sy: 1100, sw: 99, sh: 203 }],
-    back: [{ sx: 62, sy: 1318, sw: 114, sh: 207 }, { sx: 298, sy: 1318, sw: 113, sh: 207 }, { sx: 525, sy: 1318, sw: 114, sh: 207 }],
-  },
-  forge: {
-    front: [{ sx: 751, sy: 878, sw: 133, sh: 203 }, { sx: 1000, sy: 878, sw: 116, sh: 203 }, { sx: 1230, sy: 878, sw: 131, sh: 203 }],
-    walk: [{ sx: 746, sy: 1100, sw: 133, sh: 204 }, { sx: 998, sy: 1100, sw: 114, sh: 204 }, { sx: 1236, sy: 1100, sw: 131, sh: 204 }],
-    back: [{ sx: 772, sy: 1318, sw: 110, sh: 207 }, { sx: 997, sy: 1318, sw: 116, sh: 207 }, { sx: 1232, sy: 1318, sw: 114, sh: 207 }],
-  },
-  lens: {
-    front: [{ sx: 1470, sy: 878, sw: 115, sh: 203 }, { sx: 1705, sy: 878, sw: 112, sh: 203 }, { sx: 1935, sy: 878, sw: 115, sh: 203 }],
-    walk: [{ sx: 1444, sy: 1100, sw: 136, sh: 204 }, { sx: 1706, sy: 1100, sw: 111, sh: 204 }, { sx: 1939, sy: 1100, sw: 136, sh: 204 }],
-    back: [{ sx: 1470, sy: 1317, sw: 115, sh: 208 }, { sx: 1708, sy: 1317, sw: 107, sh: 208 }, { sx: 1936, sy: 1317, sw: 111, sh: 208 }],
-  },
-  waffles: {
-    front: [{ sx: 2177, sy: 899, sw: 112, sh: 170 }, { sx: 2414, sy: 899, sw: 107, sh: 170 }, { sx: 2615, sy: 899, sw: 156, sh: 170 }],
-    walk: [{ sx: 2167, sy: 1116, sw: 155, sh: 182 }, { sx: 2399, sy: 1116, sw: 141, sh: 182 }, { sx: 2615, sy: 1116, sw: 153, sh: 182 }],
-    back: [{ sx: 2177, sy: 1340, sw: 112, sh: 184 }, { sx: 2387, sy: 1340, sw: 143, sh: 184 }, { sx: 2641, sy: 1340, sw: 108, sh: 184 }],
-  },
-};
+// Gemini atlas entries — kept for any characters not yet migrated to PixelLab
+export const CHAR_SPRITES: Record<string, Record<string, SpriteFrame[]>> = {};
 
 // ────────────────────────────────────────────────────────────
 // Tileset sprite atlas (tileset-clean.png 2816x1536, 2x resolution)
