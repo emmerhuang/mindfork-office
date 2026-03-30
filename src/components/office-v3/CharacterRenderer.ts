@@ -157,10 +157,23 @@ function drawStatusIcon(ctx: CanvasRenderingContext2D, cx: number, topY: number,
   if (!icon) return;
   // sin 波浮動：振幅 6px，週期 ~2 秒（60 ticks @ 30fps）
   const floatY = Math.sin((tick / 60) * Math.PI * 2) * 6;
+  const iconY = topY - 12 + floatY;
   ctx.save();
   ctx.font = "56px serif";
   ctx.textAlign = "center";
-  ctx.fillText(icon, cx, topY - 12 + floatY);
+
+  // 齒輪 ⚙️：旋轉動畫 + 金色 glow
+  if (icon === "\u2699\uFE0F" || icon === "\u2699") {
+    ctx.shadowColor = "gold";
+    ctx.shadowBlur = 15;
+    ctx.translate(cx, iconY);
+    ctx.rotate((tick / 90) * Math.PI * 2); // 每 3 秒轉一圈
+    ctx.fillText(icon, 0, 0);
+    ctx.shadowBlur = 0;
+  } else {
+    ctx.fillText(icon, cx, iconY);
+  }
+
   ctx.restore();
 }
 

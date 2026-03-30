@@ -45,7 +45,7 @@ function drawWalls(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null) 
       TILE_SPRITES.wall_window,    TILE_SPRITES.wall_bookshelf,
     ];
     for (let i = 0; i < segs.length; i++)
-      drawSprite(ctx, img, segs[i], i * segW, 0, segW, wallH);
+      drawSprite(ctx, img, segs[i], i * segW, 0, segW + 1, wallH);
   } else {
     ctx.fillStyle = "#2D5A27";
     ctx.fillRect(0, 0, CANVAS_W, wallH);

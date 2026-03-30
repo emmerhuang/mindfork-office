@@ -155,7 +155,7 @@ export class OfficeEngine {
           const status = this.memberStatuses[hit.def.id];
           osText = status?.task || "\u5F85\u547D\u4E2D";
         }
-        const info = `${hit.def.role}\nOS: ${osText}`;
+        const info = osText;
         this.dlg.show(hit.def.id, info, hit.px, hit.py, this.tick);
       }
       this.opts.onCharacterClick?.(hit.def.id);

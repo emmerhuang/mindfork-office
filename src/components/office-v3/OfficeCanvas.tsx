@@ -170,20 +170,20 @@ export default function OfficeCanvas({ memberStatuses, memberOs, onCharacterClic
       {showBulletin && (
         <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10"
              onClick={() => setShowBulletin(false)}>
-          <div className="bg-white border-2 border-gray-300 rounded-lg p-5 max-w-sm w-full mx-4"
+          <div className="bg-gray-900 border border-cyan-500 rounded-lg p-5 max-w-sm w-full mx-4"
                onClick={(e) => e.stopPropagation()}
                style={{ imageRendering: "auto" }}>
-            <h2 className="text-lg font-bold text-gray-800 mb-3 text-center">
-              已完成專案
+            <h2 className="text-lg font-bold text-cyan-400 mb-3 text-center font-mono tracking-wider">
+              HALL OF FAME
             </h2>
-            <ul className="space-y-1.5 text-sm text-gray-700">
+            <ul className="space-y-1.5 text-sm text-gray-300">
               <li>• rotarysso — 扶輪 SSO 單一登入</li>
               <li>• rotaryCredit — 信用稽核預警系統</li>
               <li>• account-rotary — 扶輪會計系統</li>
               <li>• WaHoot — 互動問答系統</li>
               <li>• MindFork Office — 團隊辦公室</li>
             </ul>
-            <button className="mt-4 w-full py-1.5 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300"
+            <button className="mt-4 w-full py-1.5 bg-gray-800 text-gray-400 rounded text-xs hover:bg-gray-700"
                     onClick={() => setShowBulletin(false)}>
               關閉
             </button>

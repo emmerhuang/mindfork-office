@@ -448,13 +448,13 @@ export class CharacterManager {
   private updateStatusIcon(c: CharInstance) {
     switch (c.state) {
       case "working":
-        c.statusIcon = "\u2328\uFE0F"; // ⌨️
+        c.statusIcon = "\u2699\uFE0F"; // ⚙️
         break;
       case "celebrating":
         c.statusIcon = "\uD83C\uDF89"; // 🎉
         break;
       case "walking":
-        c.statusIcon = "\uD83D\uDC63"; // 👣
+        c.statusIcon = ""; // 走路有動畫，不需額外圖示
         break;
       case "idle_home": {
         // 每 60 秒（1800 ticks @ 30fps）隨機 on/off 咖啡
