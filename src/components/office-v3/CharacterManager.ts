@@ -185,7 +185,11 @@ export class CharacterManager {
   getDialogue(charId: string): string {
     // 優先用動態 OS（最新一筆），否則用固定台詞池
     const osList = this.dynamicOs[charId];
-    if (osList && osList.length > 0) return osList[0];
+    if (osList && osList.length > 0) {
+      const item = osList[0];
+      // 防護：即使上游誤傳 object 也不 crash
+      return typeof item === "string" ? item : String(item);
+    }
     const def = CHARACTERS.find(c => c.id === charId);
     if (def && def.dialogues.length) return def.dialogues[rand(0, def.dialogues.length - 1)];
     return "";

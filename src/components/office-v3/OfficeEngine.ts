@@ -104,7 +104,8 @@ export class OfficeEngine {
         let osText: string;
         if (osList && osList.length > 0) {
           const idx = this.memberOsIndex[hit.def.id] ?? 0;
-          osText = osList[idx].text;
+          const entry = osList[idx];
+          osText = entry?.text ?? String(entry);
           // 下次點擊顯示下一筆（循環）
           this.memberOsIndex[hit.def.id] = (idx + 1) % osList.length;
         } else {
