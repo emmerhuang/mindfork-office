@@ -10,6 +10,7 @@ export interface CharInstance {
   targetPx: number; targetPy: number;
   homePx: number; homePy: number;
   state: CharState;
+  facing: string;                   // "south" | "north" | "east" | "west"
   animFrame: number;
   animTimer: number;
   dialogueTimer: number;
@@ -66,6 +67,7 @@ export class CharacterManager {
         def, ...h, targetPx: h.px, targetPy: h.py,
         homePx: h.px, homePy: h.py,
         state: initState,
+        facing: "south",
         animFrame: 0, animTimer: 0,
         dialogueTimer: rand(DLG_MIN, DLG_MAX),
         walkTimer: rand(WALK_MIN, WALK_MAX),
@@ -115,36 +117,54 @@ export class CharacterManager {
   }
 
   private move(c: CharInstance) {
-    const dx = c.targetPx - c.px, dy = c.targetPy - c.py;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist <= SPEED) {
-      c.px = c.targetPx; c.py = c.targetPy;
+    const dx = c.targetPx - c.px;
+    const dy = c.targetPy - c.py;
+
+    // L 型路徑：先水平移動，再垂直移動
+    if (Math.abs(dx) > SPEED) {
+      // 水平移動階段
+      let nx = c.px + Math.sign(dx) * SPEED;
+      const ny = c.py;
+      c.facing = dx > 0 ? "east" : "west";
+
+      // 碰撞避免
+      const adjusted = this.avoidCollision(c, nx, ny);
+      c.px = adjusted.x;
+      c.py = adjusted.y;
+    } else if (Math.abs(dy) > SPEED) {
+      // 垂直移動階段（snap x 到目標）
+      const nx = c.targetPx;
+      let ny = c.py + Math.sign(dy) * SPEED;
+      c.facing = dy > 0 ? "south" : "north";
+
+      // 碰撞避免
+      const adjusted = this.avoidCollision(c, nx, ny);
+      c.px = adjusted.x;
+      c.py = adjusted.y;
+    } else {
+      // 到達目標
+      c.px = c.targetPx;
+      c.py = c.targetPy;
       if (c.goingHome) { c.state = "idle_home"; c.goingHome = false; }
       else { c.state = "idle_away"; c.walkTimer = rand(STAY_MIN, STAY_MAX); }
-    } else {
-      let nx = c.px + (dx / dist) * SPEED;
-      let ny = c.py + (dy / dist) * SPEED;
-
-      // 碰撞避免：跟其他角色保持距離
-      const MIN_DIST = 50;
-      for (const other of this.characters) {
-        if (other === c) continue;
-        const odx = nx - other.px, ody = ny - other.py;
-        const od = Math.sqrt(odx * odx + ody * ody);
-        if (od < MIN_DIST && od > 0) {
-          // 推開
-          nx += (odx / od) * (MIN_DIST - od) * 0.5;
-          ny += (ody / od) * (MIN_DIST - od) * 0.5;
-        }
-      }
-
-      // 邊界限制
-      nx = Math.max(30, Math.min(CANVAS_W - 30, nx));
-      ny = Math.max(TILE * 3 + 20, Math.min(CANVAS_H - 20, ny));
-
-      c.px = nx;
-      c.py = ny;
     }
+  }
+
+  private avoidCollision(c: CharInstance, nx: number, ny: number) {
+    const MIN_DIST = 50;
+    for (const other of this.characters) {
+      if (other === c) continue;
+      const odx = nx - other.px, ody = ny - other.py;
+      const od = Math.sqrt(odx * odx + ody * ody);
+      if (od < MIN_DIST && od > 0) {
+        nx += (odx / od) * (MIN_DIST - od) * 0.5;
+        ny += (ody / od) * (MIN_DIST - od) * 0.5;
+      }
+    }
+    // 邊界限制
+    nx = Math.max(30, Math.min(CANVAS_W - 30, nx));
+    ny = Math.max(TILE * 3 + 20, Math.min(CANVAS_H - 20, ny));
+    return { x: nx, y: ny };
   }
 
   findCharacterAt(px: number, py: number): CharInstance | null {

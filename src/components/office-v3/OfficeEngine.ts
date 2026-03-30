@@ -169,10 +169,7 @@ export class OfficeEngine {
     // 角色（依 y 排序模擬深度）
     const sorted = [...this.mgr.characters].sort((a, b) => a.py - b.py);
     for (const c of sorted) {
-      // walking 時用 target 差值算面朝方向，否則朝南
-      const dx = c.state === "walking" ? c.targetPx - c.px : 0;
-      const dy = c.state === "walking" ? c.targetPy - c.py : 0;
-      drawCharacter(ctx, c.px, c.py, c.def, c.animFrame, this.charImg, this.pixelLabImgs, dx, dy);
+      drawCharacter(ctx, c.px, c.py, c.def, c.animFrame, this.charImg, this.pixelLabImgs, c.facing);
     }
 
     // 名字標籤
@@ -181,8 +178,8 @@ export class OfficeEngine {
     ctx.textAlign = "left";
     for (const c of this.mgr.characters) {
       const label = c.def.nameCn || c.def.name;
-      const nx = c.px + 30;
-      const ny = c.py + 30;
+      const nx = c.px + 50;
+      const ny = c.py + 60;
       const tw = ctx.measureText(label).width;
       // 底色背景
       ctx.fillStyle = "rgba(0,0,0,0.55)";

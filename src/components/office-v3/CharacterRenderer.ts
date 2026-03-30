@@ -4,19 +4,12 @@ import { CharacterDef } from "./officeData";
 import { CHAR_SPRITES, PIXELLAB_CHARACTERS, PIXELLAB_DIRS } from "./spriteAtlas";
 
 // 顯示大小（依 sprite 來源分開，避免變形）
-// Gemini atlas sprites ~115x203 → 78x132（等比）
-const GEMINI_W = 78, GEMINI_H = 132;
-// PixelLab sprites 48x48 → 96x96（等比 2x，保持正方形）
-const PIXELLAB_W = 96, PIXELLAB_H = 96;
-// Waffles (Gemini atlas ~112x170)
-const DOG_W = 78, DOG_H = 120;
-
-/** 從移動向量推算面朝方向 */
-function facingDir(dx: number, dy: number): string {
-  if (dx === 0 && dy === 0) return "south";
-  if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? "east" : "west";
-  return dy > 0 ? "south" : "north";
-}
+// Gemini atlas sprites ~115x203 → 117x198（等比 x1.5）
+const GEMINI_W = 117, GEMINI_H = 198;
+// PixelLab sprites 48x48 → 144x144（等比 3x，保持正方形）
+const PIXELLAB_W = 144, PIXELLAB_H = 144;
+// Waffles (Gemini atlas ~112x170 → 117x180)
+const DOG_W = 117, DOG_H = 180;
 
 export function drawCharacter(
   ctx: CanvasRenderingContext2D,
@@ -25,8 +18,7 @@ export function drawCharacter(
   animFrame: number,
   geminiAtlasImg: HTMLImageElement | null,
   pixelLabImgs: Record<string, HTMLImageElement>,
-  dx: number = 0,
-  dy: number = 0,
+  facing: string = "south",
 ) {
   const isWaff = !!char.isWaffles;
   const isPixelLab = PIXELLAB_CHARACTERS.has(char.id);
@@ -50,8 +42,7 @@ export function drawCharacter(
   if (isPixelLab) {
     const img = pixelLabImgs[char.id];
     if (img) {
-      const dir = facingDir(dx, dy);
-      const f = PIXELLAB_DIRS[dir];
+      const f = PIXELLAB_DIRS[facing] ?? PIXELLAB_DIRS["south"];
       ctx.drawImage(img, f.sx, f.sy, f.sw, f.sh, cx - dw / 2, footY - dh, dw, dh);
       return;
     }
