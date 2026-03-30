@@ -80,7 +80,12 @@ export async function GET() {
       ? JSON.parse(map.metrics)
       : { ...FALLBACK_METRICS };
     const members = map.members ? JSON.parse(map.members) : {};
-    const memberOs = map.member_os ? JSON.parse(map.member_os) : {};
+    const rawOs = map.member_os ? JSON.parse(map.member_os) : {};
+    // Normalize: legacy format has string values, new format has string[] values
+    const memberOs: Record<string, string[]> = {};
+    for (const [k, v] of Object.entries(rawOs)) {
+      memberOs[k] = Array.isArray(v) ? v as string[] : [v as string];
+    }
 
     return NextResponse.json({ members, metrics, memberOs });
   } catch (err) {

@@ -54,7 +54,7 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [members, setMembers] = useState<Record<string, MemberStatus>>({});
-  const [memberOs, setMemberOs] = useState<Record<string, string>>({});
+  const [memberOs, setMemberOs] = useState<Record<string, string[]>>({});
   const [lastFetch, setLastFetch] = useState("");
 
   useEffect(() => {
@@ -195,10 +195,10 @@ export default function Dashboard() {
                     {ms?.task && (
                       <p className="text-gray-400 text-sm truncate">{ms.task}</p>
                     )}
-                    {/* Inner OS */}
-                    {os && (
+                    {/* Inner OS (show latest) */}
+                    {os && os.length > 0 && (
                       <p className="text-amber-400/80 text-base mt-2 italic leading-snug">
-                        &ldquo;{os}&rdquo;
+                        &ldquo;{os[0]}&rdquo;
                       </p>
                     )}
                   </div>

@@ -98,10 +98,19 @@ export class OfficeEngine {
           if (++count > 8) { clearInterval(wag); hit.animTimer = origTick; }
         }, 100);
       } else {
-        // 顯示角色資訊 + 目前工作
-        const status = this.memberStatuses[hit.def.id];
-        const task = status?.task || "待命中";
-        const info = `${hit.def.nameCn}（${hit.def.role}）\n${task}`;
+        // 顯示角色資訊 + OS 輪播
+        const osList = this.memberOsData[hit.def.id];
+        let osText: string;
+        if (osList && osList.length > 0) {
+          const idx = this.memberOsIndex[hit.def.id] ?? 0;
+          osText = osList[idx];
+          // 下次點擊顯示下一筆（循環）
+          this.memberOsIndex[hit.def.id] = (idx + 1) % osList.length;
+        } else {
+          const status = this.memberStatuses[hit.def.id];
+          osText = status?.task || "待命中";
+        }
+        const info = `${hit.def.nameCn}（${hit.def.role}）\n"${osText}"`;
         this.dlg.show(hit.def.id, info, hit.px, hit.py, this.tick);
       }
       this.opts.onCharacterClick?.(hit.def.id);
@@ -139,13 +148,16 @@ export class OfficeEngine {
   }
 
   private memberStatuses: Record<string, { status: string; task: string }> = {};
+  private memberOsData: Record<string, string[]> = {};
+  private memberOsIndex: Record<string, number> = {};
 
   updateStatuses(data: Record<string, { status: string; task: string }>) {
     this.memberStatuses = data;
     this.mgr.updateStatuses(data);
   }
 
-  updateMemberOs(osData: Record<string, string>) {
+  updateMemberOs(osData: Record<string, string[]>) {
+    this.memberOsData = osData;
     this.mgr.updateOs(osData);
   }
 

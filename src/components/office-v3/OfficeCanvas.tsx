@@ -6,7 +6,7 @@ import { CANVAS_W, CANVAS_H } from "./officeData";
 
 interface Props {
   memberStatuses?: Record<string, { status: string; task: string }>;
-  memberOs?: Record<string, string>;
+  memberOs?: Record<string, string[]>;
   onCharacterClick?: (charId: string) => void;
   className?: string;
 }

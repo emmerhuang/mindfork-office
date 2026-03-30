@@ -176,15 +176,16 @@ export class CharacterManager {
     return best;
   }
 
-  private dynamicOs: Record<string, string> = {};
+  private dynamicOs: Record<string, string[]> = {};
 
-  updateOs(osData: Record<string, string>) {
+  updateOs(osData: Record<string, string[]>) {
     this.dynamicOs = osData;
   }
 
   getDialogue(charId: string): string {
-    // 優先用動態 OS，否則用固定台詞池
-    if (this.dynamicOs[charId]) return this.dynamicOs[charId];
+    // 優先用動態 OS（最新一筆），否則用固定台詞池
+    const osList = this.dynamicOs[charId];
+    if (osList && osList.length > 0) return osList[0];
     const def = CHARACTERS.find(c => c.id === charId);
     if (def && def.dialogues.length) return def.dialogues[rand(0, def.dialogues.length - 1)];
     return "";
