@@ -2,16 +2,16 @@
 
 import { CharacterDef } from "./officeData";
 import {
-  CHAR_SPRITES, PIXELLAB_CHARACTERS, PIXELLAB_DIRS,
-  getWalkFrame, getCelebrateFrame, getWafflesFrame,
+  CHAR_SPRITES, PIXELLAB_CHARACTERS, V2_FRAME_SIZE,
+  getIdleKey, getWalkKey, getCelebrateKey, getWafflesFrame,
   WafflesAnim,
 } from "./spriteAtlas";
 import type { CharState } from "./CharacterManager";
 
 // 顯示大小（依 sprite 來源分開，避免變形）
-// PixelLab sprites 128x128 → 216x216（等比 1.6875x）
+// V2 sprites 180x180 → 216x216（等比 1.2x）
 const PIXELLAB_W = 216, PIXELLAB_H = 216;
-// PixelLab Waffles（柯基稍小）
+// V2 Waffles（柯基稍小）
 const PIXELLAB_DOG_W = 180, PIXELLAB_DOG_H = 180;
 // Gemini atlas sprites — 原始 80x135 * 1.5
 const GEMINI_W = 120, GEMINI_H = 202;
@@ -37,9 +37,7 @@ export function drawCharacter(
   char: CharacterDef,
   opts: DrawCharOpts,
   geminiAtlasImg: HTMLImageElement | null,
-  pixelLabImgs: Record<string, HTMLImageElement>,
-  walkImgs: Record<string, HTMLImageElement>,
-  celebrateImgs: Record<string, HTMLImageElement>,
+  v2Imgs: Record<string, HTMLImageElement>,
   wafflesExtraImgs: Record<string, HTMLImageElement>,
 ) {
   const isWaff = !!char.isWaffles;
@@ -58,12 +56,14 @@ export function drawCharacter(
   ctx.ellipse(cx, footY - 2, dw / 2 - 4, 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
+  const sz = V2_FRAME_SIZE; // 180 — full size of each individual PNG
+
   // --- Celebrate animation ---
   if (opts.state === "celebrating" && isPixelLab) {
-    const celImg = celebrateImgs[char.id];
+    const celKey = getCelebrateKey(char.id, opts.celebrateFrame);
+    const celImg = v2Imgs[celKey];
     if (celImg) {
-      const f = getCelebrateFrame(char.id, opts.celebrateFrame);
-      ctx.drawImage(celImg, f.sx, f.sy, f.sw, f.sh, cx - dw / 2, footY - dh, dw, dh);
+      ctx.drawImage(celImg, 0, 0, sz, sz, cx - dw / 2, footY - dh, dw, dh);
       drawStatusIcon(ctx, cx, footY - dh, opts.statusIcon, opts.tick);
       return;
     }
@@ -71,7 +71,7 @@ export function drawCharacter(
 
   // --- Walking animation ---
   if (opts.state === "walking" && isPixelLab) {
-    // Waffles: choose from walk/running/sneaking
+    // Waffles: use old sprite sheet for walk/running/sneaking
     if (isWaff) {
       const extraImg = wafflesExtraImgs[opts.wafflesAnim];
       if (extraImg) {
@@ -81,11 +81,11 @@ export function drawCharacter(
         return;
       }
     }
-    // Human characters: walk sprite sheet
-    const walkImg = walkImgs[char.id];
+    // Human characters: v2 individual walk PNGs
+    const walkKey = getWalkKey(char.id, opts.facing, opts.animFrame);
+    const walkImg = v2Imgs[walkKey];
     if (walkImg) {
-      const f = getWalkFrame(opts.facing, opts.animFrame);
-      ctx.drawImage(walkImg, f.sx, f.sy, f.sw, f.sh, cx - dw / 2, footY - dh, dw, dh);
+      ctx.drawImage(walkImg, 0, 0, sz, sz, cx - dw / 2, footY - dh, dw, dh);
       drawStatusIcon(ctx, cx, footY - dh, opts.statusIcon, opts.tick);
       return;
     }
@@ -93,7 +93,7 @@ export function drawCharacter(
 
   // --- Idle / Working: static direction sprite ---
   if (isPixelLab) {
-    // Waffles idle animation
+    // Waffles idle animation (old sprite sheet)
     if (isWaff && (opts.state === "idle_home" || opts.state === "working")) {
       const idleImg = wafflesExtraImgs["idle"];
       if (idleImg) {
@@ -104,10 +104,11 @@ export function drawCharacter(
       }
     }
 
-    const img = pixelLabImgs[char.id];
+    // V2 idle: individual PNG per direction
+    const idleKey = getIdleKey(char.id, opts.facing);
+    const img = v2Imgs[idleKey];
     if (img) {
-      const f = PIXELLAB_DIRS[opts.facing] ?? PIXELLAB_DIRS["south"];
-      ctx.drawImage(img, f.sx, f.sy, f.sw, f.sh, cx - dw / 2, footY - dh, dw, dh);
+      ctx.drawImage(img, 0, 0, sz, sz, cx - dw / 2, footY - dh, dw, dh);
       drawStatusIcon(ctx, cx, footY - dh, opts.statusIcon, opts.tick);
       return;
     }

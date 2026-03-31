@@ -1,74 +1,63 @@
 export interface SpriteFrame { sx: number; sy: number; sw: number; sh: number; }
 
 // ────────────────────────────────────────────────────────────
-// PixelLab characters: individual sprite sheets (512x128, 4 directions)
-// Layout: south(0) | east(128) | north(256) | west(384), each 128x128
+// V2 individual PNG sprites (180x180 each)
+// Structure: /sprites/v2/{char}/{dir}.png, walk-{dir}-{frame}.png, celebrate-south-{frame}.png
 // ────────────────────────────────────────────────────────────
 
 export const PIXELLAB_CHARACTERS = new Set(["boss", "secretary", "sherlock", "lego", "vault", "forge", "lens", "waffles"]);
 
-export interface PixelLabFrame { sx: number; sy: number; sw: 128; sh: 128; }
+/** Frame size for v2 individual PNGs */
+export const V2_FRAME_SIZE = 180;
 
-export const PIXELLAB_DIRS: Record<string, PixelLabFrame> = {
-  south: { sx: 0,   sy: 0, sw: 128, sh: 128 },
-  east:  { sx: 128, sy: 0, sw: 128, sh: 128 },
-  north: { sx: 256, sy: 0, sw: 128, sh: 128 },
-  west:  { sx: 384, sy: 0, sw: 128, sh: 128 },
-};
-
-// ────────────────────────────────────────────────────────────
-// Walking animation: {name}-walk.png (2048x128)
-// Layout: [south_f0..f3 | east_f0..f3 | north_f0..f3 | west_f0..f3]
-// 16 frames, each 128x128
-// ────────────────────────────────────────────────────────────
-
-const WALK_DIRS = ["south", "east", "north", "west"] as const;
+/** Directions available */
+export const V2_DIRS = ["south", "east", "north", "west"] as const;
 const WALK_FRAMES_PER_DIR = 4;
 
-/** Get walking animation frame for a given direction and frame index */
-export function getWalkFrame(dir: string, frameIdx: number): PixelLabFrame {
-  const dirIndex = WALK_DIRS.indexOf(dir as typeof WALK_DIRS[number]);
-  const di = dirIndex >= 0 ? dirIndex : 0; // fallback to south
+// ── Image key helpers (return the key used in the image map) ──
+
+/** Get idle direction image key: "v2-{charId}-{dir}" */
+export function getIdleKey(charId: string, dir: string): string {
+  const d = V2_DIRS.includes(dir as typeof V2_DIRS[number]) ? dir : "south";
+  return `v2-${charId}-${d}`;
+}
+
+/** Get walk animation image key: "v2-{charId}-walk-{dir}-{frame}" */
+export function getWalkKey(charId: string, dir: string, frameIdx: number): string {
+  const d = V2_DIRS.includes(dir as typeof V2_DIRS[number]) ? dir : "south";
   const fi = frameIdx % WALK_FRAMES_PER_DIR;
-  return {
-    sx: (di * WALK_FRAMES_PER_DIR + fi) * 128,
-    sy: 0,
-    sw: 128,
-    sh: 128,
-  };
+  return `v2-${charId}-walk-${d}-${fi}`;
+}
+
+/** Get celebrate animation image key: "v2-{charId}-celebrate-{frame}" (south only) */
+export function getCelebrateKey(charId: string, frameIdx: number): string {
+  const total = CELEBRATE_FRAME_COUNTS[charId] ?? 4;
+  const fi = frameIdx % total;
+  return `v2-${charId}-celebrate-south-${fi}`;
 }
 
 // ────────────────────────────────────────────────────────────
-// Celebrate animation: {name}-celebrate.png (Nx128, south only)
-// Variable frame counts per character
+// Celebrate animation: 4 frames per character (south only)
 // ────────────────────────────────────────────────────────────
 
 export const CELEBRATE_FRAME_COUNTS: Record<string, number> = {
-  boss: 6,
-  secretary: 7,
-  sherlock: 10,
-  lego: 7,
-  vault: 9,
-  forge: 6,
-  lens: 8,
-  waffles: 8,
+  boss: 4,
+  secretary: 4,
+  sherlock: 4,
+  lego: 4,
+  vault: 4,
+  forge: 4,
+  lens: 4,
+  waffles: 4,
 };
 
-/** Get celebrate animation frame (south only) */
-export function getCelebrateFrame(charId: string, frameIdx: number): PixelLabFrame {
-  const total = CELEBRATE_FRAME_COUNTS[charId] ?? 6;
-  const fi = frameIdx % total;
-  return { sx: fi * 128, sy: 0, sw: 128, sh: 128 };
-}
-
 // ────────────────────────────────────────────────────────────
-// Waffles extra animations
-// ────────────────────────────────────────────────────────────
-
+// Waffles extra animations (still using old sprite sheet format)
 // bark: waffles-bark.png (3072x128, 6f x 4dirs)
 // idle: waffles-idle.png (4096x128, 8f x 4dirs)
 // running: waffles-running.png (2048x128, 4f x 4dirs)
 // sneaking: waffles-sneaking.png (4096x128, 8f x 4dirs)
+// ────────────────────────────────────────────────────────────
 
 export type WafflesAnim = "walk" | "bark" | "idle" | "running" | "sneaking";
 
@@ -80,9 +69,12 @@ const WAFFLES_ANIM_FRAMES: Record<WafflesAnim, number> = {
   sneaking: 8,
 };
 
-/** Get Waffles animation frame for any of its special animations */
+/** Legacy PixelLabFrame for Waffles extra animations (old sprite sheet format, 128x128) */
+export interface PixelLabFrame { sx: number; sy: number; sw: 128; sh: 128; }
+
+/** Get Waffles animation frame from old sprite sheet */
 export function getWafflesFrame(anim: WafflesAnim, dir: string, frameIdx: number): PixelLabFrame {
-  const dirIndex = WALK_DIRS.indexOf(dir as typeof WALK_DIRS[number]);
+  const dirIndex = V2_DIRS.indexOf(dir as typeof V2_DIRS[number]);
   const di = dirIndex >= 0 ? dirIndex : 0;
   const framesPerDir = WAFFLES_ANIM_FRAMES[anim];
   const fi = frameIdx % framesPerDir;

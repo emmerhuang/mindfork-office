@@ -6,7 +6,7 @@ import { renderStaticScene } from "./TileRenderer";
 import { drawCharacter } from "./CharacterRenderer";
 import { DialogueSystem } from "./DialogueSystem";
 import { CharacterManager } from "./CharacterManager";
-import { PIXELLAB_CHARACTERS, WAFFLES_ANIM_FRAMES, getWafflesFrame } from "./spriteAtlas";
+import { PIXELLAB_CHARACTERS, WAFFLES_ANIM_FRAMES, getWafflesFrame, V2_DIRS } from "./spriteAtlas";
 import type { OsEntry } from "./OfficeCanvas";
 import type { WafflesAnim } from "./spriteAtlas";
 
@@ -28,9 +28,8 @@ export class OfficeEngine {
   private opts: EngineOptions;
   private charImg: HTMLImageElement | null = null;
   private tileImg: HTMLImageElement | null = null;
-  private pixelLabImgs: Record<string, HTMLImageElement> = {};
-  private walkImgs: Record<string, HTMLImageElement> = {};
-  private celebrateImgs: Record<string, HTMLImageElement> = {};
+  /** Unified image map for all v2 individual PNGs (key: "v2-{char}-{dir}", "v2-{char}-walk-{dir}-{frame}", etc.) */
+  private v2Imgs: Record<string, HTMLImageElement> = {};
   private wafflesExtraImgs: Record<string, HTMLImageElement> = {};
   private tick = 0;
   private rafId: number | null = null;
@@ -173,32 +172,34 @@ export class OfficeEngine {
       ]);
     } catch { /* fallback to programmatic rendering */ }
 
-    // Load PixelLab idle direction sprite sheets
+    // Load v2 individual PNG sprites for all characters
     const plNames = Array.from(PIXELLAB_CHARACTERS);
-    const plResults = await Promise.allSettled(
-      plNames.map((n) => load(`/sprites/${n}-pixellab.png`))
-    );
-    for (let i = 0; i < plNames.length; i++) {
-      const r = plResults[i];
-      if (r.status === "fulfilled") this.pixelLabImgs[plNames[i]] = r.value;
+    const dirs = Array.from(V2_DIRS);
+    const v2Loads: Array<{ key: string; src: string }> = [];
+
+    for (const n of plNames) {
+      // Idle: 4 directions
+      for (const d of dirs) {
+        v2Loads.push({ key: `v2-${n}-${d}`, src: `/sprites/v2/${n}/${d}.png` });
+      }
+      // Walk: 4 directions x 4 frames
+      for (const d of dirs) {
+        for (let f = 0; f < 4; f++) {
+          v2Loads.push({ key: `v2-${n}-walk-${d}-${f}`, src: `/sprites/v2/${n}/walk-${d}-${f}.png` });
+        }
+      }
+      // Celebrate: south only, 4 frames
+      for (let f = 0; f < 4; f++) {
+        v2Loads.push({ key: `v2-${n}-celebrate-south-${f}`, src: `/sprites/v2/${n}/celebrate-south-${f}.png` });
+      }
     }
 
-    // Load walking sprite sheets
-    const walkResults = await Promise.allSettled(
-      plNames.map((n) => load(`/sprites/${n}-walk.png`))
+    const v2Results = await Promise.allSettled(
+      v2Loads.map((item) => load(item.src))
     );
-    for (let i = 0; i < plNames.length; i++) {
-      const r = walkResults[i];
-      if (r.status === "fulfilled") this.walkImgs[plNames[i]] = r.value;
-    }
-
-    // Load celebrate sprite sheets
-    const celResults = await Promise.allSettled(
-      plNames.map((n) => load(`/sprites/${n}-celebrate.png`))
-    );
-    for (let i = 0; i < plNames.length; i++) {
-      const r = celResults[i];
-      if (r.status === "fulfilled") this.celebrateImgs[plNames[i]] = r.value;
+    for (let i = 0; i < v2Loads.length; i++) {
+      const r = v2Results[i];
+      if (r.status === "fulfilled") this.v2Imgs[v2Loads[i].key] = r.value;
     }
 
     // Load Waffles extra animations
@@ -333,9 +334,7 @@ export class OfficeEngine {
           tick: this.tick,
         },
         this.charImg,
-        this.pixelLabImgs,
-        this.walkImgs,
-        this.celebrateImgs,
+        this.v2Imgs,
         this.wafflesExtraImgs,
       );
     }
