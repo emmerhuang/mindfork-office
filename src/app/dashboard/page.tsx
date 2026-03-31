@@ -82,13 +82,13 @@ export default function Dashboard() {
   return (
     <div className="h-screen w-screen bg-gray-950 text-white font-mono flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-800 shrink-0">
-        <h1 className="text-xl font-bold tracking-wider">
+      <div className="flex items-center justify-between px-2 sm:px-4 py-2 border-b border-gray-800 shrink-0">
+        <h1 className="text-lg sm:text-xl font-bold tracking-wider">
           <span className="text-blue-400">Mind</span>
           <span className="text-orange-400">Fork</span>
-          <span className="text-gray-500 ml-2 text-base">Dashboard</span>
+          <span className="text-gray-500 ml-2 text-sm sm:text-base">Dashboard</span>
         </h1>
-        <span className="text-gray-600 text-sm">{lastFetch || "--"}</span>
+        <span className="text-gray-600 text-xs sm:text-sm">{lastFetch || "--"}</span>
       </div>
 
       {!metrics ? (
@@ -96,16 +96,16 @@ export default function Dashboard() {
           <p className="text-gray-500 text-lg">Connecting to Turso...</p>
         </div>
       ) : (
-        <div className="flex flex-1 min-h-0 overflow-hidden">
+        <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-auto lg:overflow-hidden">
           {/* LEFT: System */}
-          <div className="w-[300px] shrink-0 border-r border-gray-800 p-4 flex flex-col gap-3 overflow-y-auto">
-            <div className="text-gray-500 text-sm uppercase tracking-wider">System</div>
+          <div className="w-full lg:w-[300px] shrink-0 border-b lg:border-b-0 lg:border-r border-gray-800 p-2 sm:p-4 flex flex-col gap-3 overflow-visible lg:overflow-y-auto">
+            <div className="text-gray-500 text-xs sm:text-sm uppercase tracking-wider">System</div>
 
             {/* Power */}
-            <div className="bg-gray-900 rounded-lg p-3">
+            <div className="bg-gray-900 rounded-lg p-2 sm:p-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-400 text-base">POWER</span>
-                <span className="text-2xl font-bold" style={{ color: powerColor }}>
+                <span className="text-gray-400 text-sm sm:text-base">POWER</span>
+                <span className="text-xl sm:text-2xl font-bold" style={{ color: powerColor }}>
                   {power !== null ? `${power}%` : "--"}
                 </span>
               </div>
@@ -164,22 +164,20 @@ export default function Dashboard() {
           </div>
 
           {/* RIGHT: Team */}
-          <div className="flex-1 p-4 overflow-y-auto">
-            <div className="text-gray-500 text-sm uppercase tracking-wider mb-3">Team Members</div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="flex-1 p-2 sm:p-4 overflow-visible lg:overflow-y-auto">
+            <div className="text-gray-500 text-xs sm:text-sm uppercase tracking-wider mb-3">Team Members</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
               {TEAM.map(m => {
                 const ms = members[m.id];
                 const st = ms ? STATUS_MAP[ms.status] ?? { label: ms.status, color: "#6b7280" } : null;
                 const os = memberOs[m.id];
                 return (
                   <div key={m.id} className="bg-gray-900 border border-gray-800 rounded-lg p-2.5">
-                    {/* Avatar — 70% of original (90x90) */}
+                    {/* Avatar — responsive: 70px mobile, 90px desktop */}
                     <div className="flex justify-center mb-1.5">
                       <div
-                        className="rounded-lg"
+                        className="rounded-lg w-[70px] h-[70px] sm:w-[80px] sm:h-[80px] md:w-[90px] md:h-[90px]"
                         style={{
-                          width: 90,
-                          height: 90,
                           backgroundImage: `url(/sprites/${m.id}-pixellab.png)`,
                           backgroundPosition: "0 0",
                           backgroundSize: "400% 100%",
@@ -192,7 +190,7 @@ export default function Dashboard() {
                       />
                     </div>
                     <div className="text-center mb-1.5">
-                      <p className="text-base font-bold">{m.role} {m.name}</p>
+                      <p className="text-sm sm:text-base font-bold">{m.role} {m.name}</p>
                     </div>
                     {/* Status */}
                     {st ? (
@@ -214,7 +212,7 @@ export default function Dashboard() {
                           const timeStr = entry.at ? entry.at.replace(/^\d{4}-\d{2}-\d{2}\s*/, "") : "";
                           const taskStr = entry.task || "";
                           return (
-                            <div key={i} className="text-sm leading-snug">
+                            <div key={i} className="text-xs sm:text-sm leading-snug">
                               <span className="text-amber-400/80 italic">&ldquo;{entry.text}&rdquo;</span>
                               {(timeStr || taskStr) && (
                                 <span className="text-gray-500 ml-1">

@@ -205,6 +205,7 @@ function pickWafflesWalkAnim(): WafflesAnim {
 export class CharacterManager {
   characters: CharInstance[];
   private onDialogue: (id: string, text: string) => void;
+  private currentTick = 0;
 
   constructor(onDialogue: (id: string, text: string) => void) {
     this.onDialogue = onDialogue;
@@ -233,12 +234,13 @@ export class CharacterManager {
   }
 
   update(tick: number) {
+    this.currentTick = tick;
     for (const c of this.characters) this.step(c, tick);
   }
 
   private step(c: CharInstance, _tick: number) {
     // Update status icon
-    this.updateStatusIcon(c);
+    this.updateStatusIcon(c, _tick);
 
     // Celebrate state has its own anim timer
     if (c.state === "celebrating") {
@@ -425,6 +427,8 @@ export class CharacterManager {
     }
     c.path = [];
     c.pathIndex = 0;
+    // 立即更新 statusIcon，避免到達那一 tick 渲染空白
+    this.updateStatusIcon(c, this.currentTick);
   }
 
   /** Trigger celebrate animation for a character */
@@ -444,10 +448,11 @@ export class CharacterManager {
   // idle icon assignment — 固定在進入 idle 時隨機選一次，站定期間不切換
   private idleIcons: Record<string, string> = {};
 
-  private updateStatusIcon(c: CharInstance) {
+  private updateStatusIcon(c: CharInstance, tick: number) {
     switch (c.state) {
       case "working":
-        c.statusIcon = "\u2699\uFE0F"; // ⚙️
+        // 每 30 ticks（1 秒 @30fps）交替 🔥 和 ⚡
+        c.statusIcon = (Math.floor(tick / 30) % 2 === 0) ? "\uD83D\uDD25" : "\u26A1";
         break;
       case "celebrating":
         c.statusIcon = "\uD83C\uDF89"; // 🎉
@@ -457,19 +462,12 @@ export class CharacterManager {
         // 清除 idle icon 快取，下次 idle 重新選
         delete this.idleIcons[c.def.id];
         break;
-      case "idle_home": {
-        // 固定顯示 ☕ 或 💭，進入狀態時隨機選一次
-        if (!this.idleIcons[c.def.id]) {
-          this.idleIcons[c.def.id] = Math.random() < 0.5 ? "\u2615" : "\uD83D\uDCAD"; // ☕ or 💭
-        }
-        c.statusIcon = this.idleIcons[c.def.id];
+      case "idle_home":
+        c.statusIcon = "\u2615"; // ☕
         break;
-      }
-      case "idle_away": {
-        // 固定顯示 💭
+      case "idle_away":
         c.statusIcon = "\uD83D\uDCAD"; // 💭
         break;
-      }
       default:
         c.statusIcon = "";
     }

@@ -151,92 +151,20 @@ export function drawWafflesBark(
   return true;
 }
 
-// ── Hand-drawn gear icon (Canvas Path2D) ──────────────────
-
-function drawGearIcon(
-  ctx: CanvasRenderingContext2D,
-  x: number, y: number,
-  size: number,
-  color: string,
-  alpha: number,
-  rotationAngle: number,
-) {
-  const teeth = 8;
-  const outerR = size / 2;
-  const innerR = outerR * 0.62;
-  const toothH = outerR - innerR;
-
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(rotationAngle);
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = color;
-  ctx.shadowColor = "rgba(220,50,50,0.4)";
-  ctx.shadowBlur = 10;
-
-  // Draw gear teeth + body
-  ctx.beginPath();
-  for (let i = 0; i < teeth; i++) {
-    const a0 = (i / teeth) * Math.PI * 2;
-    const a1 = ((i + 0.35) / teeth) * Math.PI * 2;
-    const a2 = ((i + 0.65) / teeth) * Math.PI * 2;
-    const a3 = ((i + 1) / teeth) * Math.PI * 2;
-    // Inner arc start
-    ctx.lineTo(Math.cos(a0) * innerR, Math.sin(a0) * innerR);
-    // Tooth rise
-    ctx.lineTo(Math.cos(a1) * (innerR + toothH), Math.sin(a1) * (innerR + toothH));
-    // Tooth top
-    ctx.lineTo(Math.cos(a2) * (innerR + toothH), Math.sin(a2) * (innerR + toothH));
-    // Tooth fall
-    ctx.lineTo(Math.cos(a3) * innerR, Math.sin(a3) * innerR);
-  }
-  ctx.closePath();
-  ctx.fill();
-
-  // Center hole
-  ctx.shadowBlur = 0;
-  ctx.globalCompositeOperation = "destination-out";
-  ctx.beginPath();
-  ctx.arc(0, 0, innerR * 0.35, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalCompositeOperation = "source-over";
-
-  ctx.restore();
-}
-
 // ── Status icon (emoji above head) ──────────────────────────
 
 function drawStatusIcon(ctx: CanvasRenderingContext2D, cx: number, topY: number, icon: string, tick: number) {
   if (!icon) return;
-  // sin 波浮動：振幅 6px，週期 ~2 秒（60 ticks @ 30fps）
-  const floatY = Math.sin((tick / 60) * Math.PI * 2) * 6;
-  const iconY = topY - 12 + floatY;
   ctx.save();
-
-  // 齒輪 ⚙️：手繪紅色齒輪，50% 透明，旋轉
-  if (icon === "\u2699\uFE0F" || icon === "\u2699") {
-    const angle = (tick / 90) * Math.PI * 2; // 每 3 秒轉一圈
-    drawGearIcon(ctx, cx, iconY, 48, "rgba(220,50,50,1)", 0.5, angle);
-    ctx.restore();
-    return;
-  }
-
-  // 休息圖示（☕ 💭）：sin 波閃爍 alpha 0.3~0.8，週期 ~3 秒
-  if (icon === "\u2615" || icon === "\uD83D\uDCAD") {
-    const blinkAlpha = 0.3 + 0.5 * (0.5 + 0.5 * Math.sin((tick / 45) * Math.PI));
-    ctx.globalAlpha = blinkAlpha;
-    ctx.font = "56px serif";
-    ctx.textAlign = "center";
-    ctx.fillText(icon, cx, iconY);
-    ctx.restore();
-    return;
-  }
-
-  // 其他圖示（如 🎉）
-  ctx.font = "56px serif";
+  ctx.font = "56px 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(icon, cx, iconY);
-
+  ctx.textBaseline = "bottom";
+  ctx.fillStyle = "#000000";
+  ctx.shadowColor = "transparent";
+  ctx.shadowBlur = 0;
+  ctx.globalAlpha = 1.0;
+  const bounce = Math.abs(Math.sin((tick / 24) * Math.PI)) * 5;
+  ctx.fillText(icon, cx, topY - 2 - bounce);
   ctx.restore();
 }
 
