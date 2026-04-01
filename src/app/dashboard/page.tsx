@@ -173,17 +173,19 @@ export default function Dashboard() {
                 const os = memberOs[m.id];
                 return (
                   <div key={m.id} className="bg-gray-900 border border-gray-800 rounded-lg p-2.5">
-                    {/* Avatar — raw PixelLab PNG, original size */}
-                    <div className="flex justify-center mb-1.5">
+                    {/* Header: Avatar left + Name right */}
+                    <div className="flex items-center gap-2 mb-1.5">
                       <img
                         src={`/sprites/${m.id}-pixellab.png`}
                         alt={m.name}
                         title={m.emoji}
+                        className="w-[80px] h-[80px]"
                         style={{ imageRendering: "pixelated" }}
                       />
-                    </div>
-                    <div className="text-center mb-1.5">
-                      <p className="text-sm sm:text-base font-bold">{m.role} {m.name}</p>
+                      <div>
+                        <p className="text-xs sm:text-sm text-gray-400">{m.role}</p>
+                        <p className="text-sm sm:text-base font-bold">{m.name}</p>
+                      </div>
                     </div>
                     {/* Status */}
                     {st ? (
