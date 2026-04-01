@@ -198,8 +198,9 @@ function buildWalkableMap(): boolean[][] {
   // Block projector screen (row 15, cols 8-10)
   map[15][8] = false; map[15][9] = false; map[15][10] = false;
 
-  // Block plant tile (col 5, row 4)
+  // Block plant tiles (col 5-6, row 4)
   map[4][5] = false;
+  map[4][6] = false;
 
   // Bulletin board on wall: clickable area (row 2, cols 4-7) — not blocking but marked
   // (Wall is already blocked, this is just for click detection in engine)

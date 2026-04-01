@@ -100,18 +100,21 @@ function drawDesks(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null) 
 // ── 盆栽 ──────────────────────────────────────────────────
 
 function drawPlant(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null) {
-  const px = tx(5);
-  const py = ty(4);
-  if (img) {
-    const s = TILE_SPRITES.plant_tall;
-    const dw = TILE * 0.9;
-    const dh = Math.round(dw * (s.sh / s.sw));
-    drawSprite(ctx, img, s, px + (TILE - dw) / 2, py + TILE - dh, dw, dh);
-  } else {
-    ctx.fillStyle = "#C0714A";
-    ctx.fillRect(px + 20, py + 40, 24, 24);
-    ctx.fillStyle = "#2E8B57";
-    ctx.beginPath(); ctx.ellipse(px + 32, py + 30, 16, 22, 0, 0, Math.PI * 2); ctx.fill();
+  const positions = [{ x: 5, y: 4 }, { x: 6, y: 4 }];
+  for (const pos of positions) {
+    const px = tx(pos.x);
+    const py = ty(pos.y);
+    if (img) {
+      const s = TILE_SPRITES.plant_tall;
+      const dw = TILE * 0.9;
+      const dh = Math.round(dw * (s.sh / s.sw));
+      drawSprite(ctx, img, s, px + (TILE - dw) / 2, py + TILE - dh, dw, dh);
+    } else {
+      ctx.fillStyle = "#C0714A";
+      ctx.fillRect(px + 20, py + 40, 24, 24);
+      ctx.fillStyle = "#2E8B57";
+      ctx.beginPath(); ctx.ellipse(px + 32, py + 30, 16, 22, 0, 0, Math.PI * 2); ctx.fill();
+    }
   }
 }
 
