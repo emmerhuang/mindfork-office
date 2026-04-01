@@ -2,9 +2,9 @@
 
 export const TILE = 64;
 export const CANVAS_W = 768;   // 12 cols * 64
-export const CANVAS_H = 1280;  // 20 rows * 64
+export const CANVAS_H = 1408;  // 22 rows * 64
 export const COLS = 12;
-export const ROWS = 20;
+export const ROWS = 22;
 export const TARGET_FPS = 30;
 
 // ── 角色 ──────────────────────────────────────────────────
@@ -134,9 +134,9 @@ export const CHARACTERS: CharacterDef[] = [
 
 export const ROOMS = {
   wall:        { x: 0, y: 0,  w: 12, h: 3 },
-  work:        { x: 0, y: 3,  w: 12, h: 12 },
-  tearoom:     { x: 0, y: 15, w: 6,  h: 5, dest: { x: 3, y: 17 } },
-  meetingRoom: { x: 6, y: 15, w: 6,  h: 5, dest: { x: 9, y: 17 } },
+  work:        { x: 0, y: 3,  w: 12, h: 14 },
+  tearoom:     { x: 0, y: 17, w: 6,  h: 5, dest: { x: 3, y: 19 } },
+  meetingRoom: { x: 6, y: 17, w: 6,  h: 5, dest: { x: 9, y: 19 } },
 } as const;
 
 // ── Walkable tile map (true = walkable) ────────────────────
@@ -153,7 +153,7 @@ function buildWalkableMap(): boolean[][] {
       if (r < 3) {
         // Wall area — blocked
         map[r][c] = false;
-      } else if (r >= 3 && r < 15) {
+      } else if (r >= 3 && r < 17) {
         // Work area — default walkable
         map[r][c] = true;
       } else {
@@ -176,27 +176,24 @@ function buildWalkableMap(): boolean[][] {
     }
   }
 
-  // Block tearoom equipment — row 15 cols 0-2 (fridge, water cooler, coffee machine)
-  map[15][0] = false; map[15][1] = false; map[15][2] = false;
-  // Block tearoom snack shelf (row 15, col 5)
-  map[15][5] = false;
-  // Block tearoom table + chairs (rows 17-18, cols 1-3)
-  map[17][1] = false; map[17][2] = false; map[17][3] = false;
-  map[18][1] = false; map[18][2] = false;
-  // Block microwave (row 15, col 3)
-  map[15][3] = false;
-  // Block tearoom trash can (row 19, col 0)
-  map[19][0] = false;
+  // Block tearoom equipment — row 17 cols 0-2 (fridge, water cooler, coffee machine)
+  map[17][0] = false; map[17][1] = false; map[17][2] = false;
+  // Block tearoom snack shelf (row 17, col 5)
+  map[17][5] = false;
+  // Block tearoom table + chairs (rows 19-20, cols 1-3)
+  map[19][1] = false; map[19][2] = false; map[19][3] = false;
+  map[20][1] = false; map[20][2] = false;
+  // Block microwave (row 17, col 3)
+  map[17][3] = false;
+  // Block tearoom trash can (row 21, col 0)
+  map[21][0] = false;
 
-  // Block meeting table area (rows 16-18, cols 8-10)
-  map[16][8] = false; map[16][9] = false; map[16][10] = false;
-  map[17][8] = false; map[17][9] = false; map[17][10] = false;
+  // Block meeting table area (rows 18-20, cols 8-10)
   map[18][8] = false; map[18][9] = false; map[18][10] = false;
-  // Block meeting chairs (rows 16 & 18, cols 7 & 11)
-  map[16][7] = false; map[16][11] = false;
-  map[18][7] = false; map[18][11] = false;
-  // Block projector screen (row 15, cols 8-10)
-  map[15][8] = false; map[15][9] = false; map[15][10] = false;
+  map[19][8] = false; map[19][9] = false; map[19][10] = false;
+  map[20][8] = false; map[20][9] = false; map[20][10] = false;
+  // Block projector screen (row 17, cols 8-10)
+  map[17][8] = false; map[17][9] = false; map[17][10] = false;
 
   // Block plant tiles (col 5-6, row 4)
   map[4][5] = false;
