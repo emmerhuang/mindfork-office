@@ -8,13 +8,24 @@ const ty = (r: number) => r * TILE;
 
 // ── Map Object PNG 快取 ─────────────────────────────────
 const MAP_OBJ_NAMES = [
+  // 地板 tiles
+  "floor-blue", "floor-wood", "floor-purple",
+  // 牆面
+  "wall-bookshelf", "wall-window", "wall-whiteboard", "wall-clock",
+  // 桌子
+  "desk-monitor", "desk-laptop", "dog-bed",
+  // 茶水間
   "fridge", "water-cooler", "coffee-machine", "cafe-table",
-  "vending-machine", "conference-table", "projector-screen", "trash-can",
+  "vending-machine", "trash-can",
+  // 會議室
+  "conference-table", "projector-screen",
+  // Emotes
+  "emote-0", "emote-1", "emote-2", "emote-3", "emote-4", "emote-5",
 ] as const;
 
 const mapObjCache: Record<string, HTMLImageElement> = {};
 
-function getMapObj(name: string): HTMLImageElement | undefined {
+export function getMapObj(name: string): HTMLImageElement | undefined {
   return mapObjCache[name];
 }
 
@@ -41,17 +52,18 @@ function drawSprite(
 
 // ── 地板 ──────────────────────────────────────────────────
 
-function drawFloor(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null) {
-  const areas: Array<{ r: { x: number; y: number; w: number; h: number }; sprite: SpriteFrame | null; fallback: string }> = [
-    { r: ROOMS.work,        sprite: img ? TILE_SPRITES.floor_blue   : null, fallback: "#D4C9B8" },
-    { r: ROOMS.tearoom,     sprite: img ? TILE_SPRITES.floor_wood   : null, fallback: "#E8D5A3" },
-    { r: ROOMS.meetingRoom, sprite: img ? TILE_SPRITES.floor_purple : null, fallback: "#D4C8E0" },
+function drawFloor(ctx: CanvasRenderingContext2D, _img: HTMLImageElement | null) {
+  const areas: Array<{ r: { x: number; y: number; w: number; h: number }; pngName: string; fallback: string }> = [
+    { r: ROOMS.work,        pngName: "floor-blue",   fallback: "#D4C9B8" },
+    { r: ROOMS.tearoom,     pngName: "floor-wood",   fallback: "#E8D5A3" },
+    { r: ROOMS.meetingRoom, pngName: "floor-purple",  fallback: "#D4C8E0" },
   ];
-  for (const { r, sprite, fallback } of areas) {
-    if (sprite && img) {
+  for (const { r, pngName, fallback } of areas) {
+    const tileImg = getMapObj(pngName);
+    if (tileImg) {
       for (let row = r.y; row < r.y + r.h; row++)
         for (let col = r.x; col < r.x + r.w; col++)
-          drawSprite(ctx, img, sprite, tx(col), ty(row), TILE, TILE);
+          ctx.drawImage(tileImg, tx(col), ty(row), TILE, TILE);
     } else {
       ctx.fillStyle = fallback;
       ctx.fillRect(tx(r.x), ty(r.y), r.w * TILE, r.h * TILE);
@@ -61,18 +73,23 @@ function drawFloor(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null) 
 
 // ── 牆面 ──────────────────────────────────────────────────
 
-function drawWalls(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null) {
-  const wallH = TILE * 3;
-  const segW = TILE * 2;
-  if (img) {
-    const segs = [
-      TILE_SPRITES.wall_bookshelf, TILE_SPRITES.wall_window,
-      TILE_SPRITES.wall_whiteboard, TILE_SPRITES.wall_clock,
-      TILE_SPRITES.wall_window,    TILE_SPRITES.wall_bookshelf,
-    ];
-    for (let i = 0; i < segs.length; i++)
-      drawSprite(ctx, img, segs[i], i * segW, 0, segW + 1, wallH);
-  } else {
+function drawWalls(ctx: CanvasRenderingContext2D, _img: HTMLImageElement | null) {
+  const wallH = TILE * 3;  // 192px
+  const segW = TILE * 2;   // 128px
+  const segNames = [
+    "wall-bookshelf", "wall-window",
+    "wall-whiteboard", "wall-clock",
+    "wall-window", "wall-bookshelf",
+  ];
+  let anyDrawn = false;
+  for (let i = 0; i < segNames.length; i++) {
+    const wallImg = getMapObj(segNames[i]);
+    if (wallImg) {
+      ctx.drawImage(wallImg, i * segW, 0, segW + 1, wallH);
+      anyDrawn = true;
+    }
+  }
+  if (!anyDrawn) {
     ctx.fillStyle = "#2D5A27";
     ctx.fillRect(0, 0, CANVAS_W, wallH);
     ctx.fillStyle = "#3A7233";
@@ -85,18 +102,18 @@ function drawWalls(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null) 
 
 // ── 桌子 ──────────────────────────────────────────────────
 
-function drawDesks(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null) {
+function drawDesks(ctx: CanvasRenderingContext2D, _img: HTMLImageElement | null) {
   let idx = 0;
   for (const ch of CHARACTERS) {
     const x = tx(ch.deskTile.x);
     const y = ty(ch.deskTile.y);
-    const dw = TILE * 2;
-    const dh = TILE;
+    const dw = TILE * 2;  // 128px
+    const dh = TILE;      // 64px
 
     if (ch.isWaffles) {
-      if (img) {
-        drawSprite(ctx, img, TILE_SPRITES.dog_bed, x, y - 4, dw, dh + 4);
-        drawSprite(ctx, img, TILE_SPRITES.dog_bowl, x + dw + 2, y + 4, TILE * 0.8, TILE * 0.5);
+      const bedImg = getMapObj("dog-bed");
+      if (bedImg) {
+        ctx.drawImage(bedImg, x, y - 4, dw, dh + 4);
       } else {
         ctx.fillStyle = "#D68910";
         ctx.beginPath(); ctx.ellipse(x + dw / 2, y + dh / 2, dw / 2 - 2, dh / 2 - 2, 0, 0, Math.PI * 2); ctx.fill();
@@ -106,11 +123,10 @@ function drawDesks(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null) 
       continue;
     }
 
-    if (img) {
-      const key = idx % 2 === 0 ? "desk_monitor" : "desk_laptop";
-      const s = TILE_SPRITES[key];
-      const sh = Math.round(dw * (s.sh / s.sw));
-      drawSprite(ctx, img, s, x, y + dh - sh, dw, sh);
+    const pngName = idx % 2 === 0 ? "desk-monitor" : "desk-laptop";
+    const deskImg = getMapObj(pngName);
+    if (deskImg) {
+      ctx.drawImage(deskImg, x, y, dw, dh);
       idx++;
     } else {
       ctx.fillStyle = "#C4A87A";
@@ -150,42 +166,46 @@ function drawTearoom(ctx: CanvasRenderingContext2D) {
   const bx = tx(ROOMS.tearoom.x);
   const by = ty(ROOMS.tearoom.y);   // row 17
 
-  // ── Row 17（頂部靠牆）: fridge(64x64) + water-cooler(48x48) + coffee-machine(48x48) ──
-  // 三個家電底部對齊 row 17 底部（by + TILE）
-  const rowBottom = by + TILE;
-
+  // ── 冰箱 (128x192 原圖) → 縮放到 2cols x 3rows 靠左上 ──
   const fridge = getMapObj("fridge");
   if (fridge) {
-    ctx.drawImage(fridge, bx + 8, rowBottom - 64, 64, 64);
+    // 縮到約 80x120，靠左上角
+    ctx.drawImage(fridge, bx + 4, by + 4, 80, 120);
   }
+
+  // ── 飲水機 (96x160 原圖) → 冰箱右邊 ──
   const waterCooler = getMapObj("water-cooler");
   if (waterCooler) {
-    ctx.drawImage(waterCooler, bx + 80, rowBottom - 48, 48, 48);
+    ctx.drawImage(waterCooler, bx + 90, by + 12, 56, 96);
   }
+
+  // ── 咖啡機 (96x128 原圖) → 飲水機右邊 ──
   const coffee = getMapObj("coffee-machine");
   if (coffee) {
-    ctx.drawImage(coffee, bx + 136, rowBottom - 48, 48, 48);
+    ctx.drawImage(coffee, bx + 152, by + 20, 52, 72);
   }
 
-  // ── Row 17 右側 col 5：vending-machine(64x64) ──
+  // ── 零食機 (128x192 原圖) → 右側 col 4-5 ──
   const vending = getMapObj("vending-machine");
   if (vending) {
-    ctx.drawImage(vending, tx(5), rowBottom - 64, 64, 64);
+    ctx.drawImage(vending, tx(4) + 16, by + 4, 80, 120);
   }
 
-  // ── Rows 18-19（中間）: cafe-table(96x96) 居中 ──
+  // ── 咖啡桌 (192x160 原圖) → 中間偏下，rows 19-20 居中 ──
   const cafeTable = getMapObj("cafe-table");
   if (cafeTable) {
-    const areaW = ROOMS.tearoom.w * TILE;         // 6 * 64 = 384
-    const tableX = bx + (areaW - 96) / 2;
-    const tableY = ty(18) + (TILE * 2 - 96) / 2;  // 2 rows 居中
-    ctx.drawImage(cafeTable, tableX, tableY, 96, 96);
+    const areaW = ROOMS.tearoom.w * TILE;         // 384
+    const tableW = 128;
+    const tableH = 108;
+    const tableX = bx + (areaW - tableW) / 2;
+    const tableY = ty(19) + (TILE * 2 - tableH) / 2;
+    ctx.drawImage(cafeTable, tableX, tableY, tableW, tableH);
   }
 
-  // ── Row 21 左下角：trash-can(40x48) ──
+  // ── 垃圾桶 (80x96 原圖) → 左下角 row 21 ──
   const trashCan = getMapObj("trash-can");
   if (trashCan) {
-    ctx.drawImage(trashCan, bx + 8, ty(21) + (TILE - 48), 40, 48);
+    ctx.drawImage(trashCan, bx + 8, ty(21) + (TILE - 52), 44, 52);
   }
 }
 
@@ -198,19 +218,23 @@ function drawMeetingRoom(ctx: CanvasRenderingContext2D) {
   const rmY = ty(rm.y);    // row 17
   const areaW = rm.w * TILE; // 6 * 64 = 384
 
-  // ── Row 17（頂部）: projector-screen(128x128) 居中 ──
+  // ── 投影幕 (256x160 原圖) → 頂部居中，4 cols 寬 ──
   const projector = getMapObj("projector-screen");
   if (projector) {
-    const screenX = rmX + (areaW - 128) / 2;
-    ctx.drawImage(projector, screenX, rmY, 128, 128);
+    const screenW = TILE * 4;  // 256px
+    const screenH = 100;       // 按比例縮放
+    const screenX = rmX + (areaW - screenW) / 2;
+    ctx.drawImage(projector, screenX, rmY + 4, screenW, screenH);
   }
 
-  // ── Rows 18-20: conference-table(160x160) 居中 ──
+  // ── 會議桌 (320x256 原圖) → 中下居中，5 cols 寬 ──
   const confTable = getMapObj("conference-table");
   if (confTable) {
-    const tableX = rmX + (areaW - 160) / 2;
-    const tableY = ty(18) + (TILE * 3 - 160) / 2; // 3 rows 居中
-    ctx.drawImage(confTable, tableX, tableY, 160, 160);
+    const tableW = TILE * 5;  // 320px
+    const tableH = Math.round(tableW * (256 / 320)); // 256px 按比例
+    const tableX = rmX + (areaW - tableW) / 2;
+    const tableY = ty(18) + (TILE * 3 - tableH) / 2;
+    ctx.drawImage(confTable, tableX, tableY, tableW, tableH);
   }
 }
 

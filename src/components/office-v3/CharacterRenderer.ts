@@ -6,6 +6,7 @@ import {
   getIdleKey, getWalkKey, getCelebrateKey, getWafflesFrame,
   WafflesAnim,
 } from "./spriteAtlas";
+import { getMapObj } from "./TileRenderer";
 import type { CharState } from "./CharacterManager";
 
 // 顯示大小（依 sprite 來源分開，避免變形）
@@ -135,17 +136,26 @@ export function drawWafflesBark(
 
 function drawStatusIcon(ctx: CanvasRenderingContext2D, cx: number, topY: number, icon: string, tick: number) {
   if (!icon) return;
-  ctx.save();
-  ctx.font = "56px 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "bottom";
-  ctx.fillStyle = "#000000";
-  ctx.shadowColor = "transparent";
-  ctx.shadowBlur = 0;
-  ctx.globalAlpha = 1.0;
-  const bounce = Math.abs(Math.sin((tick / 24) * Math.PI)) * 5;
-  ctx.fillText(icon, cx, topY - 2 - bounce);
-  ctx.restore();
+  // icon is now "emote-N" key referencing a preloaded PNG
+  const emoteImg = getMapObj(icon);
+  if (emoteImg) {
+    const size = 32;
+    const bounce = Math.abs(Math.sin((tick / 24) * Math.PI)) * 5;
+    ctx.drawImage(emoteImg, cx - size / 2, topY - size - 4 - bounce, size, size);
+  } else {
+    // Fallback: render as text (for any non-emote icon strings)
+    ctx.save();
+    ctx.font = "56px 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillStyle = "#000000";
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1.0;
+    const bounce = Math.abs(Math.sin((tick / 24) * Math.PI)) * 5;
+    ctx.fillText(icon, cx, topY - 2 - bounce);
+    ctx.restore();
+  }
 }
 
 // ── Fallback rendering ──────────────────────────────────────

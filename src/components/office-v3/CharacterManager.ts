@@ -448,14 +448,15 @@ export class CharacterManager {
   // idle icon assignment — 固定在進入 idle 時隨機選一次，站定期間不切換
   private idleIcons: Record<string, string> = {};
 
-  private updateStatusIcon(c: CharInstance, tick: number) {
+  private updateStatusIcon(c: CharInstance, _tick: number) {
+    // emote-0: WORKING, emote-1: THINKING, emote-2: LOVE
+    // emote-3: SLEEPING, emote-4: COFFEE, emote-5: HAPPY
     switch (c.state) {
       case "working":
-        // 每 30 ticks（1 秒 @30fps）交替 🔥 和 ⚡
-        c.statusIcon = (Math.floor(tick / 30) % 2 === 0) ? "\uD83D\uDD25" : "\u26A1";
+        c.statusIcon = "emote-0";
         break;
       case "celebrating":
-        c.statusIcon = "\uD83C\uDF89"; // 🎉
+        c.statusIcon = "emote-5"; // HAPPY
         break;
       case "walking":
         c.statusIcon = ""; // 走路有動畫，不需額外圖示
@@ -463,10 +464,10 @@ export class CharacterManager {
         delete this.idleIcons[c.def.id];
         break;
       case "idle_home":
-        c.statusIcon = "\u2615"; // ☕
+        c.statusIcon = "emote-4"; // COFFEE
         break;
       case "idle_away":
-        c.statusIcon = "\uD83D\uDCAD"; // 💭
+        c.statusIcon = "emote-1"; // THINKING
         break;
       default:
         c.statusIcon = "";

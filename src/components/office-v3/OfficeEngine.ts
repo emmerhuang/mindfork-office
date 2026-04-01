@@ -2,7 +2,7 @@
 // 含公告欄/Boss 螢幕點擊事件、Waffles 點擊隨機動畫
 
 import { CANVAS_W, CANVAS_H, TILE, TARGET_FPS, BULLETIN_BOARD, BOSS_SCREEN } from "./officeData";
-import { renderStaticScene, preloadMapObjects } from "./TileRenderer";
+import { renderStaticScene, preloadMapObjects, getMapObj } from "./TileRenderer";
 import { drawCharacter } from "./CharacterRenderer";
 import { DialogueSystem } from "./DialogueSystem";
 import { CharacterManager } from "./CharacterManager";
@@ -319,11 +319,17 @@ export class OfficeEngine {
           // Draw status icon (don't skip during animation)
           if (c.statusIcon) {
             const floatY = Math.sin((this.tick / 60) * Math.PI * 2) * 6;
-            ctx.save();
-            ctx.font = "56px serif";
-            ctx.textAlign = "center";
-            ctx.fillText(c.statusIcon, c.px, footY - dh - 12 + floatY);
-            ctx.restore();
+            const emoteImg = getMapObj(c.statusIcon);
+            if (emoteImg) {
+              const sz = 32;
+              ctx.drawImage(emoteImg, c.px - sz / 2, footY - dh - sz - 4 + floatY, sz, sz);
+            } else {
+              ctx.save();
+              ctx.font = "56px serif";
+              ctx.textAlign = "center";
+              ctx.fillText(c.statusIcon, c.px, footY - dh - 12 + floatY);
+              ctx.restore();
+            }
           }
           continue;
         }
