@@ -347,15 +347,15 @@ export class OfficeEngine {
 
     // 名字標籤
     ctx.save();
-    ctx.font = "38px 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
+    ctx.font = "32px 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
     ctx.textAlign = "left";
     for (const c of this.mgr.characters) {
       const label = c.def.nameCn || c.def.name;
       const nx = c.px + 40;
-      const ny = c.py + 10;
+      const ny = c.py + 8;
       const tw = ctx.measureText(label).width;
       ctx.fillStyle = "rgba(0,0,0,0.55)";
-      ctx.fillRect(nx - 3, ny - 34, tw + 6, 42);
+      ctx.fillRect(nx - 3, ny - 28, tw + 6, 36);
       ctx.fillStyle = "#FFFFFF";
       ctx.fillText(label, nx, ny);
     }

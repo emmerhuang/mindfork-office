@@ -189,7 +189,7 @@ export default function Dashboard() {
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs sm:text-sm text-gray-400">{m.role}</p>
-                        <p className="text-xs sm:text-sm font-bold">{m.name}</p>
+                        <p className="text-base sm:text-lg font-bold">{m.name}</p>
                       </div>
                     </div>
                     {/* Status */}
