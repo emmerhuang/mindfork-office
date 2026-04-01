@@ -80,7 +80,7 @@ export default function Dashboard() {
   const powerColor = power === null ? "#999" : power > 60 ? "#22c55e" : power > 30 ? "#eab308" : "#ef4444";
 
   return (
-    <div className="h-screen w-screen bg-gray-800 text-white font-mono flex flex-col overflow-hidden">
+    <div className="h-screen w-screen bg-gray-950 text-white font-mono flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-2 sm:px-4 py-2 border-b border-gray-800 shrink-0">
         <h1 className="text-lg sm:text-xl font-bold tracking-wider">
@@ -109,7 +109,7 @@ export default function Dashboard() {
                   {power !== null ? `${power}%` : "--"}
                 </span>
               </div>
-              <div className="w-full h-3 bg-gray-800 rounded-full overflow-hidden">
+              <div className="w-full h-3 bg-gray-950 rounded-full overflow-hidden">
                 {power !== null && (
                   <div className="h-full rounded-full transition-all duration-700"
                     style={{ width: `${power}%`, background: powerColor }} />
@@ -142,7 +142,7 @@ export default function Dashboard() {
               <div className="bg-gray-900 rounded-lg p-3">
                 <span className="text-gray-400 text-sm">CONTEXT</span>
                 <div className="flex items-center gap-2 mt-2">
-                  <div className="flex-1 h-2.5 bg-gray-800 rounded-full overflow-hidden">
+                  <div className="flex-1 h-2.5 bg-gray-950 rounded-full overflow-hidden">
                     {metrics.contextUsedPercent !== undefined && metrics.contextUsedPercent >= 0 && (
                       <div className="h-full rounded-full" style={{
                         width: `${metrics.contextUsedPercent}%`,
@@ -172,14 +172,14 @@ export default function Dashboard() {
                 const st = ms ? STATUS_MAP[ms.status] ?? { label: ms.status, color: "#6b7280" } : null;
                 const os = memberOs[m.id];
                 return (
-                  <div key={m.id} className="bg-gray-900 border border-gray-800 rounded-lg p-2.5">
+                  <div key={m.id} className="bg-gray-800 border border-gray-700 rounded-lg p-2.5">
                     {/* Header: Avatar left + Name right */}
                     <div className="flex items-center gap-2 mb-1.5">
                       <img
                         src={`/sprites/${m.id}-pixellab.png`}
                         alt={m.name}
                         title={m.emoji}
-                        className="w-[80px] h-[80px]"
+                        className="shrink-0"
                         style={{ imageRendering: "pixelated" }}
                       />
                       <div>
