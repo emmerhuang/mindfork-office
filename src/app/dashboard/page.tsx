@@ -80,7 +80,7 @@ export default function Dashboard() {
   const powerColor = power === null ? "#999" : power > 60 ? "#22c55e" : power > 30 ? "#eab308" : "#ef4444";
 
   return (
-    <div className="h-screen w-screen bg-gray-950 text-white font-mono flex flex-col overflow-hidden">
+    <div className="h-screen w-screen bg-gray-800 text-white font-mono flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-2 sm:px-4 py-2 border-b border-gray-800 shrink-0">
         <h1 className="text-lg sm:text-xl font-bold tracking-wider">
