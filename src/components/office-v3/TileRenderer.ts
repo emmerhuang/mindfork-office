@@ -119,43 +119,39 @@ function drawPlant(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null) 
 
 function drawTearoom(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null) {
   const bx = tx(ROOMS.tearoom.x);
-  const by = ty(ROOMS.tearoom.y);
+  const by = ty(ROOMS.tearoom.y);   // row 15
 
   if (img) {
-    // ── Row 13: Fridge + Water Cooler + Coffee Machine + Microwave ──
-    const fridgeW = TILE * 1.5, fridgeH = TILE * 2.2;
-    const waterW = TILE * 0.7, waterH = TILE * 1.54;
-    const coffeeW = TILE * 0.6, coffeeH = TILE * 1.0;
+    // ── Row 15: Fridge + Water Cooler + Coffee Machine + Microwave ──
+    const fridgeW = TILE * 1.2, fridgeH = TILE * 1.6;
+    const waterW = TILE * 0.6, waterH = TILE * 1.2;
+    const coffeeW = TILE * 0.5, coffeeH = TILE * 0.8;
     let cx = bx + 4;
     drawSprite(ctx, img, TILE_SPRITES.fridge, cx, by + 4, fridgeW, fridgeH);
     cx += fridgeW + 4;
-    drawSprite(ctx, img, TILE_SPRITES.water_cooler, cx, by + 4 + (fridgeH - waterH) - 60, waterW, waterH);
+    drawSprite(ctx, img, TILE_SPRITES.water_cooler, cx, by + 4 + (fridgeH - waterH), waterW, waterH);
     cx += waterW + 4;
-    drawSprite(ctx, img, TILE_SPRITES.coffee_machine, cx, by + 4 + (fridgeH - coffeeH) - 60, coffeeW, coffeeH);
-    // Microwave on counter (col 3, row 13)
+    drawSprite(ctx, img, TILE_SPRITES.coffee_machine, cx, by + 4 + (fridgeH - coffeeH), coffeeW, coffeeH);
+    // Microwave (col 3, row 15)
     const mwW = TILE * 0.9, mwH = TILE * 0.7;
-    drawSprite(ctx, img, TILE_SPRITES.microwave, tx(3) + 4, by + TILE * 0.8, mwW, mwH);
+    drawSprite(ctx, img, TILE_SPRITES.microwave, tx(3) + 4, by + TILE * 0.3, mwW, mwH);
 
-    // ── Snack shelf (col 5, rows 14-15) — pixel art ──
-    drawSnackShelf(ctx, tx(5), ty(14));
+    // ── Snack shelf (col 5, row 15) — pixel art ──
+    drawSnackShelf(ctx, tx(5), by);
 
-    // ── Rest table + chairs (cols 1-3, rows 16-17) ──
-    drawTearoomTable(ctx, tx(1), ty(16));
+    // ── Rest table + chairs (cols 1-3, rows 17-18) ──
+    drawTearoomTable(ctx, tx(1), ty(17));
 
-    // ── Small plant (col 5, row 18) ──
-    const plantW = TILE * 0.7, plantH = TILE * 0.55;
-    drawSprite(ctx, img, TILE_SPRITES.plant_small, tx(5) + 12, ty(18) + TILE * 0.4, plantW, plantH);
-
-    // ── Trash can (col 0, row 18) — pixel art ──
-    drawTrashCan(ctx, tx(0) + 20, ty(18) + 10);
+    // ── Trash can (col 0, row 19) — pixel art ──
+    drawTrashCan(ctx, tx(0) + 20, ty(19) + 10);
   } else {
     // Fallback — simple colored rectangles
     ctx.fillStyle = "#C8D0D8";
-    ctx.fillRect(bx, by, TILE * 3, TILE * 2);
+    ctx.fillRect(bx, by, TILE * 4, TILE);
     ctx.fillStyle = "#B8946A";
-    ctx.fillRect(tx(1), ty(16), TILE * 3, TILE * 1.5);
+    ctx.fillRect(tx(1), ty(17), TILE * 3, TILE * 1.5);
     ctx.fillStyle = "#8B7355";
-    ctx.fillRect(tx(5), ty(14), TILE, TILE * 2);
+    ctx.fillRect(tx(5), by, TILE, TILE * 1.5);
   }
 }
 
@@ -275,21 +271,17 @@ function drawTrashCan(ctx: CanvasRenderingContext2D, x: number, y: number) {
 
 function drawMeetingRoom(ctx: CanvasRenderingContext2D, tileImg?: HTMLImageElement | null) {
   const rm = ROOMS.meetingRoom;
-  const rmX = tx(rm.x);
-  const rmY = ty(rm.y);
+  const rmY = ty(rm.y);   // row 15
 
-  // ── Projector screen (row 13, cols 8-10) ──
+  // ── Projector screen (row 15, cols 8-10) ──
   drawProjectorScreen(ctx, tx(8), rmY + 8);
 
-  // ── Whiteboard (row 14, cols 7-8) ──
-  drawWhiteboard(ctx, tx(7) - 4, ty(14) + 8);
-
   if (tileImg) {
-    // ── Conference table (long, rows 15-17, cols 8-10) ──
+    // ── Conference table (rows 16-18, cols 8-10) ──
     const s = TILE_SPRITES.conference_table;
     if (s) {
       const tableCx = tx(9);  // center of cols 8-10
-      const tableCy = ty(16); // center of rows 15-17
+      const tableCy = ty(17); // center of rows 16-18
       const dw = TILE * 3.0;
       const dh = TILE * 2.8;
       drawSprite(ctx, tileImg, s, tableCx - dw / 2, tableCy - dh / 2, dw, dh);
@@ -301,28 +293,28 @@ function drawMeetingRoom(ctx: CanvasRenderingContext2D, tileImg?: HTMLImageEleme
     const chairW = TILE * 0.65;
     const chairH = chairW * (chairL.sh / chairL.sw);
 
-    // Left side chairs (col 7, rows 15/16/17)
+    // Left side chairs (col 7, rows 16/17/18)
     for (let r = 0; r < 3; r++) {
-      const cy = ty(15 + r) + (TILE - chairH) / 2;
+      const cy = ty(16 + r) + (TILE - chairH) / 2;
       drawSprite(ctx, tileImg, chairL, tx(7) + 8, cy, chairW, chairH);
     }
-    // Right side chairs (col 11, rows 15/16/17)
+    // Right side chairs (col 11, rows 16/17/18)
     for (let r = 0; r < 3; r++) {
-      const cy = ty(15 + r) + (TILE - chairH) / 2;
+      const cy = ty(16 + r) + (TILE - chairH) / 2;
       drawSprite(ctx, tileImg, chairR, tx(11) - 4, cy, chairW, chairH);
     }
   } else {
     // Fallback — simple rectangles
     const tw = TILE * 3, th = TILE * 2.5;
     const tableCx = tx(9);
-    const tableCy = ty(16);
+    const tableCy = ty(17);
     ctx.fillStyle = "#B8946A";
     ctx.fillRect(tableCx - tw / 2, tableCy - th / 2, tw, th);
     // Chairs as small squares
     ctx.fillStyle = "#6B4226";
     for (let r = 0; r < 3; r++) {
-      ctx.fillRect(tx(7) + 8, ty(15 + r) + 20, 30, 30);
-      ctx.fillRect(tx(11), ty(15 + r) + 20, 30, 30);
+      ctx.fillRect(tx(7) + 8, ty(16 + r) + 20, 30, 30);
+      ctx.fillRect(tx(11), ty(16 + r) + 20, 30, 30);
     }
   }
 }
