@@ -2,7 +2,7 @@
 // 含公告欄/Boss 螢幕點擊事件、Waffles 點擊隨機動畫
 
 import { CANVAS_W, CANVAS_H, TILE, TARGET_FPS, BULLETIN_BOARD, BOSS_SCREEN } from "./officeData";
-import { renderStaticScene } from "./TileRenderer";
+import { renderStaticScene, preloadMapObjects } from "./TileRenderer";
 import { drawCharacter } from "./CharacterRenderer";
 import { DialogueSystem } from "./DialogueSystem";
 import { CharacterManager } from "./CharacterManager";
@@ -218,6 +218,7 @@ export class OfficeEngine {
       if (r.status === "fulfilled") this.wafflesExtraImgs[wafflesAnims[i]] = r.value;
     }
 
+    await preloadMapObjects();
     renderStaticScene(this.offCtx, this.tileImg);
   }
 
@@ -347,7 +348,7 @@ export class OfficeEngine {
 
     // 名字標籤
     ctx.save();
-    ctx.font = "12px 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
+    ctx.font = "20px 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
     ctx.textAlign = "left";
     for (const c of this.mgr.characters) {
       const label = c.def.nameCn || c.def.name;
@@ -355,7 +356,7 @@ export class OfficeEngine {
       const ny = c.py + 8;
       const tw = ctx.measureText(label).width;
       ctx.fillStyle = "rgba(0,0,0,0.55)";
-      ctx.fillRect(nx - 2, ny - 12, tw + 4, 16);
+      ctx.fillRect(nx - 3, ny - 18, tw + 6, 24);
       ctx.fillStyle = "#FFFFFF";
       ctx.fillText(label, nx, ny);
     }
