@@ -50,8 +50,14 @@ export class OfficeEngine {
 
   constructor(canvas: HTMLCanvasElement, opts: EngineOptions = {}) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext("2d")!;
     this.opts = opts;
+
+    // HiDPI / Retina support: scale canvas buffer by devicePixelRatio
+    const dpr = (typeof window !== "undefined" && window.devicePixelRatio) || 1;
+    canvas.width = CANVAS_W * dpr;
+    canvas.height = CANVAS_H * dpr;
+    this.ctx = canvas.getContext("2d")!;
+    this.ctx.scale(dpr, dpr);
 
     this.offscreen = document.createElement("canvas");
     this.offscreen.width = CANVAS_W;

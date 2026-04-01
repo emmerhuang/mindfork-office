@@ -120,53 +120,289 @@ function drawPlant(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null) 
 function drawTearoom(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null) {
   const bx = tx(ROOMS.tearoom.x);
   const by = ty(ROOMS.tearoom.y);
+
   if (img) {
-    // 冰箱（左上角），飲水機（緊接，小30%），咖啡機（緊接，小50%）
+    // ── Row 13: Fridge + Water Cooler + Coffee Machine + Microwave ──
     const fridgeW = TILE * 1.5, fridgeH = TILE * 2.2;
     const waterW = TILE * 0.7, waterH = TILE * 1.54;
     const coffeeW = TILE * 0.6, coffeeH = TILE * 1.0;
     let cx = bx + 4;
-    drawSprite(ctx, img, TILE_SPRITES.fridge,         cx, by + 4, fridgeW, fridgeH);
+    drawSprite(ctx, img, TILE_SPRITES.fridge, cx, by + 4, fridgeW, fridgeH);
     cx += fridgeW + 4;
-    drawSprite(ctx, img, TILE_SPRITES.water_cooler,    cx, by + 4 + (fridgeH - waterH) - 60, waterW, waterH);
+    drawSprite(ctx, img, TILE_SPRITES.water_cooler, cx, by + 4 + (fridgeH - waterH) - 60, waterW, waterH);
     cx += waterW + 4;
-    drawSprite(ctx, img, TILE_SPRITES.coffee_machine,  cx, by + 4 + (fridgeH - coffeeH) - 60, coffeeW, coffeeH);
+    drawSprite(ctx, img, TILE_SPRITES.coffee_machine, cx, by + 4 + (fridgeH - coffeeH) - 60, coffeeW, coffeeH);
+    // Microwave on counter (col 3, row 13)
+    const mwW = TILE * 0.9, mwH = TILE * 0.7;
+    drawSprite(ctx, img, TILE_SPRITES.microwave, tx(3) + 4, by + TILE * 0.8, mwW, mwH);
+
+    // ── Snack shelf (col 5, rows 14-15) — pixel art ──
+    drawSnackShelf(ctx, tx(5), ty(14));
+
+    // ── Rest table + chairs (cols 1-3, rows 16-17) ──
+    drawTearoomTable(ctx, tx(1), ty(16));
+
+    // ── Small plant (col 5, row 18) ──
+    const plantW = TILE * 0.7, plantH = TILE * 0.55;
+    drawSprite(ctx, img, TILE_SPRITES.plant_small, tx(5) + 12, ty(18) + TILE * 0.4, plantW, plantH);
+
+    // ── Trash can (col 0, row 18) — pixel art ──
+    drawTrashCan(ctx, tx(0) + 20, ty(18) + 10);
   } else {
+    // Fallback — simple colored rectangles
     ctx.fillStyle = "#C8D0D8";
-    ctx.fillRect(bx + TILE, by + TILE, TILE * 2, TILE * 2);
-    ctx.fillStyle = "#AACCDD";
-    ctx.fillRect(bx + TILE * 4, by + TILE, TILE, TILE * 2);
-    ctx.fillStyle = "#5A3A2A";
-    ctx.fillRect(bx + TILE * 6, by + TILE, TILE + 4, TILE + 8);
+    ctx.fillRect(bx, by, TILE * 3, TILE * 2);
+    ctx.fillStyle = "#B8946A";
+    ctx.fillRect(tx(1), ty(16), TILE * 3, TILE * 1.5);
+    ctx.fillStyle = "#8B7355";
+    ctx.fillRect(tx(5), ty(14), TILE, TILE * 2);
   }
+}
+
+// ── 茶水間小桌子（像素風圓桌 + 3 張椅子）──
+function drawTearoomTable(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  // Round table (center of 3-tile area)
+  const cx = x + TILE * 1.5;
+  const cy = y + TILE * 0.9;
+  // Table shadow
+  ctx.fillStyle = "rgba(0,0,0,0.1)";
+  ctx.beginPath();
+  ctx.ellipse(cx + 2, cy + 2, TILE * 0.7, TILE * 0.45, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Table top
+  ctx.fillStyle = "#C4A87A";
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, TILE * 0.7, TILE * 0.45, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#A0825A";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, TILE * 0.7, TILE * 0.45, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  // Cup on table
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(cx - 8, cy - 10, 16, 12);
+  ctx.fillStyle = "#8B4513";
+  ctx.fillRect(cx - 6, cy - 8, 12, 8);
+  // Handle
+  ctx.strokeStyle = "#FFFFFF";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx + 10, cy - 4, 5, -Math.PI * 0.5, Math.PI * 0.5);
+  ctx.stroke();
+
+  // 3 chairs around table (pixel style stools)
+  const chairs = [
+    { x: cx - TILE * 1.1, y: cy - 10 },   // left
+    { x: cx + TILE * 0.7, y: cy - 10 },    // right
+    { x: cx - 20, y: cy + TILE * 0.6 },    // bottom
+  ];
+  for (const ch of chairs) {
+    // Seat
+    ctx.fillStyle = "#6B8E6B";
+    ctx.fillRect(ch.x, ch.y, 36, 30);
+    ctx.fillStyle = "#5A7A5A";
+    ctx.fillRect(ch.x + 2, ch.y + 2, 32, 26);
+    // Legs (pixel dots)
+    ctx.fillStyle = "#4A4A4A";
+    ctx.fillRect(ch.x + 2, ch.y + 28, 4, 6);
+    ctx.fillRect(ch.x + 30, ch.y + 28, 4, 6);
+  }
+}
+
+// ── 零食架（像素風 bookshelf style）──
+function drawSnackShelf(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  const sw = TILE * 0.85, sh = TILE * 1.8;
+  // Shelf frame
+  ctx.fillStyle = "#8B6914";
+  ctx.fillRect(x + 8, y + 8, sw, sh);
+  ctx.fillStyle = "#A07828";
+  ctx.fillRect(x + 12, y + 12, sw - 8, sh - 8);
+
+  // Shelves (3 horizontal lines)
+  ctx.fillStyle = "#8B6914";
+  for (let i = 1; i <= 3; i++) {
+    ctx.fillRect(x + 10, y + 8 + (sh / 4) * i, sw - 4, 4);
+  }
+
+  // Snack items on each shelf (colored rectangles = boxes/bags)
+  const snacks = [
+    // Shelf 1
+    { sx: 16, sy: 16, w: 18, h: 30, color: "#E74C3C" },  // red box
+    { sx: 38, sy: 20, w: 16, h: 26, color: "#F39C12" },  // orange bag
+    { sx: 58, sy: 18, w: 14, h: 28, color: "#27AE60" },  // green box
+    // Shelf 2
+    { sx: 16, sy: 56, w: 20, h: 28, color: "#3498DB" },  // blue box
+    { sx: 40, sy: 60, w: 16, h: 24, color: "#9B59B6" },  // purple bag
+    { sx: 60, sy: 58, w: 14, h: 26, color: "#E67E22" },  // brown box
+    // Shelf 3
+    { sx: 18, sy: 98, w: 22, h: 26, color: "#1ABC9C" },  // teal
+    { sx: 44, sy: 100, w: 18, h: 24, color: "#E91E63" }, // pink
+    { sx: 66, sy: 98, w: 12, h: 26, color: "#FFC107" },  // yellow
+  ];
+  for (const s of snacks) {
+    ctx.fillStyle = s.color;
+    ctx.fillRect(x + s.sx, y + s.sy, s.w, s.h);
+    // Pixel highlight
+    ctx.fillStyle = "rgba(255,255,255,0.3)";
+    ctx.fillRect(x + s.sx + 2, y + s.sy + 2, s.w - 4, 3);
+  }
+}
+
+// ── 垃圾桶（像素風）──
+function drawTrashCan(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  const w = 48, h = 60;
+  // Body
+  ctx.fillStyle = "#7F8C8D";
+  ctx.fillRect(x, y + 12, w, h - 12);
+  // Slight taper (darker sides)
+  ctx.fillStyle = "#6C7A7A";
+  ctx.fillRect(x, y + 12, 4, h - 12);
+  ctx.fillRect(x + w - 4, y + 12, 4, h - 12);
+  // Lid
+  ctx.fillStyle = "#95A5A6";
+  ctx.fillRect(x - 4, y + 6, w + 8, 10);
+  // Lid handle
+  ctx.fillStyle = "#BDC3C7";
+  ctx.fillRect(x + w / 2 - 8, y, 16, 10);
+  // Horizontal lines (ridges)
+  ctx.fillStyle = "rgba(0,0,0,0.1)";
+  ctx.fillRect(x + 4, y + 30, w - 8, 2);
+  ctx.fillRect(x + 4, y + 46, w - 8, 2);
 }
 
 // ── 會議室 ────────────────────────────────────────────────
 
 function drawMeetingRoom(ctx: CanvasRenderingContext2D, tileImg?: HTMLImageElement | null) {
   const rm = ROOMS.meetingRoom;
-  const cx = tx(rm.x + rm.w / 2);
-  const cy = ty(rm.y + rm.h / 2);
+  const rmX = tx(rm.x);
+  const rmY = ty(rm.y);
+
+  // ── Projector screen (row 13, cols 8-10) ──
+  drawProjectorScreen(ctx, tx(8), rmY + 8);
+
+  // ── Whiteboard (row 14, cols 7-8) ──
+  drawWhiteboard(ctx, tx(7) - 4, ty(14) + 8);
 
   if (tileImg) {
-    // 會議桌 sprite
+    // ── Conference table (long, rows 15-17, cols 8-10) ──
     const s = TILE_SPRITES.conference_table;
     if (s) {
-      const dw = TILE * 2.8;
-      const dh = dw * (s.sh / s.sw);
-      drawSprite(ctx, tileImg, s, cx - dw / 2, cy - dh / 2 - TILE * 0.3 + 20, dw, dh);
+      const tableCx = tx(9);  // center of cols 8-10
+      const tableCy = ty(16); // center of rows 15-17
+      const dw = TILE * 3.0;
+      const dh = TILE * 2.8;
+      drawSprite(ctx, tileImg, s, tableCx - dw / 2, tableCy - dh / 2, dw, dh);
     }
-    // 白板已移至上方牆面（時鐘旁）
+
+    // ── Chairs around the table (6 chairs: 3 left, 3 right) ──
+    const chairL = TILE_SPRITES.meeting_chair_l;
+    const chairR = TILE_SPRITES.meeting_chair_r;
+    const chairW = TILE * 0.65;
+    const chairH = chairW * (chairL.sh / chairL.sw);
+
+    // Left side chairs (col 7, rows 15/16/17)
+    for (let r = 0; r < 3; r++) {
+      const cy = ty(15 + r) + (TILE - chairH) / 2;
+      drawSprite(ctx, tileImg, chairL, tx(7) + 8, cy, chairW, chairH);
+    }
+    // Right side chairs (col 11, rows 15/16/17)
+    for (let r = 0; r < 3; r++) {
+      const cy = ty(15 + r) + (TILE - chairH) / 2;
+      drawSprite(ctx, tileImg, chairR, tx(11) - 4, cy, chairW, chairH);
+    }
   } else {
-    // fallback
-    const tw = TILE * 3, th = TILE * 1.2;
+    // Fallback — simple rectangles
+    const tw = TILE * 3, th = TILE * 2.5;
+    const tableCx = tx(9);
+    const tableCy = ty(16);
     ctx.fillStyle = "#B8946A";
-    ctx.fillRect(cx - tw / 2, cy - th / 2, tw, th);
-    // 白板
-    const wbX = tx(rm.x + 1), wbY = ty(rm.y) + 2;
-    ctx.fillStyle = "#F5F5F5";
-    ctx.fillRect(wbX, wbY, TILE * 4, TILE * 0.7);
+    ctx.fillRect(tableCx - tw / 2, tableCy - th / 2, tw, th);
+    // Chairs as small squares
+    ctx.fillStyle = "#6B4226";
+    for (let r = 0; r < 3; r++) {
+      ctx.fillRect(tx(7) + 8, ty(15 + r) + 20, 30, 30);
+      ctx.fillRect(tx(11), ty(15 + r) + 20, 30, 30);
+    }
   }
+}
+
+// ── 投影布幕（像素風）──
+function drawProjectorScreen(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  const w = TILE * 3 - 16, h = TILE * 0.85;
+  // Mount bar
+  ctx.fillStyle = "#555";
+  ctx.fillRect(x + 8, y, w, 6);
+  // Screen
+  ctx.fillStyle = "#F0F0F0";
+  ctx.fillRect(x + 12, y + 6, w - 8, h);
+  ctx.strokeStyle = "#CCCCCC";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 12, y + 6, w - 8, h);
+  // Blue tint (presentation placeholder)
+  ctx.fillStyle = "rgba(52, 152, 219, 0.15)";
+  ctx.fillRect(x + 20, y + 14, w - 24, h - 16);
+  // Text lines (fake presentation content)
+  ctx.fillStyle = "rgba(0,0,0,0.12)";
+  for (let i = 0; i < 3; i++) {
+    ctx.fillRect(x + 30, y + 22 + i * 16, w - 50 - i * 20, 3);
+  }
+  // Pull cord
+  ctx.strokeStyle = "#999";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x + w / 2 + 8, y + 6 + h);
+  ctx.lineTo(x + w / 2 + 8, y + 6 + h + 20);
+  ctx.stroke();
+  // Cord handle
+  ctx.fillStyle = "#DDD";
+  ctx.beginPath();
+  ctx.arc(x + w / 2 + 8, y + 6 + h + 23, 4, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// ── 白板（像素風）──
+function drawWhiteboard(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  const w = TILE * 2, h = TILE * 0.8;
+  // Board
+  ctx.fillStyle = "#FAFAFA";
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = "#AAAAAA";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, w, h);
+  // Frame
+  ctx.strokeStyle = "#888";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(x - 1, y - 1, w + 2, h + 2);
+  // Marker tray
+  ctx.fillStyle = "#CCCCCC";
+  ctx.fillRect(x + 10, y + h - 2, w - 20, 8);
+  // Markers
+  const markers = ["#E74C3C", "#2ECC71", "#3498DB", "#000000"];
+  for (let i = 0; i < markers.length; i++) {
+    ctx.fillStyle = markers[i];
+    ctx.fillRect(x + 20 + i * 22, y + h, 16, 6);
+  }
+  // Scribbles on whiteboard
+  ctx.strokeStyle = "rgba(0,0,0,0.15)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x + 15, y + 15);
+  ctx.lineTo(x + w * 0.6, y + 15);
+  ctx.moveTo(x + 15, y + 28);
+  ctx.lineTo(x + w * 0.5, y + 28);
+  ctx.moveTo(x + 15, y + 41);
+  ctx.lineTo(x + w * 0.4, y + 41);
+  ctx.stroke();
+  // A small diagram (box + arrow)
+  ctx.strokeStyle = "rgba(52, 152, 219, 0.25)";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(x + w * 0.65, y + 12, 30, 20);
+  ctx.strokeRect(x + w * 0.65 + 45, y + 12, 30, 20);
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.65 + 30, y + 22);
+  ctx.lineTo(x + w * 0.65 + 45, y + 22);
+  ctx.stroke();
 }
 
 // ── 區域標籤 ──────────────────────────────────────────────
@@ -257,8 +493,8 @@ function drawLabels(ctx: CanvasRenderingContext2D) {
   ctx.save();
   ctx.font = "bold 11px 'Courier New', monospace";
   ctx.fillStyle = "rgba(0,0,0,0.25)";
-  ctx.fillText("茶水間", tx(3), ty(14));
-  ctx.fillText("會議室", tx(9), ty(14));
+  ctx.fillText("茶水間", tx(2), ty(19) + TILE * 0.7);
+  ctx.fillText("會議室", tx(8), ty(19) + TILE * 0.7);
   ctx.restore();
 
   // 房間分隔線

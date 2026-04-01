@@ -71,17 +71,7 @@ export function drawCharacter(
 
   // --- Walking animation ---
   if (opts.state === "walking" && isPixelLab) {
-    // Waffles: use old sprite sheet for walk/running/sneaking
-    if (isWaff) {
-      const extraImg = wafflesExtraImgs[opts.wafflesAnim];
-      if (extraImg) {
-        const f = getWafflesFrame(opts.wafflesAnim, opts.facing, opts.animFrame);
-        ctx.drawImage(extraImg, f.sx, f.sy, f.sw, f.sh, cx - dw / 2, footY - dh, dw, dh);
-        drawStatusIcon(ctx, cx, footY - dh, opts.statusIcon, opts.tick);
-        return;
-      }
-    }
-    // Human characters: v2 individual walk PNGs
+    // All v2 characters (including Waffles): use v2 individual walk PNGs
     const walkKey = getWalkKey(char.id, opts.facing, opts.animFrame);
     const walkImg = v2Imgs[walkKey];
     if (walkImg) {
@@ -93,18 +83,7 @@ export function drawCharacter(
 
   // --- Idle / Working: static direction sprite ---
   if (isPixelLab) {
-    // Waffles idle animation (old sprite sheet)
-    if (isWaff && (opts.state === "idle_home" || opts.state === "working")) {
-      const idleImg = wafflesExtraImgs["idle"];
-      if (idleImg) {
-        const f = getWafflesFrame("idle", opts.facing, opts.animFrame);
-        ctx.drawImage(idleImg, f.sx, f.sy, f.sw, f.sh, cx - dw / 2, footY - dh, dw, dh);
-        drawStatusIcon(ctx, cx, footY - dh, opts.statusIcon, opts.tick);
-        return;
-      }
-    }
-
-    // V2 idle: individual PNG per direction
+    // V2 idle: individual PNG per direction (all characters including Waffles)
     const idleKey = getIdleKey(char.id, opts.facing);
     const img = v2Imgs[idleKey];
     if (img) {

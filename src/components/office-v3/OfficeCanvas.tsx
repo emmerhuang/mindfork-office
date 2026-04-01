@@ -157,8 +157,6 @@ export default function OfficeCanvas({ memberStatuses, memberOs, onCharacterClic
     <div className="relative w-full h-full">
       <canvas
         ref={canvasRef}
-        width={CANVAS_W}
-        height={CANVAS_H}
         className={className}
         style={{
           display: "block", width: "100%", height: "100%",
