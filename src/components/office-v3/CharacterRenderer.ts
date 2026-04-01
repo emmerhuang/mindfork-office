@@ -139,9 +139,9 @@ function drawStatusIcon(ctx: CanvasRenderingContext2D, cx: number, topY: number,
   // icon is now "emote-N" key referencing a preloaded PNG
   const emoteImg = getMapObj(icon);
   if (emoteImg) {
-    const size = 32;
+    const size = 48;
     const bounce = Math.abs(Math.sin((tick / 24) * Math.PI)) * 5;
-    ctx.drawImage(emoteImg, cx - size / 2, topY - size - 4 - bounce, size, size);
+    ctx.drawImage(emoteImg, cx - size / 2, topY - size - 8 - bounce, size, size);
   } else {
     // Fallback: render as text (for any non-emote icon strings)
     ctx.save();

@@ -113,7 +113,7 @@ function drawDesks(ctx: CanvasRenderingContext2D, _img: HTMLImageElement | null)
     if (ch.isWaffles) {
       const bedImg = getMapObj("dog-bed");
       if (bedImg) {
-        ctx.drawImage(bedImg, x, y - 4, dw, dh + 4);
+        ctx.drawImage(bedImg, x, y, dw, dh);
       } else {
         ctx.fillStyle = "#D68910";
         ctx.beginPath(); ctx.ellipse(x + dw / 2, y + dh / 2, dw / 2 - 2, dh / 2 - 2, 0, 0, Math.PI * 2); ctx.fill();
@@ -166,46 +166,64 @@ function drawTearoom(ctx: CanvasRenderingContext2D) {
   const bx = tx(ROOMS.tearoom.x);
   const by = ty(ROOMS.tearoom.y);   // row 17
 
-  // ── 冰箱 (128x192 原圖) → 縮放到 2cols x 3rows 靠左上 ──
+  // ── 冰箱 (96×160 原圖) → 約 1.5 cols × 2.5 rows (96×160) ──
   const fridge = getMapObj("fridge");
   if (fridge) {
-    // 縮到約 80x120，靠左上角
-    ctx.drawImage(fridge, bx + 4, by + 4, 80, 120);
+    ctx.drawImage(fridge, bx + 2, by, 96, 160);
+  } else {
+    ctx.fillStyle = "#AABBCC";
+    ctx.fillRect(bx + 2, by, 96, 160);
   }
 
-  // ── 飲水機 (96x160 原圖) → 冰箱右邊 ──
+  // ── 飲水機 (64×128 原圖) → 約 1 col × 2 rows (64×128) ──
   const waterCooler = getMapObj("water-cooler");
   if (waterCooler) {
-    ctx.drawImage(waterCooler, bx + 90, by + 12, 56, 96);
+    ctx.drawImage(waterCooler, bx + 102, by + 16, 64, 128);
+  } else {
+    ctx.fillStyle = "#88AACC";
+    ctx.fillRect(bx + 102, by + 16, 64, 128);
   }
 
-  // ── 咖啡機 (96x128 原圖) → 飲水機右邊 ──
+  // ── 咖啡機 (64×96 原圖) → 約 1 col × 1.5 rows (64×96) ──
   const coffee = getMapObj("coffee-machine");
   if (coffee) {
-    ctx.drawImage(coffee, bx + 152, by + 20, 52, 72);
+    ctx.drawImage(coffee, bx + 170, by + 32, 64, 96);
+  } else {
+    ctx.fillStyle = "#996644";
+    ctx.fillRect(bx + 170, by + 32, 64, 96);
   }
 
-  // ── 零食機 (128x192 原圖) → 右側 col 4-5 ──
+  // ── 零食機 (96×160 原圖) → 約 1.5 cols × 2.5 rows (96×160)，col 4 起始 ──
   const vending = getMapObj("vending-machine");
   if (vending) {
-    ctx.drawImage(vending, tx(4) + 16, by + 4, 80, 120);
+    ctx.drawImage(vending, tx(4), by, 96, 160);
+  } else {
+    ctx.fillStyle = "#CC6644";
+    ctx.fillRect(tx(4), by, 96, 160);
   }
 
-  // ── 咖啡桌 (192x160 原圖) → 中間偏下，rows 19-20 居中 ──
+  // ── 咖啡桌 (128×96 原圖) → 約 2 cols × 1.5 rows (128×96)，居中在 rows 19-20 ──
   const cafeTable = getMapObj("cafe-table");
   if (cafeTable) {
     const areaW = ROOMS.tearoom.w * TILE;         // 384
     const tableW = 128;
-    const tableH = 108;
+    const tableH = 96;
     const tableX = bx + (areaW - tableW) / 2;
     const tableY = ty(19) + (TILE * 2 - tableH) / 2;
     ctx.drawImage(cafeTable, tableX, tableY, tableW, tableH);
+  } else {
+    ctx.fillStyle = "#AA8866";
+    const areaW = ROOMS.tearoom.w * TILE;
+    ctx.fillRect(bx + (areaW - 128) / 2, ty(19) + (TILE * 2 - 96) / 2, 128, 96);
   }
 
-  // ── 垃圾桶 (80x96 原圖) → 左下角 row 21 ──
+  // ── 垃圾桶 (64×80 原圖) → 約 0.8 col × 1 row (51×64)，左下角 row 21 ──
   const trashCan = getMapObj("trash-can");
   if (trashCan) {
-    ctx.drawImage(trashCan, bx + 8, ty(21) + (TILE - 52), 44, 52);
+    ctx.drawImage(trashCan, bx + 8, ty(21) + (TILE - 64), 51, 64);
+  } else {
+    ctx.fillStyle = "#666666";
+    ctx.fillRect(bx + 8, ty(21) + (TILE - 64), 51, 64);
   }
 }
 
@@ -218,23 +236,32 @@ function drawMeetingRoom(ctx: CanvasRenderingContext2D) {
   const rmY = ty(rm.y);    // row 17
   const areaW = rm.w * TILE; // 6 * 64 = 384
 
-  // ── 投影幕 (256x160 原圖) → 頂部居中，4 cols 寬 ──
+  // ── 投影幕 (192×96 原圖) → 頂部居中，3 cols 寬 (192px) ──
   const projector = getMapObj("projector-screen");
   if (projector) {
-    const screenW = TILE * 4;  // 256px
-    const screenH = 100;       // 按比例縮放
+    const screenW = TILE * 3;  // 192px
+    const screenH = 96;        // 原始高度
     const screenX = rmX + (areaW - screenW) / 2;
-    ctx.drawImage(projector, screenX, rmY + 4, screenW, screenH);
+    ctx.drawImage(projector, screenX, rmY + 2, screenW, screenH);
+  } else {
+    ctx.fillStyle = "#EEEEEE";
+    const screenW = TILE * 3;
+    ctx.fillRect(rmX + (areaW - screenW) / 2, rmY + 2, screenW, 96);
   }
 
-  // ── 會議桌 (320x256 原圖) → 中下居中，5 cols 寬 ──
+  // ── 會議桌 (192×128 原圖) → 居中，3 cols × 2 rows (192×128) ──
   const confTable = getMapObj("conference-table");
   if (confTable) {
-    const tableW = TILE * 5;  // 320px
-    const tableH = Math.round(tableW * (256 / 320)); // 256px 按比例
+    const tableW = TILE * 3;  // 192px
+    const tableH = TILE * 2;  // 128px
     const tableX = rmX + (areaW - tableW) / 2;
     const tableY = ty(18) + (TILE * 3 - tableH) / 2;
     ctx.drawImage(confTable, tableX, tableY, tableW, tableH);
+  } else {
+    ctx.fillStyle = "#8B6914";
+    const tableW = TILE * 3;
+    const tableH = TILE * 2;
+    ctx.fillRect(rmX + (areaW - tableW) / 2, ty(18) + (TILE * 3 - tableH) / 2, tableW, tableH);
   }
 }
 

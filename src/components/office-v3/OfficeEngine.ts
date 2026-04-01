@@ -321,8 +321,8 @@ export class OfficeEngine {
             const floatY = Math.sin((this.tick / 60) * Math.PI * 2) * 6;
             const emoteImg = getMapObj(c.statusIcon);
             if (emoteImg) {
-              const sz = 32;
-              ctx.drawImage(emoteImg, c.px - sz / 2, footY - dh - sz - 4 + floatY, sz, sz);
+              const sz = 48;
+              ctx.drawImage(emoteImg, c.px - sz / 2, footY - dh - sz - 8 + floatY, sz, sz);
             } else {
               ctx.save();
               ctx.font = "56px serif";
