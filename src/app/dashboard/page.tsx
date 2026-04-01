@@ -183,11 +183,13 @@ export default function Dashboard() {
                         style={{
                           imageRendering: "pixelated",
                           clipPath: "inset(0 20px 0 20px)",
+                          marginLeft: -20,
+                          marginRight: -20,
                         }}
                       />
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <p className="text-xs sm:text-sm text-gray-400">{m.role}</p>
-                        <p className="text-sm sm:text-base font-bold">{m.name}</p>
+                        <p className="text-base sm:text-lg font-bold">{m.name}</p>
                       </div>
                     </div>
                     {/* Status */}
