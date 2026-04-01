@@ -175,14 +175,16 @@ export default function Dashboard() {
                   <div key={m.id} className="bg-gray-700 border border-gray-600 rounded-lg p-2.5">
                     {/* Header: Avatar left + Name right */}
                     <div className="flex items-center gap-2 mb-1.5">
-                      <div className="shrink-0 overflow-hidden" style={{ width: 140, height: 180 }}>
-                        <img
-                          src={`/sprites/${m.id}-pixellab.png`}
-                          alt={m.name}
-                          title={m.emoji}
-                          style={{ imageRendering: "pixelated", marginLeft: -20 }}
-                        />
-                      </div>
+                      <img
+                        src={`/sprites/${m.id}-pixellab.png`}
+                        alt={m.name}
+                        title={m.emoji}
+                        className="shrink-0"
+                        style={{
+                          imageRendering: "pixelated",
+                          clipPath: "inset(0 20px 0 20px)",
+                        }}
+                      />
                       <div>
                         <p className="text-xs sm:text-sm text-gray-400">{m.role}</p>
                         <p className="text-sm sm:text-base font-bold">{m.name}</p>
