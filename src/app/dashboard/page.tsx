@@ -179,8 +179,8 @@ export default function Dashboard() {
                         className="rounded-lg w-[70px] h-[70px] sm:w-[80px] sm:h-[80px] md:w-[90px] md:h-[90px]"
                         style={{
                           backgroundImage: `url(/sprites/${m.id}-pixellab.png)`,
-                          backgroundPosition: "0 0",
-                          backgroundSize: "400% 100%",
+                          backgroundPosition: "center",
+                          backgroundSize: "contain",
                           backgroundRepeat: "no-repeat",
                           imageRendering: "pixelated",
                           border: `2px solid ${m.color}`,
