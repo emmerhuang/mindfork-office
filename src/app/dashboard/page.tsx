@@ -172,7 +172,7 @@ export default function Dashboard() {
                 const st = ms ? STATUS_MAP[ms.status] ?? { label: ms.status, color: "#6b7280" } : null;
                 const os = memberOs[m.id];
                 return (
-                  <div key={m.id} className="bg-gray-800 border border-gray-700 rounded-lg p-2.5">
+                  <div key={m.id} className="bg-gray-700 border border-gray-600 rounded-lg p-2.5">
                     {/* Header: Avatar left + Name right */}
                     <div className="flex items-center gap-2 mb-1.5">
                       <div className="shrink-0 overflow-hidden" style={{ width: 140, height: 180 }}>
