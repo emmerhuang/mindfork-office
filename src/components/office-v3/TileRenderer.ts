@@ -280,42 +280,18 @@ function drawMeetingRoom(ctx: CanvasRenderingContext2D, tileImg?: HTMLImageEleme
     // ── Conference table (rows 16-18, cols 8-10) ──
     const s = TILE_SPRITES.conference_table;
     if (s) {
-      const tableCx = tx(9);  // center of cols 8-10
-      const tableCy = ty(17); // center of rows 16-18
+      const tableCx = tx(9);
+      const tableCy = ty(17) + 40; // 下移 40px
       const dw = TILE * 3.0;
       const dh = TILE * 2.8;
       drawSprite(ctx, tileImg, s, tableCx - dw / 2, tableCy - dh / 2, dw, dh);
     }
-
-    // ── Chairs around the table (6 chairs: 3 left, 3 right) ──
-    const chairL = TILE_SPRITES.meeting_chair_l;
-    const chairR = TILE_SPRITES.meeting_chair_r;
-    const chairW = TILE * 0.65;
-    const chairH = chairW * (chairL.sh / chairL.sw);
-
-    // Left side chairs (col 7, rows 16/17/18)
-    for (let r = 0; r < 3; r++) {
-      const cy = ty(16 + r) + (TILE - chairH) / 2;
-      drawSprite(ctx, tileImg, chairL, tx(7) + 8, cy, chairW, chairH);
-    }
-    // Right side chairs (col 11, rows 16/17/18)
-    for (let r = 0; r < 3; r++) {
-      const cy = ty(16 + r) + (TILE - chairH) / 2;
-      drawSprite(ctx, tileImg, chairR, tx(11) - 4, cy, chairW, chairH);
-    }
   } else {
-    // Fallback — simple rectangles
     const tw = TILE * 3, th = TILE * 2.5;
     const tableCx = tx(9);
-    const tableCy = ty(17);
+    const tableCy = ty(17) + 40;
     ctx.fillStyle = "#B8946A";
     ctx.fillRect(tableCx - tw / 2, tableCy - th / 2, tw, th);
-    // Chairs as small squares
-    ctx.fillStyle = "#6B4226";
-    for (let r = 0; r < 3; r++) {
-      ctx.fillRect(tx(7) + 8, ty(16 + r) + 20, 30, 30);
-      ctx.fillRect(tx(11), ty(16 + r) + 20, 30, 30);
-    }
   }
 }
 
