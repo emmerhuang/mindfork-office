@@ -5,7 +5,7 @@ export interface SpriteFrame { sx: number; sy: number; sw: number; sh: number; }
 // Structure: /sprites/v2/{char}/{dir}.png, walk-{dir}-{frame}.png, celebrate-south-{frame}.png
 // ────────────────────────────────────────────────────────────
 
-export const PIXELLAB_CHARACTERS = new Set(["boss", "secretary", "sherlock", "lego", "vault", "forge", "lens", "waffles"]);
+export const PIXELLAB_CHARACTERS = new Set(["boss", "secretary", "sherlock", "lego", "vault", "forge", "lens", "waffles", "grant"]);
 
 /** Frame size for v2 individual PNGs */
 export const V2_FRAME_SIZE = 180;

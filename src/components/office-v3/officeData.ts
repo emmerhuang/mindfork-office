@@ -11,7 +11,7 @@ export const TARGET_FPS = 30;
 
 export type CharacterId =
   | "boss" | "secretary" | "sherlock" | "lego"
-  | "vault" | "forge" | "lens" | "waffles";
+  | "vault" | "forge" | "lens" | "waffles" | "grant";
 
 export interface CharacterDef {
   id: CharacterId;
@@ -127,6 +127,19 @@ export const CHARACTERS: CharacterDef[] = [
     ],
     deskTile: { x: 9, y: 10 },
     isWaffles: true,
+  },
+  {
+    id: "grant", name: "Grant", nameCn: "Grant", role: "GG審查專員",
+    color: "#2C3E50",
+    dialogues: [
+      "問題定義太淺了，缺設備不是問題，是什麼導致缺設備？",
+      "方法跟問題對不上，這個邏輯鏈有斷裂。",
+      "OUTPUT 有了，但 OUTCOME 呢？做了之後改變了什麼？",
+      "永續性是最難的部分，計畫結束後誰來接手？",
+      "預算 93% 花在硬體，軟體面呢？",
+      "這個提案方向對了，但需要更多數據佐證。",
+    ],
+    deskTile: { x: 5, y: 13 },
   },
 ];
 

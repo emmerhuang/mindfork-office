@@ -42,6 +42,7 @@ const TEAM = [
   { id: "forge", name: "Forge", role: "實作工程師", color: "#6C3483", emoji: "🔨" },
   { id: "lens", name: "Lens", role: "測試工程師", color: "#2980B9", emoji: "🔬" },
   { id: "waffles", name: "Waffles", role: "柯基督察", color: "#F39C12", emoji: "🐕" },
+  { id: "grant", name: "Grant", role: "GG審查專員", color: "#2C3E50", emoji: "📊" },
 ];
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
