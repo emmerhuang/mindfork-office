@@ -189,24 +189,21 @@ function buildWalkableMap(): boolean[][] {
     }
   }
 
-  // Block tearoom equipment — row 17 cols 0-2 (fridge, water cooler, coffee machine)
+  // Block tearoom: vending machine + water cooler (rows 17-18, cols 0-2)
   map[17][0] = false; map[17][1] = false; map[17][2] = false;
-  // Block tearoom snack shelf (row 17, col 5)
-  map[17][5] = false;
-  // Block tearoom table + chairs (rows 19-20, cols 1-3)
-  map[19][1] = false; map[19][2] = false; map[19][3] = false;
-  map[20][1] = false; map[20][2] = false;
-  // Block microwave (row 17, col 3)
-  map[17][3] = false;
-  // Block tearoom trash can (row 21, col 0)
-  map[21][0] = false;
+  map[18][0] = false; map[18][1] = false; map[18][2] = false;
+  // Block tearoom: bar tables (rows 19-20, cols 0-1 and cols 4-5)
+  map[19][0] = false; map[19][1] = false;
+  map[20][0] = false; map[20][1] = false;
+  map[19][4] = false; map[19][5] = false;
+  map[20][4] = false; map[20][5] = false;
 
-  // Block meeting table area (rows 18-20, cols 8-10)
+  // Block meeting: projector screen (row 17, cols 8-10)
+  map[17][8] = false; map[17][9] = false; map[17][10] = false;
+  // Block meeting: conference table (rows 18-20, cols 8-10)
   map[18][8] = false; map[18][9] = false; map[18][10] = false;
   map[19][8] = false; map[19][9] = false; map[19][10] = false;
   map[20][8] = false; map[20][9] = false; map[20][10] = false;
-  // Block projector screen (row 17, cols 8-10)
-  map[17][8] = false; map[17][9] = false; map[17][10] = false;
 
   // Block plant tiles (col 5-6, row 4)
   map[4][5] = false;
