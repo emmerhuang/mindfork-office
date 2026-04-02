@@ -258,11 +258,11 @@ function drawMeetingRoom(ctx: CanvasRenderingContext2D) {
     ctx.fillRect(rmX + (areaW - 288) / 2, rmY + 2, 288, 144);
   }
 
-  // ── 會議桌 (192×128 × 1.5 = 288×192) → 居中 ──
+  // ── 會議桌 (192×128 × 1.2 = 230×154) → 居中 ──
   const confTable = getMapObj("conference-table");
   if (confTable) {
-    const tableW = TILE * 4.5;  // 288px
-    const tableH = TILE * 3;    // 192px
+    const tableW = TILE * 3.6;  // ~230px
+    const tableH = TILE * 2.4;  // ~154px
     const tableX = rmX + (areaW - tableW) / 2;
     const tableY = ty(18) + (TILE * 3 - tableH) / 2;
     ctx.drawImage(confTable, tableX, tableY, tableW, tableH);
