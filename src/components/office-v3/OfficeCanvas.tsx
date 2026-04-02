@@ -160,7 +160,7 @@ export default function OfficeCanvas({ memberStatuses, memberOs, onCharacterClic
         className={className}
         style={{
           display: "block", width: "100%", height: "100%",
-          objectFit: "contain", imageRendering: "pixelated", cursor: "pointer",
+          objectFit: "contain", objectPosition: "top", imageRendering: "pixelated", cursor: "pointer",
         }}
       />
 

@@ -245,11 +245,11 @@ function drawMeetingRoom(ctx: CanvasRenderingContext2D) {
   const rmY = ty(rm.y);    // row 17
   const areaW = rm.w * TILE; // 6 * 64 = 384
 
-  // ── 投影幕 (192×96 × 1.5 = 288×144) → 頂部居中 ──
+  // ── 投影幕 (192×96 × 1.2 = 230×115) → 頂部居中 ──
   const projector = getMapObj("projector-screen");
   if (projector) {
-    const screenW = TILE * 4.5;  // 288px
-    const screenH = 144;
+    const screenW = TILE * 3.6;  // ~230px
+    const screenH = 115;
     const screenX = rmX + (areaW - screenW) / 2;
     ctx.drawImage(projector, screenX, rmY + 2, screenW, screenH);
   } else {
@@ -257,11 +257,11 @@ function drawMeetingRoom(ctx: CanvasRenderingContext2D) {
     ctx.fillRect(rmX + (areaW - 288) / 2, rmY + 2, 288, 144);
   }
 
-  // ── 會議桌 (192×128 × 1.2 = 230×154) → 居中 ──
+  // ── 會議桌 (192×128 × 1.32) → 居中 ──
   const confTable = getMapObj("conference-table");
   if (confTable) {
-    const tableW = TILE * 3.6;  // ~230px
-    const tableH = TILE * 2.4;  // ~154px
+    const tableW = TILE * 3.96;  // ~253px
+    const tableH = TILE * 2.64;  // ~169px
     const tableX = rmX + (areaW - tableW) / 2;
     const tableY = ty(18) + (TILE * 3 - tableH) / 2;
     ctx.drawImage(confTable, tableX, tableY, tableW, tableH);
