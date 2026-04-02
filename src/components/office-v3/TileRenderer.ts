@@ -16,7 +16,7 @@ const MAP_OBJ_NAMES = [
   "desk-monitor", "desk-laptop", "dog-bed",
   // 茶水間
   "fridge", "water-cooler", "coffee-machine", "kitchen-counter", "cafe-table",
-  "vending-machine", "trash-can",
+  "vending-machine", "trash-can", "bar-table",
   // 會議室
   "conference-table", "projector-screen",
   // Emotes
@@ -170,7 +170,7 @@ function drawPlant(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null) 
 function drawTearoom(ctx: CanvasRenderingContext2D) {
   const bx = tx(ROOMS.tearoom.x);
   const by = ty(ROOMS.tearoom.y);   // row 17
-  const S = 1.5;
+  const areaW = ROOMS.tearoom.w * TILE; // 384
 
   // ── 左上：販賣機 (96×160 × 1.2) ──
   const VS = 1.2;
@@ -201,48 +201,18 @@ function drawTearoom(ctx: CanvasRenderingContext2D) {
     ctx.fillRect(bx + 240, by - 60, 128 * VS, 128 * VS);
   }
 
-  // ── 咖啡機（正南）(96×96 × 1.5) 放在流理台上方 ──
-  const coffee = getMapObj("coffee-machine");
-  if (coffee) {
-    ctx.drawImage(coffee, bx + 256, by - 160, 96 * S, 96 * S);
-  } else {
-    ctx.fillStyle = "#996644";
-    ctx.fillRect(bx + 256, by - 160, 96 * S, 96 * S);
-  }
-
-  // ── 最右：冰箱（正南）(96×96 × 1.8) ──
-  const areaW = ROOMS.tearoom.w * TILE;
-  const fridge = getMapObj("fridge");
-  if (fridge) {
-    ctx.drawImage(fridge, bx + areaW - 96 * FS - 4, by - 100, 96 * FS, 96 * FS);
-  } else {
-    ctx.fillStyle = "#AABBCC";
-    ctx.fillRect(bx + areaW - 96 * FS - 4, by - 100, 96 * FS, 96 * FS);
-  }
-
-  // ── 置中：咖啡桌 (128×96 × 1.5 = 192×144) ──
-  const cafeTable = getMapObj("cafe-table");
-  if (cafeTable) {
-    const areaW = ROOMS.tearoom.w * TILE;
-    const tableW = 128 * S;
-    const tableH = 96 * S;
-    const tableX = bx + (areaW - tableW) / 2;
-    const tableY = ty(19) + (TILE * 2 - tableH) / 2;
-    ctx.drawImage(cafeTable, tableX, tableY, tableW, tableH);
+  // ── 高腳桌 ×2（等 PNG 到位後用 bar-table，暫時用 cafe-table）──
+  const barTable = getMapObj("bar-table") || getMapObj("cafe-table");
+  if (barTable) {
+    const tS = 1.5;
+    // 左桌
+    ctx.drawImage(barTable, bx + 40, ty(19), 96 * tS, 128 * tS);
+    // 右桌
+    ctx.drawImage(barTable, bx + areaW - 96 * tS - 40, ty(19), 96 * tS, 128 * tS);
   } else {
     ctx.fillStyle = "#AA8866";
-    const areaW = ROOMS.tearoom.w * TILE;
-    ctx.fillRect(bx + (areaW - 192) / 2, ty(19) + (TILE * 2 - 144) / 2, 192, 144);
-  }
-
-  // ── 垃圾桶 (64×80 × 0.75)，左下角 row 21，下移 20px ──
-  const TS = 0.75;
-  const trashCan = getMapObj("trash-can");
-  if (trashCan) {
-    ctx.drawImage(trashCan, bx + 8, ty(21) + (TILE - 80) + 20, 64 * TS, 80 * TS);
-  } else {
-    ctx.fillStyle = "#666666";
-    ctx.fillRect(bx + 8, ty(21) + (TILE - 64), 51, 64);
+    ctx.fillRect(bx + 40, ty(19) + 20, 80, 80);
+    ctx.fillRect(bx + areaW - 120, ty(19) + 20, 80, 80);
   }
 }
 
