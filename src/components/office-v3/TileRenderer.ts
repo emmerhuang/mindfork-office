@@ -280,9 +280,7 @@ export function renderStaticScene(
     drawLayoutObjects(ctx, layout);
   }
 
-  // Preserved: plant (uses old tileset sprite atlas)
-  drawPlant(ctx, tileImg);
-  // drawBulletinBoard removed — PixelLab whiteboard handles this
+  // Plants and bulletin board are now layout objects
 }
 
 /** Draw floor areas using layout-provided colors */

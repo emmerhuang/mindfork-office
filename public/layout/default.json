@@ -246,6 +246,28 @@
       "zIndex": 20,
       "walkable": false,
       "category": "meeting"
+    },
+    {
+      "id": "plant-1",
+      "sprite": "plant-monstera",
+      "x": 480,
+      "y": 384,
+      "width": 160,
+      "height": 240,
+      "zIndex": 15,
+      "walkable": false,
+      "category": "decoration"
+    },
+    {
+      "id": "plant-2",
+      "sprite": "plant-cactus",
+      "x": 576,
+      "y": 384,
+      "width": 160,
+      "height": 240,
+      "zIndex": 15,
+      "walkable": false,
+      "category": "decoration"
     }
   ]
 }
