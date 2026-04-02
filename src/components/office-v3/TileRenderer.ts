@@ -80,9 +80,9 @@ function drawWalls(ctx: CanvasRenderingContext2D, _img: HTMLImageElement | null)
     const wallImg = getMapObj(segNames[i]);
     if (wallImg) {
       if (segNames[i] === "wall-clock") {
-        // 時鐘縮小 2/3，居中
-        const cw = Math.round(segW * 2 / 3);
-        const ch = Math.round(wallH * 2 / 3);
+        // 時鐘縮小 50%，居中
+        const cw = Math.round(segW * 0.5);
+        const ch = Math.round(wallH * 0.5);
         const cx = i * segW + (segW - cw) / 2;
         const cy = (wallH - ch) / 2;
         ctx.drawImage(wallImg, cx, cy, cw, ch);
