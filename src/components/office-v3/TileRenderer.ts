@@ -386,14 +386,24 @@ function drawLabels(ctx: CanvasRenderingContext2D) {
 
 function drawWatermark(ctx: CanvasRenderingContext2D) {
   ctx.save();
-  const centerX = tx(6);    // 地板中央 (col 6)
-  const centerY = ty(10);   // 辦公區中間 (row 10)
-  ctx.translate(centerX, centerY);
+  const centerX = tx(6);
+  const centerY = ty(10) + 200;
   ctx.font = "bold 48px 'Courier New', monospace";
-  ctx.fillStyle = "rgba(0,0,0,0.12)";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("MindFork Office", 0, 0);
+  // 彩色文字：逐字上色
+  const text = "MindFork Office";
+  const colors = ["#E74C3C", "#E67E22", "#F1C40F", "#2ECC71", "#3498DB", "#9B59B6", "#E91E63",
+                  "#1ABC9C", "#F39C12", "#2980B9", "#8E44AD", "#E74C3C", "#27AE60", "#3498DB", "#9B59B6"];
+  const totalW = ctx.measureText(text).width;
+  let x = centerX - totalW / 2;
+  for (let i = 0; i < text.length; i++) {
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.globalAlpha = 0.35;
+    ctx.fillText(text[i], x, centerY);
+    x += ctx.measureText(text[i]).width;
+  }
+  ctx.globalAlpha = 1.0;
   ctx.restore();
 }
 
