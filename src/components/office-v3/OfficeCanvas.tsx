@@ -6,6 +6,7 @@ import { CANVAS_W, CANVAS_H } from "./officeData";
 import { WAFFLES_ANIM_FRAMES, getWafflesFrame } from "./spriteAtlas";
 import type { WafflesAnim } from "./spriteAtlas";
 import LayoutEditorOverlay from "./LayoutEditorOverlay";
+import type { LayoutEditorHandle } from "./LayoutEditorOverlay";
 import type { OfficeLayout } from "./LayoutManager";
 
 export interface OsEntry {
@@ -52,6 +53,7 @@ export default function OfficeCanvas({ memberStatuses, memberOs, onCharacterClic
   const [showBossScreen, setShowBossScreen] = useState(false);
   const [wafflesZoom, setWafflesZoom] = useState<WafflesAnim | null>(null);
   const [editorMode, setEditorMode] = useState(false);
+  const editorRef = useRef<LayoutEditorHandle>(null);
   const zoomCanvasRef = useRef<HTMLCanvasElement>(null);
   const zoomRafRef = useRef<number | null>(null);
   const zoomImgRef = useRef<HTMLImageElement | null>(null);
@@ -257,15 +259,25 @@ export default function OfficeCanvas({ memberStatuses, memberOs, onCharacterClic
                 </div>
               </div>
             </div>
-            <button className="mt-4 w-full py-1.5 bg-gray-800 text-gray-400 rounded text-xs hover:bg-gray-700"
-                    onClick={() => setShowBossScreen(false)}>
-              關閉
-            </button>
+            <div className="flex gap-2 mt-4">
+              <button className="flex-1 py-1.5 bg-gray-800 text-gray-400 rounded text-xs hover:bg-gray-700"
+                      onClick={() => setShowBossScreen(false)}>
+                關閉
+              </button>
+              <button className="py-1.5 px-3 bg-amber-800 text-amber-200 rounded text-xs hover:bg-amber-700"
+                      onClick={() => {
+                        setShowBossScreen(false);
+                        editorRef.current?.triggerPasswordPrompt();
+                      }}>
+                裝修
+              </button>
+            </div>
           </div>
         </div>
       )}
       {/* Layout Editor Overlay — always rendered for secret button; layout may be null before engine init */}
       <LayoutEditorOverlay
+        ref={editorRef}
         layout={engineRef.current?.layout ?? { version: 1, floorColors: { work: "#D4CFC8", tearoom: "#E8DFC8", meetingRoom: "#D8D0E0" }, objects: [] }}
         canvasRef={canvasRef}
         onSave={(updated: OfficeLayout) => {

@@ -9,17 +9,27 @@ const ty = (r: number) => r * TILE;
 
 // ── Map Object PNG 快取 ─────────────────────────────────
 export const MAP_OBJ_NAMES = [
-  // 地板 tiles
+  // 地板 tiles (original)
   "floor-blue", "floor-wood", "floor-purple",
+  // 地板 tiles (128px)
+  "floor-gray-carpet-128", "floor-honey-wood-128", "floor-walnut-128",
+  "floor-marble-128", "floor-beige-wood-128", "floor-lavender-128",
   // 牆面
   "wall-bookshelf", "wall-window", "wall-whiteboard", "wall-clock",
-  // 桌子
-  "desk-monitor", "desk-laptop", "dog-bed",
+  "wall-panoramic-window", "wall-shelf-painting",
+  // 桌子 / 辦公室
+  "desk-monitor", "desk-laptop", "desk-standing", "dog-bed",
+  "sofa-teal", "filing-cabinet", "printer",
   // 茶水間
-  "fridge", "water-cooler", "coffee-machine", "kitchen-counter", "cafe-table",
+  "fridge", "fridge-retro", "water-cooler",
+  "coffee-machine", "coffee-machine-red",
+  "kitchen-counter", "cafe-table",
   "vending-machine", "trash-can", "bar-table",
+  "fruit-bowl", "microwave",
   // 會議室
   "conference-table", "projector-screen",
+  // 通用擺設
+  "plant-monstera", "plant-cactus", "succulents", "tree-indoor", "table-lamp",
   // Emotes
   "emote-0", "emote-1", "emote-2", "emote-3", "emote-4", "emote-5",
   "emote-6", "emote-7", "emote-8",

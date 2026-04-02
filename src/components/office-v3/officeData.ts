@@ -1,8 +1,8 @@
 // officeData.ts — Canvas 常數、角色定義、房間座標
 
-export const TILE = 64;
-export const CANVAS_W = 768;   // 12 cols * 64
-export const CANVAS_H = 1408;  // 22 rows * 64
+export const TILE = 128;
+export const CANVAS_W = 1536;  // 12 cols * 128
+export const CANVAS_H = 2816;  // 22 rows * 128
 export const COLS = 12;
 export const ROWS = 22;
 export const TARGET_FPS = 30;

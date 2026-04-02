@@ -3,7 +3,7 @@
 // LayoutEditorOverlay.tsx — Visual drag-and-drop layout editor
 // Overlays on top of the canvas. Coordinates are converted from DOM to canvas space.
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useImperativeHandle, forwardRef } from "react";
 import { TILE, CANVAS_W, CANVAS_H, COLS, ROWS } from "./officeData";
 import { saveLayout, exportLayout } from "./LayoutManager";
 import { MAP_OBJ_NAMES, getMapObj } from "./TileRenderer";
@@ -19,42 +19,70 @@ interface SpriteInfo {
 }
 
 const PALETTE_SPRITES: SpriteInfo[] = [
+  // Floor (128x128)
+  { name: "floor-gray-carpet-128", category: "floor", defaultW: 128, defaultH: 128 },
+  { name: "floor-honey-wood-128", category: "floor", defaultW: 128, defaultH: 128 },
+  { name: "floor-walnut-128", category: "floor", defaultW: 128, defaultH: 128 },
+  { name: "floor-marble-128", category: "floor", defaultW: 128, defaultH: 128 },
+  { name: "floor-beige-wood-128", category: "floor", defaultW: 128, defaultH: 128 },
+  { name: "floor-lavender-128", category: "floor", defaultW: 128, defaultH: 128 },
+  { name: "floor-blue", category: "floor", defaultW: 64, defaultH: 64 },
+  { name: "floor-wood", category: "floor", defaultW: 64, defaultH: 64 },
+  { name: "floor-purple", category: "floor", defaultW: 64, defaultH: 64 },
   // Walls
-  { name: "wall-bookshelf", category: "wall", defaultW: 128, defaultH: 192 },
-  { name: "wall-window", category: "wall", defaultW: 128, defaultH: 192 },
-  { name: "wall-whiteboard", category: "wall", defaultW: 256, defaultH: 192 },
+  { name: "wall-bookshelf", category: "wall", defaultW: 240, defaultH: 160 },
+  { name: "wall-window", category: "wall", defaultW: 160, defaultH: 240 },
+  { name: "wall-whiteboard", category: "wall", defaultW: 160, defaultH: 240 },
   { name: "wall-clock", category: "wall", defaultW: 64, defaultH: 64 },
-  // Desks
-  { name: "desk-monitor", category: "desk", defaultW: 192, defaultH: 96 },
-  { name: "desk-laptop", category: "desk", defaultW: 192, defaultH: 96 },
-  { name: "dog-bed", category: "desk", defaultW: 192, defaultH: 96 },
+  { name: "wall-panoramic-window", category: "wall", defaultW: 240, defaultH: 160 },
+  { name: "wall-shelf-painting", category: "wall", defaultW: 240, defaultH: 160 },
+  // Office
+  { name: "desk-monitor", category: "office", defaultW: 240, defaultH: 160 },
+  { name: "desk-laptop", category: "office", defaultW: 240, defaultH: 160 },
+  { name: "desk-standing", category: "office", defaultW: 240, defaultH: 160 },
+  { name: "dog-bed", category: "office", defaultW: 240, defaultH: 160 },
+  { name: "sofa-teal", category: "office", defaultW: 240, defaultH: 160 },
+  { name: "filing-cabinet", category: "office", defaultW: 160, defaultH: 240 },
+  { name: "printer", category: "office", defaultW: 160, defaultH: 160 },
   // Tearoom
-  { name: "fridge", category: "tearoom", defaultW: 80, defaultH: 120 },
-  { name: "water-cooler", category: "tearoom", defaultW: 80, defaultH: 120 },
-  { name: "coffee-machine", category: "tearoom", defaultW: 52, defaultH: 72 },
-  { name: "kitchen-counter", category: "tearoom", defaultW: 128, defaultH: 64 },
-  { name: "cafe-table", category: "tearoom", defaultW: 128, defaultH: 108 },
-  { name: "vending-machine", category: "tearoom", defaultW: 120, defaultH: 120 },
-  { name: "trash-can", category: "tearoom", defaultW: 44, defaultH: 52 },
-  { name: "bar-table", category: "tearoom", defaultW: 96, defaultH: 140 },
+  { name: "fridge", category: "tearoom", defaultW: 160, defaultH: 240 },
+  { name: "fridge-retro", category: "tearoom", defaultW: 160, defaultH: 240 },
+  { name: "water-cooler", category: "tearoom", defaultW: 160, defaultH: 240 },
+  { name: "coffee-machine", category: "tearoom", defaultW: 160, defaultH: 240 },
+  { name: "coffee-machine-red", category: "tearoom", defaultW: 160, defaultH: 240 },
+  { name: "kitchen-counter", category: "tearoom", defaultW: 240, defaultH: 160 },
+  { name: "cafe-table", category: "tearoom", defaultW: 160, defaultH: 240 },
+  { name: "vending-machine", category: "tearoom", defaultW: 160, defaultH: 240 },
+  { name: "trash-can", category: "tearoom", defaultW: 160, defaultH: 160 },
+  { name: "bar-table", category: "tearoom", defaultW: 160, defaultH: 240 },
+  { name: "fruit-bowl", category: "tearoom", defaultW: 160, defaultH: 160 },
+  { name: "microwave", category: "tearoom", defaultW: 160, defaultH: 160 },
   // Meeting
-  { name: "conference-table", category: "meeting", defaultW: 200, defaultH: 200 },
-  { name: "projector-screen", category: "meeting", defaultW: 230, defaultH: 148 },
+  { name: "conference-table", category: "meeting", defaultW: 160, defaultH: 240 },
+  { name: "projector-screen", category: "meeting", defaultW: 240, defaultH: 160 },
   // Decoration
-  { name: "floor-blue", category: "decoration", defaultW: 64, defaultH: 64 },
-  { name: "floor-wood", category: "decoration", defaultW: 64, defaultH: 64 },
-  { name: "floor-purple", category: "decoration", defaultW: 64, defaultH: 64 },
+  { name: "plant-monstera", category: "decoration", defaultW: 160, defaultH: 240 },
+  { name: "plant-cactus", category: "decoration", defaultW: 160, defaultH: 240 },
+  { name: "succulents", category: "decoration", defaultW: 160, defaultH: 160 },
+  { name: "tree-indoor", category: "decoration", defaultW: 160, defaultH: 240 },
+  { name: "table-lamp", category: "decoration", defaultW: 160, defaultH: 240 },
 ];
 
 const CATEGORIES = [
+  { key: "floor", label: "Floor" },
   { key: "wall", label: "Wall" },
-  { key: "desk", label: "Desk" },
+  { key: "office", label: "Office" },
   { key: "tearoom", label: "Tearoom" },
   { key: "meeting", label: "Meeting" },
   { key: "decoration", label: "Decoration" },
 ];
 
 const PASSWORD = "millet99";
+
+/** Handle exposed via ref for external triggers */
+export interface LayoutEditorHandle {
+  triggerPasswordPrompt: () => void;
+}
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -81,9 +109,13 @@ interface Props {
 
 type Tool = "select" | "delete";
 
-export default function LayoutEditorOverlay({ layout, onSave, onCancel, canvasRef }: Props) {
+const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function LayoutEditorOverlay({ layout, onSave, onCancel, canvasRef }, ref) {
   const [editing, setEditing] = useState(false);
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
+
+  useImperativeHandle(ref, () => ({
+    triggerPasswordPrompt: () => setShowPasswordPrompt(true),
+  }));
   const [password, setPassword] = useState("");
   const [objects, setObjects] = useState<LayoutObject[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -824,4 +856,6 @@ export default function LayoutEditorOverlay({ layout, onSave, onCancel, canvasRe
       })()}
     </div>
   );
-}
+});
+
+export default LayoutEditorOverlay;
