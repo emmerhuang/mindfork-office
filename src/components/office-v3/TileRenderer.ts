@@ -116,18 +116,21 @@ function drawDesks(ctx: CanvasRenderingContext2D, _img: HTMLImageElement | null)
   for (const ch of CHARACTERS) {
     const x = tx(ch.deskTile.x);
     const y = ty(ch.deskTile.y);
-    const dw = TILE * 2;  // 128px
-    const dh = TILE;      // 64px
+    const dw = TILE * 4;  // 256px (2x)
+    const dh = TILE * 2;  // 128px (2x)
+    // 居中：從 deskTile 往左上偏移，讓桌子中心對齊原始 2-tile 位置
+    const dx = x - TILE;
+    const dy = y - TILE / 2;
 
     if (ch.isWaffles) {
       const bedImg = getMapObj("dog-bed");
       if (bedImg) {
-        ctx.drawImage(bedImg, x, y, dw, dh);
+        ctx.drawImage(bedImg, dx, dy, dw, dh);
       } else {
         ctx.fillStyle = "#D68910";
-        ctx.beginPath(); ctx.ellipse(x + dw / 2, y + dh / 2, dw / 2 - 2, dh / 2 - 2, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(dx + dw / 2, dy + dh / 2, dw / 2 - 2, dh / 2 - 2, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = "#F39C12";
-        ctx.beginPath(); ctx.ellipse(x + dw / 2, y + dh / 2, dw / 2 - 5, dh / 2 - 5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(dx + dw / 2, dy + dh / 2, dw / 2 - 5, dh / 2 - 5, 0, 0, Math.PI * 2); ctx.fill();
       }
       continue;
     }
@@ -135,7 +138,7 @@ function drawDesks(ctx: CanvasRenderingContext2D, _img: HTMLImageElement | null)
     const pngName = idx % 2 === 0 ? "desk-monitor" : "desk-laptop";
     const deskImg = getMapObj(pngName);
     if (deskImg) {
-      ctx.drawImage(deskImg, x, y, dw, dh);
+      ctx.drawImage(deskImg, dx, dy, dw, dh);
       idx++;
     } else {
       ctx.fillStyle = "#C4A87A";
