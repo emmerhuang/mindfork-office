@@ -226,10 +226,11 @@ function drawTearoom(ctx: CanvasRenderingContext2D) {
     ctx.fillRect(bx + (areaW - 192) / 2, ty(19) + (TILE * 2 - 144) / 2, 192, 144);
   }
 
-  // ── 垃圾桶 (64×80 × 1.5)，左下角 row 21 ──
+  // ── 垃圾桶 (64×80 × 0.75)，左下角 row 21，下移 20px ──
+  const TS = 0.75;
   const trashCan = getMapObj("trash-can");
   if (trashCan) {
-    ctx.drawImage(trashCan, bx + 8, ty(21) + (TILE - 80), 64 * S, 80 * S);
+    ctx.drawImage(trashCan, bx + 8, ty(21) + (TILE - 80) + 20, 64 * TS, 80 * TS);
   } else {
     ctx.fillStyle = "#666666";
     ctx.fillRect(bx + 8, ty(21) + (TILE - 64), 51, 64);
@@ -245,11 +246,11 @@ function drawMeetingRoom(ctx: CanvasRenderingContext2D) {
   const rmY = ty(rm.y);    // row 17
   const areaW = rm.w * TILE; // 6 * 64 = 384
 
-  // ── 投影幕 (192×96 × 1.2 = 230×115) → 頂部居中 ──
+  // ── 投影幕 (192×96 × 1.44 = 276×138) → 頂部居中 ──
   const projector = getMapObj("projector-screen");
   if (projector) {
-    const screenW = TILE * 3.6;  // ~230px
-    const screenH = 115;
+    const screenW = TILE * 4.32;  // ~276px
+    const screenH = 138;
     const screenX = rmX + (areaW - screenW) / 2;
     ctx.drawImage(projector, screenX, rmY + 2, screenW, screenH);
   } else {
