@@ -177,19 +177,19 @@ function drawTearoom(ctx: CanvasRenderingContext2D) {
   // ── 冰箱 (96×160 × 1.5 = 144×240) 往上 200px ──
   const fridge = getMapObj("fridge");
   if (fridge) {
-    ctx.drawImage(fridge, bx + 2, by - 200, 96 * S, 160 * S);
+    ctx.drawImage(fridge, bx + 2, by - 150, 96 * S, 160 * S);
   } else {
     ctx.fillStyle = "#AABBCC";
-    ctx.fillRect(bx + 2, by - 200, 96 * S, 160 * S);
+    ctx.fillRect(bx + 2, by - 150, 96 * S, 160 * S);
   }
 
   // ── 飲水機 (64×128 × 1.5 = 96×192) 往上 200px ──
   const waterCooler = getMapObj("water-cooler");
   if (waterCooler) {
-    ctx.drawImage(waterCooler, bx + 150, by + 24 - 200, 64 * S, 128 * S);
+    ctx.drawImage(waterCooler, bx + 150, by + 24 - 150, 64 * S, 128 * S);
   } else {
     ctx.fillStyle = "#88AACC";
-    ctx.fillRect(bx + 150, by + 24 - 200, 64 * S, 128 * S);
+    ctx.fillRect(bx + 150, by + 24 - 150, 64 * S, 128 * S);
   }
 
   // ── 咖啡機 (96×128 × 1.5 = 144×192) ──
