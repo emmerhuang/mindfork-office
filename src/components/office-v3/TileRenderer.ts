@@ -116,11 +116,11 @@ function drawDesks(ctx: CanvasRenderingContext2D, _img: HTMLImageElement | null)
   for (const ch of CHARACTERS) {
     const x = tx(ch.deskTile.x);
     const y = ty(ch.deskTile.y);
-    const dw = TILE * 4;  // 256px (2x)
-    const dh = TILE * 2;  // 128px (2x)
+    const dw = TILE * 3;    // 192px (1.5x)
+    const dh = TILE * 1.5;  // 96px (1.5x)
     // 居中：從 deskTile 往左上偏移，讓桌子中心對齊原始 2-tile 位置
-    const dx = x - TILE;
-    const dy = y - TILE / 2;
+    const dx = x - TILE / 2;
+    const dy = y - TILE / 4;
 
     if (ch.isWaffles) {
       const bedImg = getMapObj("dog-bed");
