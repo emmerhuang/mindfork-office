@@ -386,12 +386,11 @@ function drawLabels(ctx: CanvasRenderingContext2D) {
 
 function drawWatermark(ctx: CanvasRenderingContext2D) {
   ctx.save();
-  const centerX = tx(6);   // 地板中央附近 (col 6)
-  const centerY = ty(7);   // row 5-6 空白處
+  const centerX = tx(6);    // 地板中央 (col 6)
+  const centerY = ty(10);   // 辦公區中間 (row 10)
   ctx.translate(centerX, centerY);
-  ctx.rotate(-5 * Math.PI / 180); // 微微傾斜 -5 度
-  ctx.font = "bold 72px 'Courier New', monospace";
-  ctx.fillStyle = "rgba(255,255,255,0.07)";
+  ctx.font = "bold 48px 'Courier New', monospace";
+  ctx.fillStyle = "rgba(0,0,0,0.12)";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText("MindFork Office", 0, 0);
