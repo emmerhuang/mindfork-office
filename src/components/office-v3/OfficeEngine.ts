@@ -1,7 +1,7 @@
 // OfficeEngine.ts — 主迴圈：init 載入圖片 → start rAF → render
 // 含公告欄/Boss 螢幕點擊事件、Waffles 點擊隨機動畫
 
-import { CANVAS_W, CANVAS_H, TILE, TARGET_FPS, BULLETIN_BOARD, BOSS_SCREEN, setActiveWalkableMap } from "./officeData";
+import { CANVAS_W, CANVAS_H, TILE, TARGET_FPS, BULLETIN_BOARD, BOSS_SCREEN, setActiveWalkableMap, updateCharacterPositions } from "./officeData";
 import { renderStaticScene, preloadMapObjects, getMapObj } from "./TileRenderer";
 import { loadLayout, saveLayout, computeWalkableMap } from "./LayoutManager";
 import type { OfficeLayout } from "./LayoutManager";
@@ -40,6 +40,8 @@ export class OfficeEngine {
 
   // Layout reference (for editor)
   public layout: OfficeLayout | null = null;
+  // Editor mode: pause character updates
+  public editorMode = false;
 
   // Waffles click animation state (random anim on click)
   private wafflesClickAnim: WafflesAnim | null = null;
@@ -100,20 +102,37 @@ export class OfficeEngine {
     const px = ((e.clientX - r.left - offsetX) / renderW) * CANVAS_W;
     const py = ((e.clientY - r.top - offsetY) / renderH) * CANVAS_H;
 
-    // 公告欄點擊
-    const bb = BULLETIN_BOARD;
-    if (px >= bb.x * TILE && px <= (bb.x + bb.w) * TILE &&
-        py >= bb.y * TILE && py <= (bb.y + bb.h) * TILE) {
-      this.opts.onBulletinClick?.();
-      return;
+    // Trigger zones from layout (fallback to hardcoded constants)
+    const bulletinTrigger = this.layout?.objects.find((o) => o.special === "trigger-bulletin");
+    if (bulletinTrigger) {
+      if (px >= bulletinTrigger.x && px <= bulletinTrigger.x + bulletinTrigger.width &&
+          py >= bulletinTrigger.y && py <= bulletinTrigger.y + bulletinTrigger.height) {
+        this.opts.onBulletinClick?.();
+        return;
+      }
+    } else {
+      const bb = BULLETIN_BOARD;
+      if (px >= bb.x * TILE && px <= (bb.x + bb.w) * TILE &&
+          py >= bb.y * TILE && py <= (bb.y + bb.h) * TILE) {
+        this.opts.onBulletinClick?.();
+        return;
+      }
     }
 
-    // Boss 桌子螢幕點擊
-    const bs = BOSS_SCREEN;
-    if (px >= bs.x * TILE && px <= (bs.x + bs.w) * TILE &&
-        py >= bs.y * TILE && py <= (bs.y + bs.h) * TILE) {
-      this.opts.onBossScreenClick?.();
-      return;
+    const dashTrigger = this.layout?.objects.find((o) => o.special === "trigger-dashboard");
+    if (dashTrigger) {
+      if (px >= dashTrigger.x && px <= dashTrigger.x + dashTrigger.width &&
+          py >= dashTrigger.y && py <= dashTrigger.y + dashTrigger.height) {
+        this.opts.onBossScreenClick?.();
+        return;
+      }
+    } else {
+      const bs = BOSS_SCREEN;
+      if (px >= bs.x * TILE && px <= (bs.x + bs.w) * TILE &&
+          py >= bs.y * TILE && py <= (bs.y + bs.h) * TILE) {
+        this.opts.onBossScreenClick?.();
+        return;
+      }
     }
 
     const hit = this.mgr.findCharacterAt(px, py);
@@ -228,6 +247,9 @@ export class OfficeEngine {
     // Load layout and compute walkable map
     try {
       this.layout = await loadLayout();
+      // Sync character desk positions from layout anchors
+      updateCharacterPositions(this.layout);
+      this.mgr.refreshHomePositions();
       const walkMap = computeWalkableMap(this.layout);
       setActiveWalkableMap(walkMap);
     } catch {
@@ -241,6 +263,8 @@ export class OfficeEngine {
   /** Re-render static scene (called after layout edits) */
   rerender() {
     if (this.layout) {
+      updateCharacterPositions(this.layout);
+      this.mgr.refreshHomePositions();
       const walkMap = computeWalkableMap(this.layout);
       setActiveWalkableMap(walkMap);
     }
@@ -282,9 +306,11 @@ export class OfficeEngine {
     const dt = now - this.lastT;
     if (dt >= this.interval) {
       this.lastT = now - (dt % this.interval);
-      this.mgr.update(this.tick);
-      this.dlg.update(this.tick);
-      for (const c of this.mgr.characters) this.dlg.updatePosition(c.def.id, c.px, c.py);
+      if (!this.editorMode) {
+        this.mgr.update(this.tick);
+        this.dlg.update(this.tick);
+        for (const c of this.mgr.characters) this.dlg.updatePosition(c.def.id, c.px, c.py);
+      }
       // Update Waffles click animation (slower: 8 ticks per frame, hold last frame 15 ticks)
       if (this.wafflesClickAnim) {
         const totalFrames = WAFFLES_ANIM_FRAMES[this.wafflesClickAnim] ?? 6;

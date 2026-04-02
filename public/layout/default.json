@@ -248,6 +248,30 @@
       "category": "meeting"
     },
     {
+      "id": "trigger-dashboard",
+      "sprite": "",
+      "special": "trigger-dashboard",
+      "x": 96,
+      "y": 288,
+      "width": 192,
+      "height": 192,
+      "zIndex": 5,
+      "walkable": true,
+      "category": "trigger"
+    },
+    {
+      "id": "trigger-bulletin",
+      "sprite": "",
+      "special": "trigger-bulletin",
+      "x": 384,
+      "y": 0,
+      "width": 384,
+      "height": 192,
+      "zIndex": 5,
+      "walkable": true,
+      "category": "trigger"
+    },
+    {
       "id": "plant-1",
       "sprite": "plant-monstera",
       "x": 480,

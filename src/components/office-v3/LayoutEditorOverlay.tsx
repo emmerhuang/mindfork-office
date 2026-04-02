@@ -16,19 +16,21 @@ interface SpriteInfo {
   category: string;
   defaultW: number;
   defaultH: number;
+  special?: string;  // for trigger zones
 }
 
 const PALETTE_SPRITES: SpriteInfo[] = [
-  // Floor (128x128)
-  { name: "floor-gray-carpet-128", category: "floor", defaultW: 128, defaultH: 128 },
-  { name: "floor-honey-wood-128", category: "floor", defaultW: 128, defaultH: 128 },
-  { name: "floor-walnut-128", category: "floor", defaultW: 128, defaultH: 128 },
-  { name: "floor-marble-128", category: "floor", defaultW: 128, defaultH: 128 },
-  { name: "floor-beige-wood-128", category: "floor", defaultW: 128, defaultH: 128 },
-  { name: "floor-lavender-128", category: "floor", defaultW: 128, defaultH: 128 },
-  { name: "floor-blue", category: "floor", defaultW: 64, defaultH: 64 },
-  { name: "floor-wood", category: "floor", defaultW: 64, defaultH: 64 },
-  { name: "floor-purple", category: "floor", defaultW: 64, defaultH: 64 },
+  // Floor (96x96)
+  { name: "floor-gray-carpet", category: "floor", defaultW: 96, defaultH: 96 },
+  { name: "floor-honey-wood", category: "floor", defaultW: 96, defaultH: 96 },
+  { name: "floor-walnut", category: "floor", defaultW: 96, defaultH: 96 },
+  { name: "floor-marble", category: "floor", defaultW: 96, defaultH: 96 },
+  { name: "floor-beige-wood", category: "floor", defaultW: 96, defaultH: 96 },
+  { name: "floor-lavender", category: "floor", defaultW: 96, defaultH: 96 },
+  { name: "floor-herringbone", category: "floor", defaultW: 96, defaultH: 96 },
+  { name: "floor-slate", category: "floor", defaultW: 96, defaultH: 96 },
+  { name: "floor-terracotta", category: "floor", defaultW: 96, defaultH: 96 },
+  { name: "floor-bamboo", category: "floor", defaultW: 96, defaultH: 96 },
   // Walls
   { name: "wall-bookshelf", category: "wall", defaultW: 240, defaultH: 160 },
   { name: "wall-window", category: "wall", defaultW: 160, defaultH: 240 },
@@ -66,6 +68,9 @@ const PALETTE_SPRITES: SpriteInfo[] = [
   { name: "succulents", category: "decoration", defaultW: 160, defaultH: 160 },
   { name: "tree-indoor", category: "decoration", defaultW: 160, defaultH: 240 },
   { name: "table-lamp", category: "decoration", defaultW: 160, defaultH: 240 },
+  // Trigger zones
+  { name: "trigger-dashboard", category: "trigger", defaultW: 192, defaultH: 192, special: "trigger-dashboard" },
+  { name: "trigger-bulletin", category: "trigger", defaultW: 384, defaultH: 192, special: "trigger-bulletin" },
 ];
 
 const CATEGORIES = [
@@ -75,6 +80,7 @@ const CATEGORIES = [
   { key: "tearoom", label: "Tearoom" },
   { key: "meeting", label: "Meeting" },
   { key: "decoration", label: "Decoration" },
+  { key: "trigger", label: "Trigger Zone" },
 ];
 
 const PASSWORD = "millet99";
@@ -422,14 +428,15 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       const dropH = srcImg ? srcImg.naturalHeight : info.defaultH;
       const newObj: LayoutObject = {
         id: genId(),
-        sprite: info.name,
+        sprite: info.special ? "" : info.name,
         x: dropPreview.x,
         y: dropPreview.y,
         width: dropW,
         height: dropH,
-        zIndex: 20,
-        walkable: false,
+        zIndex: info.special ? 5 : 20,
+        walkable: !!info.special,
         category: info.category,
+        ...(info.special ? { special: info.special } : {}),
       };
       setObjectsAndPreview((prev) => [...prev, newObj]);
       setSelectedId(newObj.id);
@@ -570,6 +577,52 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
           backgroundSize: `${TILE * scale}px ${TILE * scale}px`,
         }}
       />
+
+      {/* Trigger zone overlays + anchor character labels */}
+      {objects.map((obj) => {
+        const isTrigger = obj.category === "trigger";
+        const hasAnchor = !!obj.anchorCharId;
+        if (!isTrigger && !hasAnchor) return null;
+        const p1 = fromCanvasCoords(obj.x, obj.y);
+        const p2 = fromCanvasCoords(obj.x + obj.width, obj.y + obj.height);
+        if (!p1 || !p2) return null;
+        const overlay = overlayRef.current?.getBoundingClientRect();
+        if (!overlay) return null;
+        const left = p1.dx - overlay.left;
+        const top = p1.dy - overlay.top;
+        const width = p2.dx - p1.dx;
+        const height = p2.dy - p1.dy;
+
+        if (isTrigger) {
+          const isDash = obj.special === "trigger-dashboard";
+          const bgColor = isDash ? "rgba(59,130,246,0.25)" : "rgba(34,197,94,0.25)";
+          const borderColor = isDash ? "rgba(59,130,246,0.6)" : "rgba(34,197,94,0.6)";
+          const label = isDash ? "Dashboard" : "Hall of Fame";
+          return (
+            <div
+              key={obj.id}
+              className="absolute pointer-events-none flex items-center justify-center"
+              style={{ left, top, width, height, background: bgColor, border: `2px dashed ${borderColor}` }}
+            >
+              <span className="text-white font-mono text-xs font-bold drop-shadow-md">{label}</span>
+            </div>
+          );
+        }
+
+        // Anchor character label
+        const charName = obj.anchorCharId!.charAt(0).toUpperCase() + obj.anchorCharId!.slice(1);
+        return (
+          <div
+            key={`anchor-${obj.id}`}
+            className="absolute pointer-events-none"
+            style={{ left: left + width + 2, top: top - 2 }}
+          >
+            <span className="bg-purple-700/80 text-white text-[9px] font-mono px-1 py-0.5 rounded whitespace-nowrap">
+              {charName}
+            </span>
+          </div>
+        );
+      })}
 
       {/* Selection box */}
       {selectedObj && (() => {
@@ -737,14 +790,15 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
                           if (coords && dragSpriteRef.current) {
                             const newObj: LayoutObject = {
                               id: genId(),
-                              sprite: info.name,
+                              sprite: info.special ? "" : info.name,
                               x: snapToTile(coords.cx - iW / 2),
                               y: snapToTile(coords.cy - iH / 2),
                               width: iW,
                               height: iH,
-                              zIndex: 20,
-                              walkable: false,
+                              zIndex: info.special ? 5 : 20,
+                              walkable: !!info.special,
                               category: info.category,
+                              ...(info.special ? { special: info.special } : {}),
                             };
                             setObjectsAndPreview((prev) => [...prev, newObj]);
                             setSelectedId(newObj.id);
@@ -756,13 +810,29 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
                         document.addEventListener("mouseup", onUp);
                       }}
                     >
-                      <img
-                        src={`/sprites/map-objects/${info.name}.png`}
-                        alt={info.name}
-                        className="w-14 h-14 object-contain"
-                        style={{ imageRendering: "pixelated" }}
-                        draggable={false}
-                      />
+                      {info.special ? (
+                        <div
+                          className="w-14 h-14 flex items-center justify-center rounded"
+                          style={{
+                            background: info.special === "trigger-dashboard"
+                              ? "rgba(59,130,246,0.35)" : "rgba(34,197,94,0.35)",
+                            border: `2px dashed ${info.special === "trigger-dashboard"
+                              ? "rgba(59,130,246,0.7)" : "rgba(34,197,94,0.7)"}`,
+                          }}
+                        >
+                          <span className="text-white text-[7px] font-bold text-center leading-tight">
+                            {info.special === "trigger-dashboard" ? "Dash\nboard" : "Hall of\nFame"}
+                          </span>
+                        </div>
+                      ) : (
+                        <img
+                          src={`/sprites/map-objects/${info.name}.png`}
+                          alt={info.name}
+                          className="w-14 h-14 object-contain"
+                          style={{ imageRendering: "pixelated" }}
+                          draggable={false}
+                        />
+                      )}
                       <span className="text-[8px] text-gray-400 mt-0.5 truncate w-full text-center">
                         {info.name}
                       </span>

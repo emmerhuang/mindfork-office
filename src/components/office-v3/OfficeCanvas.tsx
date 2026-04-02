@@ -284,26 +284,29 @@ export default function OfficeCanvas({ memberStatuses, memberOs, onCharacterClic
         onSave={(updated: OfficeLayout) => {
           if (engineRef.current) {
             engineRef.current.layout = updated;
+            engineRef.current.editorMode = false;
             engineRef.current.rerender();
           }
           preEditLayoutRef.current = null;
           setEditorMode(false);
         }}
         onCancel={() => {
-          // Rollback: restore engine layout to pre-edit state and re-render
           if (engineRef.current && preEditLayoutRef.current) {
             engineRef.current.layout = preEditLayoutRef.current;
+            engineRef.current.editorMode = false;
             engineRef.current.rerender();
             preEditLayoutRef.current = null;
+          } else if (engineRef.current) {
+            engineRef.current.editorMode = false;
           }
           setEditorMode(false);
         }}
         onPreview={(objects) => {
           if (engineRef.current && engineRef.current.layout) {
-            // Snapshot pre-edit layout once (first preview call per edit session)
             if (!preEditLayoutRef.current) {
               preEditLayoutRef.current = JSON.parse(JSON.stringify(engineRef.current.layout));
             }
+            engineRef.current.editorMode = true;
             engineRef.current.layout = { ...engineRef.current.layout, objects };
             engineRef.current.rerender();
           }

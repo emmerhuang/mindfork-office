@@ -233,6 +233,22 @@ export class CharacterManager {
     });
   }
 
+  /** Recalculate home positions from CHARACTERS deskTile (call after updateCharacterPositions) */
+  refreshHomePositions() {
+    for (const c of this.characters) {
+      const h = homePos(c.def);
+      c.homePx = h.px;
+      c.homePy = h.py;
+      // If character is at desk (working or idle_home), also move current position
+      if (c.state === "working" || c.state === "idle_home") {
+        c.px = h.px;
+        c.py = h.py;
+        c.targetPx = h.px;
+        c.targetPy = h.py;
+      }
+    }
+  }
+
   update(tick: number) {
     this.currentTick = tick;
     for (const c of this.characters) this.step(c, tick);

@@ -12,8 +12,9 @@ export const MAP_OBJ_NAMES = [
   // 地板 tiles (original)
   "floor-blue", "floor-wood", "floor-purple",
   // 地板 tiles (128px)
-  "floor-gray-carpet-128", "floor-honey-wood-128", "floor-walnut-128",
-  "floor-marble-128", "floor-beige-wood-128", "floor-lavender-128",
+  "floor-gray-carpet", "floor-honey-wood", "floor-walnut",
+  "floor-marble", "floor-beige-wood", "floor-lavender",
+  "floor-herringbone", "floor-slate", "floor-terracotta", "floor-bamboo",
   // 牆面
   "wall-bookshelf", "wall-window", "wall-whiteboard", "wall-clock",
   "wall-panoramic-window", "wall-shelf-painting",
@@ -88,6 +89,8 @@ function drawLayoutObjects(ctx: CanvasRenderingContext2D, layout: OfficeLayout) 
       ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
       continue;
     }
+    // Skip trigger zones (invisible in normal mode, only shown in editor)
+    if (obj.category === "trigger") continue;
     // Skip objects with no sprite
     if (!obj.sprite) continue;
 

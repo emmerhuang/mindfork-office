@@ -232,3 +232,22 @@ export const BULLETIN_BOARD = { x: 4, y: 1, w: 4, h: 2 } as const;
 // Boss desk screen position (for click detection)
 // 覆蓋 row 3-4，讓桌上螢幕的視覺區域都能被點到
 export const BOSS_SCREEN = { x: 1, y: 3, w: 2, h: 2 } as const;
+
+// ── Layout → Character 位置同步 ──────────────────────────────
+
+/** Update CHARACTERS deskTile from layout objects that have anchorCharId.
+ *  Converts pixel coords to tile coords (pixel / TILE, floored).
+ *  Call this after loading layout, before CharacterManager uses deskTile.
+ */
+export function updateCharacterPositions(layout: { objects: Array<{ anchorCharId?: string; x: number; y: number }> }) {
+  for (const obj of layout.objects) {
+    if (!obj.anchorCharId) continue;
+    const char = CHARACTERS.find((c) => c.id === obj.anchorCharId);
+    if (char) {
+      char.deskTile = {
+        x: Math.floor(obj.x / TILE),
+        y: Math.floor(obj.y / TILE),
+      };
+    }
+  }
+}
