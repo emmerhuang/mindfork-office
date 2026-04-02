@@ -805,18 +805,14 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
         return (
           <div
             className="fixed bg-gray-900/95 border border-cyan-500 rounded-lg p-3 text-xs font-mono text-gray-300 z-50 shadow-lg"
-            style={{ pointerEvents: "auto", width: 180, top: 60, right: 10 }}
+            style={{ pointerEvents: "auto", width: 216, top: 60, left: 10 }}
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <div className="mb-1">{selectedObj.id}</div>
-            <div className="mb-1">sprite: {selectedObj.sprite || "(special)"}</div>
+            <div className="mb-1 text-cyan-400 font-bold truncate">{selectedObj.sprite || selectedObj.id}</div>
             {natW > 0 && (
-              <div className="mb-1 text-gray-500">
-                original: {natW} x {natH}
-              </div>
+              <div className="mb-1 text-gray-500">original: {natW} × {natH}</div>
             )}
-            {/* Coordinate & size inputs */}
-            <div className="grid grid-cols-4 gap-1 mb-1">
+            <div className="grid grid-cols-2 gap-1 mb-1">
               {(["x", "y", "width", "height"] as const).map((field) => (
                 <label key={field} className="flex flex-col">
                   <span className="text-gray-500 text-[9px]">{field.charAt(0).toUpperCase() + field.slice(1)}</span>
@@ -826,46 +822,59 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
                     onChange={(e) => updateField(field, e.target.value)}
                     className="w-full bg-gray-800 text-white border border-gray-600 rounded px-1 py-0.5 text-xs font-mono focus:outline-none focus:border-cyan-400"
                     min={0}
-                    step={TILE}
+                    step={1}
                   />
                 </label>
               ))}
             </div>
+            {natW > 0 && (() => {
+              const curScale = (selectedObj.width / natW).toFixed(2);
+              const doScale = (val: string) => {
+                const s = parseFloat(val);
+                if (isNaN(s) || s <= 0) return;
+                setObjectsAndPreview((prev) =>
+                  prev.map((o) =>
+                    o.id === selectedObj.id
+                      ? { ...o, width: Math.round(natW * s), height: Math.round(natH * s) }
+                      : o
+                  )
+                );
+              };
+              return (
+                <div className="flex gap-1 items-center mb-1">
+                  <span className="text-gray-500 text-[9px]">Scale</span>
+                  <input
+                    type="number"
+                    defaultValue={curScale}
+                    key={curScale}
+                    step={0.1}
+                    min={0.1}
+                    onBlur={(e) => doScale(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") doScale((e.target as HTMLInputElement).value); }}
+                    className="w-16 bg-gray-800 text-white border border-gray-600 rounded px-1 py-0.5 text-xs font-mono focus:outline-none focus:border-cyan-400"
+                  />
+                  <span className="text-gray-500 text-[9px]">×</span>
+                </div>
+              );
+            })()}
             <div className="flex gap-2 items-center mb-1">
-              <label className="flex items-center gap-1">
-                <input
-                  type="checkbox"
-                  checked={lockAspectRatio}
-                  onChange={(e) => setLockAspectRatio(e.target.checked)}
-                />
-                Lock Aspect Ratio
+              <label className="flex items-center gap-1 text-[10px]">
+                <input type="checkbox" checked={lockAspectRatio} onChange={(e) => setLockAspectRatio(e.target.checked)} />
+                Lock Ratio
+              </label>
+              <label className="flex items-center gap-1 text-[10px]">
+                <input type="checkbox" checked={selectedObj.walkable} onChange={(e) => {
+                  setObjectsAndPreview((prev) => prev.map((o) => o.id === selectedObj.id ? { ...o, walkable: e.target.checked } : o));
+                }} />
+                Walkable
               </label>
             </div>
-            <div className="flex gap-2">
-              <label className="flex items-center gap-1">
-                <input
-                  type="checkbox"
-                  checked={selectedObj.walkable}
-                  onChange={(e) => {
-                    setObjectsAndPreview((prev) =>
-                      prev.map((o) =>
-                        o.id === selectedObj.id ? { ...o, walkable: e.target.checked } : o
-                      )
-                    );
-                  }}
-                />
-                walkable
-              </label>
-              <button
-                onClick={() => {
-                  setObjectsAndPreview((prev) => prev.filter((o) => o.id !== selectedObj.id));
-                  setSelectedId(null);
-                }}
-                className="px-2 py-0.5 bg-red-800 text-red-200 rounded hover:bg-red-700"
-              >
-                Delete
-              </button>
-            </div>
+            <button
+              onClick={() => { setObjectsAndPreview((prev) => prev.filter((o) => o.id !== selectedObj.id)); setSelectedId(null); }}
+              className="w-full px-2 py-1 bg-red-800 text-red-200 rounded hover:bg-red-700 text-[10px]"
+            >
+              Delete
+            </button>
           </div>
         );
       })()}
