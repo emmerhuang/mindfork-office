@@ -105,13 +105,17 @@ interface Props {
   onSave: (layout: OfficeLayout) => void;
   onCancel: () => void;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
+  onPreview?: (objects: LayoutObject[]) => void;
 }
 
 type Tool = "select" | "delete";
 
-const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function LayoutEditorOverlay({ layout, onSave, onCancel, canvasRef }, ref) {
+const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function LayoutEditorOverlay({ layout, onSave, onCancel, canvasRef, onPreview }, ref) {
   const [editing, setEditing] = useState(false);
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
+  const originalObjectsRef = useRef<LayoutObject[]>([]);
+  const onPreviewRef = useRef(onPreview);
+  onPreviewRef.current = onPreview;
 
   useImperativeHandle(ref, () => ({
     triggerPasswordPrompt: () => setShowPasswordPrompt(true),
@@ -136,6 +140,15 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
   const overlayRef = useRef<HTMLDivElement>(null);
   const dragSpriteRef = useRef<SpriteInfo | null>(null);
 
+  /** Shortcut: update objects state AND fire live preview in one call */
+  const setObjectsAndPreview = useCallback((updater: (prev: LayoutObject[]) => LayoutObject[]) => {
+    setObjects((prev) => {
+      const next = updater(prev);
+      onPreviewRef.current?.(next);
+      return next;
+    });
+  }, []);
+
   // Enter edit mode
   const handleSecretClick = useCallback(() => {
     setShowPasswordPrompt(true);
@@ -143,7 +156,9 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
 
   const handlePasswordSubmit = useCallback(() => {
     if (password === PASSWORD) {
-      setObjects(JSON.parse(JSON.stringify(layout.objects)));
+      const cloned = JSON.parse(JSON.stringify(layout.objects));
+      originalObjectsRef.current = cloned;
+      setObjects(cloned);
       setEditing(true);
       setShowPasswordPrompt(false);
       setPassword("");
@@ -266,7 +281,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       if (tool === "delete") {
         const obj = findObjectAt(cx, cy);
         if (obj) {
-          setObjects((prev) => prev.filter((o) => o.id !== obj.id));
+          setObjectsAndPreview((prev) => prev.filter((o) => o.id !== obj.id));
           setSelectedId(null);
         }
         return;
@@ -337,7 +352,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       const dx = cx - dragState.startX;
       const dy = cy - dragState.startY;
 
-      setObjects((prev) =>
+      setObjectsAndPreview((prev) =>
         prev.map((obj) => {
           if (obj.id !== selectedId) return obj;
           if (dragState.type === "move") {
@@ -416,19 +431,19 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
         walkable: false,
         category: info.category,
       };
-      setObjects((prev) => [...prev, newObj]);
+      setObjectsAndPreview((prev) => [...prev, newObj]);
       setSelectedId(newObj.id);
       dragSpriteRef.current = null;
       setDropPreview(null);
     }
-  }, [dropPreview]);
+  }, [dropPreview, setObjectsAndPreview]);
 
   // Keyboard: Delete key
   useEffect(() => {
     if (!editing) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Delete" && selectedId) {
-        setObjects((prev) => prev.filter((o) => o.id !== selectedId));
+        setObjectsAndPreview((prev) => prev.filter((o) => o.id !== selectedId));
         setSelectedId(null);
       }
       if (e.key === "Escape") {
@@ -437,7 +452,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [editing, selectedId, onCancel]);
+  }, [editing, selectedId, onCancel, setObjectsAndPreview]);
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -731,7 +746,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
                               walkable: false,
                               category: info.category,
                             };
-                            setObjects((prev) => [...prev, newObj]);
+                            setObjectsAndPreview((prev) => [...prev, newObj]);
                             setSelectedId(newObj.id);
                           }
                           dragSpriteRef.current = null;
@@ -770,7 +785,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
         const updateField = (field: "x" | "y" | "width" | "height", raw: string) => {
           const v = parseInt(raw, 10);
           if (isNaN(v) || v < 0) return;
-          setObjects((prev) =>
+          setObjectsAndPreview((prev) =>
             prev.map((o) => {
               if (o.id !== selectedObj.id) return o;
               const updated = { ...o, [field]: v };
@@ -832,7 +847,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
                   type="checkbox"
                   checked={selectedObj.walkable}
                   onChange={(e) => {
-                    setObjects((prev) =>
+                    setObjectsAndPreview((prev) =>
                       prev.map((o) =>
                         o.id === selectedObj.id ? { ...o, walkable: e.target.checked } : o
                       )
@@ -843,7 +858,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
               </label>
               <button
                 onClick={() => {
-                  setObjects((prev) => prev.filter((o) => o.id !== selectedObj.id));
+                  setObjectsAndPreview((prev) => prev.filter((o) => o.id !== selectedObj.id));
                   setSelectedId(null);
                 }}
                 className="px-2 py-0.5 bg-red-800 text-red-200 rounded hover:bg-red-700"

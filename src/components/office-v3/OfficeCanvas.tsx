@@ -54,6 +54,7 @@ export default function OfficeCanvas({ memberStatuses, memberOs, onCharacterClic
   const [wafflesZoom, setWafflesZoom] = useState<WafflesAnim | null>(null);
   const [editorMode, setEditorMode] = useState(false);
   const editorRef = useRef<LayoutEditorHandle>(null);
+  const preEditLayoutRef = useRef<OfficeLayout | null>(null);
   const zoomCanvasRef = useRef<HTMLCanvasElement>(null);
   const zoomRafRef = useRef<number | null>(null);
   const zoomImgRef = useRef<HTMLImageElement | null>(null);
@@ -285,10 +286,27 @@ export default function OfficeCanvas({ memberStatuses, memberOs, onCharacterClic
             engineRef.current.layout = updated;
             engineRef.current.rerender();
           }
+          preEditLayoutRef.current = null;
           setEditorMode(false);
         }}
         onCancel={() => {
+          // Rollback: restore engine layout to pre-edit state and re-render
+          if (engineRef.current && preEditLayoutRef.current) {
+            engineRef.current.layout = preEditLayoutRef.current;
+            engineRef.current.rerender();
+            preEditLayoutRef.current = null;
+          }
           setEditorMode(false);
+        }}
+        onPreview={(objects) => {
+          if (engineRef.current && engineRef.current.layout) {
+            // Snapshot pre-edit layout once (first preview call per edit session)
+            if (!preEditLayoutRef.current) {
+              preEditLayoutRef.current = JSON.parse(JSON.stringify(engineRef.current.layout));
+            }
+            engineRef.current.layout = { ...engineRef.current.layout, objects };
+            engineRef.current.rerender();
+          }
         }}
       />
 
