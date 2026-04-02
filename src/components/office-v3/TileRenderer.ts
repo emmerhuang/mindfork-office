@@ -182,23 +182,14 @@ function drawTearoom(ctx: CanvasRenderingContext2D) {
     ctx.fillRect(bx + 2, by - 130, 96 * VS, 160 * VS);
   }
 
-  // ── 飲水機（正南）(64×64 × 1.8) 在販賣機右邊 ──
+  // ── 飲水機（正南）(64×64 × 1.8) 緊貼販賣機右邊 ──
   const FS = 1.8;
   const waterCooler = getMapObj("water-cooler");
   if (waterCooler) {
-    ctx.drawImage(waterCooler, bx + 122, by - 80, 64 * FS, 64 * FS);
+    ctx.drawImage(waterCooler, bx + 2 + 96 * VS + 4, by - 80, 64 * FS, 64 * FS);
   } else {
     ctx.fillStyle = "#88AACC";
-    ctx.fillRect(bx + 122, by - 80, 64 * FS, 64 * FS);
-  }
-
-  // ── 流理台 (128×128 × 1.2) 在飲水機右邊 ──
-  const counter = getMapObj("kitchen-counter");
-  if (counter) {
-    ctx.drawImage(counter, bx + 240, by - 60, 128 * VS, 128 * VS);
-  } else {
-    ctx.fillStyle = "#AAAAAA";
-    ctx.fillRect(bx + 240, by - 60, 128 * VS, 128 * VS);
+    ctx.fillRect(bx + 2 + 96 * VS + 4, by - 80, 64 * FS, 64 * FS);
   }
 
   // ── 高腳桌 ×2（等 PNG 到位後用 bar-table，暫時用 cafe-table）──
@@ -404,5 +395,5 @@ export function renderStaticScene(
   drawPlant(ctx, tileImg);
   drawTearoom(ctx);
   drawMeetingRoom(ctx);
-  drawLabels(ctx);
+  // drawLabels(ctx);  // 移除茶水間/會議室文字標籤
 }
