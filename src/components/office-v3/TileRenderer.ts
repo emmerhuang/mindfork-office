@@ -72,32 +72,27 @@ function drawWalls(ctx: CanvasRenderingContext2D, _img: HTMLImageElement | null)
   const segW = TILE * 2;   // 128px
   const segNames = [
     "wall-bookshelf", "wall-window",
-    "wall-whiteboard", "wall-clock",
+    "wall-whiteboard", "wall-whiteboard",
     "wall-window", "wall-bookshelf",
   ];
   let anyDrawn = false;
   for (let i = 0; i < segNames.length; i++) {
     const wallImg = getMapObj(segNames[i]);
     if (wallImg) {
-      if (segNames[i] === "wall-clock") {
-        // 時鐘縮小 50%，居中
-        const cw = Math.round(segW * 0.5);
-        const ch = Math.round(wallH * 0.5);
-        const cx = i * segW + (segW - cw) / 2;
-        const cy = (wallH - ch) / 2;
-        ctx.drawImage(wallImg, cx, cy, cw, ch);
-      } else if (segNames[i] === "wall-bookshelf") {
-        // 書櫃加寬 44%，居中
-        const bw = Math.round(segW * 1.44);
+      if (segNames[i] === "wall-bookshelf") {
+        // 書櫃加寬 73%，居中
+        const bw = Math.round(segW * 1.73);
         const bx = i * segW + (segW - bw) / 2;
         ctx.drawImage(wallImg, bx, 0, bw, wallH);
-      } else if (segNames[i] === "wall-whiteboard") {
-        // 白板加寬 20%，4:3 比例，居中
-        const ww = Math.round(segW * 1.2);
-        const wh = Math.round(ww * 3 / 4);
-        const wx = i * segW + (segW - ww) / 2;
+      } else if (segNames[i] === "wall-whiteboard" && i === 2) {
+        // 大白板橫跨 seg 2+3（4 cols），4:3 比例
+        const ww = segW * 2;  // 256px
+        const wh = Math.round(ww * 3 / 4);  // 192px
+        const wx = i * segW;
         const wy = (wallH - wh) / 2;
         ctx.drawImage(wallImg, wx, wy, ww, wh);
+      } else if (segNames[i] === "wall-whiteboard" && i === 3) {
+        // seg 3 已由 seg 2 的大白板覆蓋，跳過
       } else {
         ctx.drawImage(wallImg, i * segW, 0, segW + 1, wallH);
       }
