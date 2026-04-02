@@ -15,7 +15,7 @@ const MAP_OBJ_NAMES = [
   // 桌子
   "desk-monitor", "desk-laptop", "dog-bed",
   // 茶水間
-  "fridge", "water-cooler", "coffee-machine", "cafe-table",
+  "fridge", "water-cooler", "coffee-machine", "kitchen-counter", "cafe-table",
   "vending-machine", "trash-can",
   // 會議室
   "conference-table", "projector-screen",
@@ -172,7 +172,7 @@ function drawTearoom(ctx: CanvasRenderingContext2D) {
   const by = ty(ROOMS.tearoom.y);   // row 17
   const S = 1.5;
 
-  // ── 左上角：販賣機 (96×160 × 1.2) ──
+  // ── 左上：販賣機 (96×160 × 1.2) ──
   const VS = 1.2;
   const vending = getMapObj("vending-machine");
   if (vending) {
@@ -182,33 +182,42 @@ function drawTearoom(ctx: CanvasRenderingContext2D) {
     ctx.fillRect(bx + 2, by - 130, 96 * VS, 160 * VS);
   }
 
-  // ── 左上角：飲水機 (64×128 × 1.8) 在販賣機右邊 ──
+  // ── 飲水機（正南）(64×64 × 1.8) 在販賣機右邊 ──
   const FS = 1.8;
   const waterCooler = getMapObj("water-cooler");
   if (waterCooler) {
-    ctx.drawImage(waterCooler, bx + 122, by - 120, 64 * FS, 128 * FS);
+    ctx.drawImage(waterCooler, bx + 122, by - 80, 64 * FS, 64 * FS);
   } else {
     ctx.fillStyle = "#88AACC";
-    ctx.fillRect(bx + 122, by - 120, 64 * FS, 128 * FS);
+    ctx.fillRect(bx + 122, by - 80, 64 * FS, 64 * FS);
   }
 
-  // ── 左上角：咖啡機 (96×128 × 1.5) 在飲水機右邊 ──
+  // ── 流理台 (128×128 × 1.2) 在飲水機右邊 ──
+  const counter = getMapObj("kitchen-counter");
+  if (counter) {
+    ctx.drawImage(counter, bx + 240, by - 60, 128 * VS, 128 * VS);
+  } else {
+    ctx.fillStyle = "#AAAAAA";
+    ctx.fillRect(bx + 240, by - 60, 128 * VS, 128 * VS);
+  }
+
+  // ── 咖啡機（正南）(96×96 × 1.5) 放在流理台上方 ──
   const coffee = getMapObj("coffee-machine");
   if (coffee) {
-    ctx.drawImage(coffee, bx + 240, by - 80, 96 * S, 128 * S);
+    ctx.drawImage(coffee, bx + 256, by - 160, 96 * S, 96 * S);
   } else {
     ctx.fillStyle = "#996644";
-    ctx.fillRect(bx + 240, by - 80, 96 * S, 128 * S);
+    ctx.fillRect(bx + 256, by - 160, 96 * S, 96 * S);
   }
 
-  // ── 右上角：冰箱 (96×160 × 1.8) ──
+  // ── 最右：冰箱（正南）(96×96 × 1.8) ──
+  const areaW = ROOMS.tearoom.w * TILE;
   const fridge = getMapObj("fridge");
   if (fridge) {
-    const fridgeX = bx + ROOMS.tearoom.w * TILE - 96 * FS - 4;
-    ctx.drawImage(fridge, fridgeX, by - 130, 96 * FS, 160 * FS);
+    ctx.drawImage(fridge, bx + areaW - 96 * FS - 4, by - 100, 96 * FS, 96 * FS);
   } else {
     ctx.fillStyle = "#AABBCC";
-    ctx.fillRect(bx + ROOMS.tearoom.w * TILE - 96 * FS - 4, by - 130, 96 * FS, 160 * FS);
+    ctx.fillRect(bx + areaW - 96 * FS - 4, by - 100, 96 * FS, 96 * FS);
   }
 
   // ── 置中：咖啡桌 (128×96 × 1.5 = 192×144) ──
