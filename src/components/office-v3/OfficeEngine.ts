@@ -90,7 +90,7 @@ export class OfficeEngine {
       renderW = r.width;
       renderH = r.width / canvasAspect;
       offsetX = 0;
-      offsetY = (r.height - renderH) / 2;
+      offsetY = 0;  // objectPosition: top — no vertical centering
     }
     const px = ((e.clientX - r.left - offsetX) / renderW) * CANVAS_W;
     const py = ((e.clientY - r.top - offsetY) / renderH) * CANVAS_H;
