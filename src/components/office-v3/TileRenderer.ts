@@ -53,21 +53,14 @@ function drawSprite(
 // ── 地板 ──────────────────────────────────────────────────
 
 function drawFloor(ctx: CanvasRenderingContext2D, _img: HTMLImageElement | null) {
-  const areas: Array<{ r: { x: number; y: number; w: number; h: number }; pngName: string; fallback: string }> = [
-    { r: ROOMS.work,        pngName: "floor-blue",   fallback: "#D4C9B8" },
-    { r: ROOMS.tearoom,     pngName: "floor-wood",   fallback: "#E8D5A3" },
-    { r: ROOMS.meetingRoom, pngName: "floor-purple",  fallback: "#D4C8E0" },
+  const areas: Array<{ r: { x: number; y: number; w: number; h: number }; color: string }> = [
+    { r: ROOMS.work,        color: "#D4CFC8" },  // 淺灰米色
+    { r: ROOMS.tearoom,     color: "#E8DFC8" },  // 淺米色
+    { r: ROOMS.meetingRoom, color: "#D8D0E0" },  // 淺薰衣草
   ];
-  for (const { r, pngName, fallback } of areas) {
-    const tileImg = getMapObj(pngName);
-    if (tileImg) {
-      for (let row = r.y; row < r.y + r.h; row++)
-        for (let col = r.x; col < r.x + r.w; col++)
-          ctx.drawImage(tileImg, tx(col), ty(row), TILE, TILE);
-    } else {
-      ctx.fillStyle = fallback;
-      ctx.fillRect(tx(r.x), ty(r.y), r.w * TILE, r.h * TILE);
-    }
+  for (const { r, color } of areas) {
+    ctx.fillStyle = color;
+    ctx.fillRect(tx(r.x), ty(r.y), r.w * TILE, r.h * TILE);
   }
 }
 
