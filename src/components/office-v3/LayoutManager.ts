@@ -28,26 +28,49 @@ const STORAGE_KEY = "mindfork-office-layout";
 
 // ── Load / Save ──────────────────────────────────────────────
 
-/** Load layout: localStorage first, then fetch default.json */
+/** Load layout: Turso API first, then fallback to default.json */
 export async function loadLayout(): Promise<OfficeLayout> {
-  // Try localStorage
+  // Try Turso API
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const layout = JSON.parse(stored) as OfficeLayout;
-      if (layout.version && layout.objects?.length) return layout;
+    const resp = await fetch("/api/layout");
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data.layout && data.layout.version && data.layout.objects?.length) {
+        return data.layout as OfficeLayout;
+      }
     }
-  } catch { /* ignore parse errors */ }
+  } catch { /* Turso unavailable, fallback */ }
 
-  // Fetch default
+  // Fallback: fetch default.json
   const resp = await fetch("/layout/default.json");
   if (!resp.ok) throw new Error(`Failed to load default layout: ${resp.status}`);
   return resp.json();
 }
 
-/** Save layout to localStorage */
-export function saveLayout(layout: OfficeLayout): void {
+/** Save layout to localStorage (local backup) + Turso API (shared persistence) */
+export async function saveLayout(layout: OfficeLayout, password?: string): Promise<{ ok: boolean; error?: string }> {
+  // Always save locally as backup
   localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
+
+  // Sync to Turso if password provided
+  if (password) {
+    try {
+      const resp = await fetch("/api/layout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ layout, password }),
+      });
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        return { ok: false, error: data.error || `HTTP ${resp.status}` };
+      }
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: String(err) };
+    }
+  }
+
+  return { ok: true };
 }
 
 /** Clear localStorage layout (revert to default) */

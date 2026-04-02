@@ -372,13 +372,23 @@ export default function LayoutEditorOverlay({ layout, onSave, onCancel, canvasRe
     return () => window.removeEventListener("keydown", handler);
   }, [editing, selectedId, onCancel]);
 
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   // Save
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    setSaveError(null);
     const updated: OfficeLayout = {
       ...layout,
       objects: objects,
     };
-    saveLayout(updated);
+    const result = await saveLayout(updated, PASSWORD);
+    setSaving(false);
+    if (!result.ok) {
+      setSaveError(result.error || "Save failed");
+      return;
+    }
     onSave(updated);
   }, [layout, objects, onSave]);
 
@@ -575,11 +585,17 @@ export default function LayoutEditorOverlay({ layout, onSave, onCancel, canvasRe
         </button>
         <button
           onClick={handleSave}
-          className="px-3 py-1 bg-green-700 text-white rounded text-xs font-mono hover:bg-green-600"
+          disabled={saving}
+          className={`px-3 py-1 rounded text-xs font-mono ${
+            saving ? "bg-gray-600 text-gray-400 cursor-wait" : "bg-green-700 text-white hover:bg-green-600"
+          }`}
           onMouseDown={(e) => e.stopPropagation()}
         >
-          Save
+          {saving ? "Saving..." : "Save"}
         </button>
+        {saveError && (
+          <span className="px-2 py-1 text-red-400 text-xs font-mono">{saveError}</span>
+        )}
         <button
           onClick={onCancel}
           className="px-3 py-1 bg-gray-700 text-gray-300 rounded text-xs font-mono hover:bg-gray-600"
