@@ -183,9 +183,9 @@ export default function Dashboard() {
                         className="shrink-0"
                         style={{
                           imageRendering: "pixelated",
-                          clipPath: "inset(0 20px 0 20px)",
-                          marginLeft: -20,
-                          marginRight: -20,
+                          clipPath: "inset(0 40px 0 40px)",
+                          marginLeft: -40,
+                          marginRight: -40,
                         }}
                       />
                       <div className="flex-1 min-w-0">
