@@ -405,7 +405,7 @@ export function renderStaticScene(
   ctx: CanvasRenderingContext2D,
   tileImg: HTMLImageElement | null,
 ) {
-  ctx.fillStyle = "#888";
+  ctx.fillStyle = "#D4CFC8";
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
   drawFloor(ctx, tileImg);
