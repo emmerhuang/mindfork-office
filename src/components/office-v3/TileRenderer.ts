@@ -85,12 +85,11 @@ function drawWalls(ctx: CanvasRenderingContext2D, _img: HTMLImageElement | null)
         const bx = i * segW + (segW - bw) / 2;
         ctx.drawImage(wallImg, bx, 0, bw, wallH);
       } else if (segNames[i] === "wall-whiteboard" && i === 2) {
-        // 大白板橫跨 seg 2+3（4 cols），4:3 比例
+        // 大白板橫跨 seg 2+3（4 cols），填滿牆面高度
         const ww = segW * 2;  // 256px
-        const wh = Math.round(ww * 3 / 4);  // 192px
+        const wh = wallH;     // 192px（跟窗戶同高）
         const wx = i * segW;
-        const wy = (wallH - wh) / 2;
-        ctx.drawImage(wallImg, wx, wy, ww, wh);
+        ctx.drawImage(wallImg, wx, 0, ww, wh);
       } else if (segNames[i] === "wall-whiteboard" && i === 3) {
         // seg 3 已由 seg 2 的大白板覆蓋，跳過
       } else {
