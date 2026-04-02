@@ -128,7 +128,7 @@ function drawDesks(ctx: CanvasRenderingContext2D, _img: HTMLImageElement | null)
       continue;
     }
 
-    const pngName = idx % 2 === 0 ? "desk-monitor" : "desk-laptop";
+    const pngName = "desk-laptop";
     const deskImg = getMapObj(pngName);
     if (deskImg) {
       ctx.drawImage(deskImg, dx, dy, dw, dh);
@@ -263,11 +263,11 @@ function drawMeetingRoom(ctx: CanvasRenderingContext2D) {
     const tableW = TILE * 3.96;  // ~253px
     const tableH = TILE * 2.64;  // ~169px
     const tableX = rmX + (areaW - tableW) / 2;
-    const tableY = ty(18) + (TILE * 3 - tableH) / 2;
+    const tableY = ty(18) + (TILE * 3 - tableH) / 2 + 20;
     ctx.drawImage(confTable, tableX, tableY, tableW, tableH);
   } else {
     ctx.fillStyle = "#8B6914";
-    ctx.fillRect(rmX + (areaW - 288) / 2, ty(18) + (TILE * 3 - 192) / 2, 288, 192);
+    ctx.fillRect(rmX + (areaW - 288) / 2, ty(18) + (TILE * 3 - 192) / 2 + 20, 288, 192);
   }
 }
 
