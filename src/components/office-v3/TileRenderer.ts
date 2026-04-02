@@ -212,19 +212,19 @@ function drawTearoom(ctx: CanvasRenderingContext2D) {
     ctx.fillRect(tx(4) + 8, by, 96 * VS, 160 * VS);
   }
 
-  // ── 咖啡桌 (128×96 × 2 = 256×192)，居中在 rows 19-20 ──
+  // ── 咖啡桌 (128×96 × 1.5 = 192×144)，靠左 50px ──
   const cafeTable = getMapObj("cafe-table");
   if (cafeTable) {
     const areaW = ROOMS.tearoom.w * TILE;
-    const tableW = 128 * 2;
-    const tableH = 96 * 2;
-    const tableX = bx + (areaW - tableW) / 2;
+    const tableW = 128 * S;
+    const tableH = 96 * S;
+    const tableX = bx + (areaW - tableW) / 2 - 50;
     const tableY = ty(19) + (TILE * 2 - tableH) / 2;
     ctx.drawImage(cafeTable, tableX, tableY, tableW, tableH);
   } else {
     ctx.fillStyle = "#AA8866";
     const areaW = ROOMS.tearoom.w * TILE;
-    ctx.fillRect(bx + (areaW - 256) / 2, ty(19) + (TILE * 2 - 192) / 2, 256, 192);
+    ctx.fillRect(bx + (areaW - 192) / 2 - 50, ty(19) + (TILE * 2 - 144) / 2, 192, 144);
   }
 
   // ── 垃圾桶 (64×80 × 1.5 = 96×120)，左下角 row 21 ──
