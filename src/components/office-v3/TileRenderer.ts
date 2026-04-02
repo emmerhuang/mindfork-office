@@ -174,22 +174,22 @@ function drawTearoom(ctx: CanvasRenderingContext2D) {
   // All tearoom objects scaled 1.5x from original PNG size
   const S = 1.5;
 
-  // ── 冰箱 (96×160 × 1.5 = 144×240) ──
+  // ── 冰箱 (96×160 × 1.5 = 144×240) 往上 200px ──
   const fridge = getMapObj("fridge");
   if (fridge) {
-    ctx.drawImage(fridge, bx + 2, by, 96 * S, 160 * S);
+    ctx.drawImage(fridge, bx + 2, by - 200, 96 * S, 160 * S);
   } else {
     ctx.fillStyle = "#AABBCC";
-    ctx.fillRect(bx + 2, by, 96 * S, 160 * S);
+    ctx.fillRect(bx + 2, by - 200, 96 * S, 160 * S);
   }
 
-  // ── 飲水機 (64×128 × 1.5 = 96×192) ──
+  // ── 飲水機 (64×128 × 1.5 = 96×192) 往上 200px ──
   const waterCooler = getMapObj("water-cooler");
   if (waterCooler) {
-    ctx.drawImage(waterCooler, bx + 150, by + 24, 64 * S, 128 * S);
+    ctx.drawImage(waterCooler, bx + 150, by + 24 - 200, 64 * S, 128 * S);
   } else {
     ctx.fillStyle = "#88AACC";
-    ctx.fillRect(bx + 150, by + 24, 64 * S, 128 * S);
+    ctx.fillRect(bx + 150, by + 24 - 200, 64 * S, 128 * S);
   }
 
   // ── 咖啡機 (96×128 × 1.5 = 144×192) ──
@@ -244,32 +244,29 @@ function drawMeetingRoom(ctx: CanvasRenderingContext2D) {
   const rmY = ty(rm.y);    // row 17
   const areaW = rm.w * TILE; // 6 * 64 = 384
 
-  // ── 投影幕 (192×96 原圖) → 頂部居中，3 cols 寬 (192px) ──
+  // ── 投影幕 (192×96 × 1.5 = 288×144) → 頂部居中 ──
   const projector = getMapObj("projector-screen");
   if (projector) {
-    const screenW = TILE * 3;  // 192px
-    const screenH = 96;        // 原始高度
+    const screenW = TILE * 4.5;  // 288px
+    const screenH = 144;
     const screenX = rmX + (areaW - screenW) / 2;
     ctx.drawImage(projector, screenX, rmY + 2, screenW, screenH);
   } else {
     ctx.fillStyle = "#EEEEEE";
-    const screenW = TILE * 3;
-    ctx.fillRect(rmX + (areaW - screenW) / 2, rmY + 2, screenW, 96);
+    ctx.fillRect(rmX + (areaW - 288) / 2, rmY + 2, 288, 144);
   }
 
-  // ── 會議桌 (192×128 原圖) → 居中，3 cols × 2 rows (192×128) ──
+  // ── 會議桌 (192×128 × 1.5 = 288×192) → 居中 ──
   const confTable = getMapObj("conference-table");
   if (confTable) {
-    const tableW = TILE * 3;  // 192px
-    const tableH = TILE * 2;  // 128px
+    const tableW = TILE * 4.5;  // 288px
+    const tableH = TILE * 3;    // 192px
     const tableX = rmX + (areaW - tableW) / 2;
     const tableY = ty(18) + (TILE * 3 - tableH) / 2;
     ctx.drawImage(confTable, tableX, tableY, tableW, tableH);
   } else {
     ctx.fillStyle = "#8B6914";
-    const tableW = TILE * 3;
-    const tableH = TILE * 2;
-    ctx.fillRect(rmX + (areaW - tableW) / 2, ty(18) + (TILE * 3 - tableH) / 2, tableW, tableH);
+    ctx.fillRect(rmX + (areaW - 288) / 2, ty(18) + (TILE * 3 - 192) / 2, 288, 192);
   }
 }
 
