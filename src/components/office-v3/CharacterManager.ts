@@ -1,7 +1,7 @@
 // CharacterManager.ts — 角色狀態機（working / idle_home / walking / idle_away / celebrating）
 // 含 A* tile-level pathfinding + Waffles 多動畫支援
 
-import { CHARACTERS, CharacterDef, TILE, ROOMS, CANVAS_W, CANVAS_H, COLS, ROWS, WALKABLE_MAP } from "./officeData";
+import { CHARACTERS, CharacterDef, TILE, ROOMS, CANVAS_W, CANVAS_H, COLS, ROWS, activeWalkableMap } from "./officeData";
 import { CELEBRATE_FRAME_COUNTS, WafflesAnim } from "./spriteAtlas";
 
 export type CharState = "working" | "idle_home" | "walking" | "idle_away" | "celebrating";
@@ -188,7 +188,7 @@ function findPath(
 
 function isWalkable(tx: number, ty: number): boolean {
   if (tx < 0 || tx >= COLS || ty < 0 || ty >= ROWS) return false;
-  return WALKABLE_MAP[ty]?.[tx] ?? false;
+  return activeWalkableMap[ty]?.[tx] ?? false;
 }
 
 // ── Waffles walk animation selection ────────────────────────

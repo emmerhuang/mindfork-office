@@ -1,8 +1,10 @@
 // OfficeEngine.ts — 主迴圈：init 載入圖片 → start rAF → render
 // 含公告欄/Boss 螢幕點擊事件、Waffles 點擊隨機動畫
 
-import { CANVAS_W, CANVAS_H, TILE, TARGET_FPS, BULLETIN_BOARD, BOSS_SCREEN } from "./officeData";
+import { CANVAS_W, CANVAS_H, TILE, TARGET_FPS, BULLETIN_BOARD, BOSS_SCREEN, setActiveWalkableMap } from "./officeData";
 import { renderStaticScene, preloadMapObjects, getMapObj } from "./TileRenderer";
+import { loadLayout, saveLayout, computeWalkableMap } from "./LayoutManager";
+import type { OfficeLayout } from "./LayoutManager";
 import { drawCharacter } from "./CharacterRenderer";
 import { DialogueSystem } from "./DialogueSystem";
 import { CharacterManager } from "./CharacterManager";
@@ -35,6 +37,9 @@ export class OfficeEngine {
   private rafId: number | null = null;
   private lastT = 0;
   private readonly interval = 1000 / TARGET_FPS;
+
+  // Layout reference (for editor)
+  public layout: OfficeLayout | null = null;
 
   // Waffles click animation state (random anim on click)
   private wafflesClickAnim: WafflesAnim | null = null;
@@ -219,7 +224,27 @@ export class OfficeEngine {
     }
 
     await preloadMapObjects();
-    renderStaticScene(this.offCtx, this.tileImg);
+
+    // Load layout and compute walkable map
+    try {
+      this.layout = await loadLayout();
+      const walkMap = computeWalkableMap(this.layout);
+      setActiveWalkableMap(walkMap);
+    } catch {
+      // Fallback: no layout, renderStaticScene will use legacy path
+      this.layout = null;
+    }
+
+    renderStaticScene(this.offCtx, this.tileImg, this.layout ?? undefined);
+  }
+
+  /** Re-render static scene (called after layout edits) */
+  rerender() {
+    if (this.layout) {
+      const walkMap = computeWalkableMap(this.layout);
+      setActiveWalkableMap(walkMap);
+    }
+    renderStaticScene(this.offCtx, this.tileImg, this.layout ?? undefined);
   }
 
   start() { this.lastT = performance.now(); this.rafId = requestAnimationFrame(this.loop); }

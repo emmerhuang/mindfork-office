@@ -215,7 +215,16 @@ function buildWalkableMap(): boolean[][] {
   return map;
 }
 
+/** Default walkable map (used as fallback before layout is loaded) */
 export const WALKABLE_MAP = buildWalkableMap();
+
+/** Mutable walkable map — updated when layout changes */
+export let activeWalkableMap: boolean[][] = WALKABLE_MAP;
+
+/** Update the active walkable map (called from OfficeEngine after layout load) */
+export function setActiveWalkableMap(map: boolean[][]) {
+  activeWalkableMap = map;
+}
 
 // Bulletin board position on wall (for click detection)
 export const BULLETIN_BOARD = { x: 4, y: 1, w: 4, h: 2 } as const;

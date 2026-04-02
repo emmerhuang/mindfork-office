@@ -5,6 +5,8 @@ import { OfficeEngine } from "./OfficeEngine";
 import { CANVAS_W, CANVAS_H } from "./officeData";
 import { WAFFLES_ANIM_FRAMES, getWafflesFrame } from "./spriteAtlas";
 import type { WafflesAnim } from "./spriteAtlas";
+import LayoutEditorOverlay from "./LayoutEditorOverlay";
+import type { OfficeLayout } from "./LayoutManager";
 
 export interface OsEntry {
   text: string;
@@ -49,6 +51,7 @@ export default function OfficeCanvas({ memberStatuses, memberOs, onCharacterClic
   const [showBulletin, setShowBulletin] = useState(false);
   const [showBossScreen, setShowBossScreen] = useState(false);
   const [wafflesZoom, setWafflesZoom] = useState<WafflesAnim | null>(null);
+  const [editorMode, setEditorMode] = useState(false);
   const zoomCanvasRef = useRef<HTMLCanvasElement>(null);
   const zoomRafRef = useRef<number | null>(null);
   const zoomImgRef = useRef<HTMLImageElement | null>(null);
@@ -261,6 +264,22 @@ export default function OfficeCanvas({ memberStatuses, memberOs, onCharacterClic
           </div>
         </div>
       )}
+      {/* Layout Editor Overlay — always rendered for secret button; layout may be null before engine init */}
+      <LayoutEditorOverlay
+        layout={engineRef.current?.layout ?? { version: 1, floorColors: { work: "#D4CFC8", tearoom: "#E8DFC8", meetingRoom: "#D8D0E0" }, objects: [] }}
+        canvasRef={canvasRef}
+        onSave={(updated: OfficeLayout) => {
+          if (engineRef.current) {
+            engineRef.current.layout = updated;
+            engineRef.current.rerender();
+          }
+          setEditorMode(false);
+        }}
+        onCancel={() => {
+          setEditorMode(false);
+        }}
+      />
+
       {/* Waffles Zoom Overlay */}
       {wafflesZoom && (
         <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-10"

@@ -2,12 +2,13 @@
 
 import { TILE, CANVAS_W, CANVAS_H, CHARACTERS, ROOMS } from "./officeData";
 import { TILE_SPRITES, SpriteFrame } from "./spriteAtlas";
+import type { OfficeLayout } from "./LayoutManager";
 
 const tx = (c: number) => c * TILE;
 const ty = (r: number) => r * TILE;
 
 // ── Map Object PNG 快取 ─────────────────────────────────
-const MAP_OBJ_NAMES = [
+export const MAP_OBJ_NAMES = [
   // 地板 tiles
   "floor-blue", "floor-wood", "floor-purple",
   // 牆面
@@ -65,88 +66,24 @@ function drawFloor(ctx: CanvasRenderingContext2D, _img: HTMLImageElement | null)
   }
 }
 
-// ── 牆面 ──────────────────────────────────────────────────
+// ── Layout-based object rendering ─────────────────────────
 
-function drawWalls(ctx: CanvasRenderingContext2D, _img: HTMLImageElement | null) {
-  const wallH = TILE * 3;  // 192px
-  const segW = TILE * 2;   // 128px
-  const segNames = [
-    "wall-bookshelf", "wall-window",
-    "wall-whiteboard", "wall-whiteboard",
-    "wall-window", "wall-bookshelf",
-  ];
-  let anyDrawn = false;
-  for (let i = 0; i < segNames.length; i++) {
-    const wallImg = getMapObj(segNames[i]);
-    if (wallImg) {
-      if (segNames[i] === "wall-bookshelf") {
-        // 書櫃加寬 73%，居中
-        const bw = Math.round(segW * 1.73);
-        const bx = i * segW + (segW - bw) / 2;
-        ctx.drawImage(wallImg, bx, 0, bw, wallH);
-      } else if (segNames[i] === "wall-whiteboard" && i === 2) {
-        // 大白板橫跨 seg 2+3（4 cols），填滿牆面高度
-        const ww = segW * 2;  // 256px
-        const wh = wallH;     // 192px（跟窗戶同高）
-        const wx = i * segW;
-        ctx.drawImage(wallImg, wx, 0, ww, wh);
-      } else if (segNames[i] === "wall-whiteboard" && i === 3) {
-        // seg 3 已由 seg 2 的大白板覆蓋，跳過
-      } else {
-        ctx.drawImage(wallImg, i * segW, 0, segW + 1, wallH);
-      }
-      anyDrawn = true;
-    }
-  }
-  if (!anyDrawn) {
-    ctx.fillStyle = "#2D5A27";
-    ctx.fillRect(0, 0, CANVAS_W, wallH);
-    ctx.fillStyle = "#3A7233";
-    ctx.fillRect(0, wallH - 4, CANVAS_W, 4);
-  }
-  // 踢腳板
-  ctx.fillStyle = "rgba(0,0,0,0.3)";
-  ctx.fillRect(0, ty(3), CANVAS_W, 3);
-}
-
-// ── 桌子 ──────────────────────────────────────────────────
-
-function drawDesks(ctx: CanvasRenderingContext2D, _img: HTMLImageElement | null) {
-  let idx = 0;
-  for (const ch of CHARACTERS) {
-    const x = tx(ch.deskTile.x);
-    const y = ty(ch.deskTile.y);
-    const dw = TILE * 3;    // 192px (1.5x)
-    const dh = TILE * 1.5;  // 96px (1.5x)
-    // 居中：從 deskTile 往左上偏移，讓桌子中心對齊原始 2-tile 位置
-    const dx = x - TILE / 2;
-    const dy = y - TILE / 4;
-
-    if (ch.isWaffles) {
-      const bedImg = getMapObj("dog-bed");
-      if (bedImg) {
-        ctx.drawImage(bedImg, dx, dy, dw, dh);
-      } else {
-        ctx.fillStyle = "#D68910";
-        ctx.beginPath(); ctx.ellipse(dx + dw / 2, dy + dh / 2, dw / 2 - 2, dh / 2 - 2, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "#F39C12";
-        ctx.beginPath(); ctx.ellipse(dx + dw / 2, dy + dh / 2, dw / 2 - 5, dh / 2 - 5, 0, 0, Math.PI * 2); ctx.fill();
-      }
+function drawLayoutObjects(ctx: CanvasRenderingContext2D, layout: OfficeLayout) {
+  // Sort by zIndex for correct draw order
+  const sorted = [...layout.objects].sort((a, b) => a.zIndex - b.zIndex);
+  for (const obj of sorted) {
+    // Special: kickboard (canvas-drawn, no sprite)
+    if (obj.special === "kickboard") {
+      ctx.fillStyle = "rgba(0,0,0,0.3)";
+      ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
       continue;
     }
+    // Skip objects with no sprite
+    if (!obj.sprite) continue;
 
-    const pngName = "desk-laptop";
-    const deskImg = getMapObj(pngName);
-    if (deskImg) {
-      ctx.drawImage(deskImg, dx, dy, dw, dh);
-      idx++;
-    } else {
-      ctx.fillStyle = "#C4A87A";
-      ctx.fillRect(x, y, dw, dh);
-      ctx.fillStyle = "#A0825A";
-      ctx.fillRect(x, y + dh - 4, dw, 4);
-      ctx.fillStyle = "#1a1a2e";
-      ctx.fillRect(x + dw / 2 - 7, y + 4, 14, 10);
+    const img = getMapObj(obj.sprite);
+    if (img) {
+      ctx.drawImage(img, obj.x, obj.y, obj.width, obj.height);
     }
   }
 }
@@ -172,82 +109,7 @@ function drawPlant(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null) 
   }
 }
 
-// ── 茶水間設備 ────────────────────────────────────────────
-
-function drawTearoom(ctx: CanvasRenderingContext2D) {
-  const bx = tx(ROOMS.tearoom.x);
-  const by = ty(ROOMS.tearoom.y);   // row 17
-  const areaW = ROOMS.tearoom.w * TILE; // 384
-
-  // ── 左上：販賣機 (400×400 → 120×120) ──
-  const vendW = 120, vendH = 120;
-  const vending = getMapObj("vending-machine");
-  if (vending) {
-    ctx.drawImage(vending, bx + 2, by - vendH + 110, vendW, vendH);
-  } else {
-    ctx.fillStyle = "#CC6644";
-    ctx.fillRect(bx + 2, by - vendH + 10, vendW, vendH);
-  }
-
-  // ── 飲水機 (256×400 → 80×120) 緊貼販賣機右邊 ──
-  const wcW = 80, wcH = 120;
-  const waterCooler = getMapObj("water-cooler");
-  if (waterCooler) {
-    ctx.drawImage(waterCooler, bx + 2 + vendW + 4, by - wcH + 10, wcW, wcH);
-  } else {
-    ctx.fillStyle = "#88AACC";
-    ctx.fillRect(bx + 2 + vendW + 4, by - wcH + 10, wcW, wcH);
-  }
-
-  // ── 高腳桌 ×2 (96×128 → 96×140) ──
-  const barTable = getMapObj("bar-table") || getMapObj("cafe-table");
-  const btW = 96, btH = 140;
-  if (barTable) {
-    // 左桌（靠近中間）
-    ctx.drawImage(barTable, bx + 80, ty(19), btW, btH);
-    // 右桌（靠近中間）
-    ctx.drawImage(barTable, bx + areaW - btW - 80, ty(19), btW, btH);
-  } else {
-    ctx.fillStyle = "#AA8866";
-    ctx.fillRect(bx + 40, ty(19) + 20, 80, 80);
-    ctx.fillRect(bx + areaW - 120, ty(19) + 20, 80, 80);
-  }
-}
-
-
-// ── 會議室 ────────────────────────────────────────────────
-
-function drawMeetingRoom(ctx: CanvasRenderingContext2D) {
-  const rm = ROOMS.meetingRoom;
-  const rmX = tx(rm.x);    // col 6
-  const rmY = ty(rm.y);    // row 17
-  const areaW = rm.w * TILE; // 6 * 64 = 384
-
-  // ── 投影幕 (400×256 → 230×148) → 頂部居中 ──
-  const projector = getMapObj("projector-screen");
-  if (projector) {
-    const screenW = 230;
-    const screenH = 148;
-    const screenX = rmX + (areaW - screenW) / 2;
-    ctx.drawImage(projector, screenX, rmY + 2, screenW, screenH);
-  } else {
-    ctx.fillStyle = "#EEEEEE";
-    ctx.fillRect(rmX + (areaW - 230) / 2, rmY + 2, 230, 148);
-  }
-
-  // ── 會議桌 (400×400 → 200×200) → 居中 ──
-  const confTable = getMapObj("conference-table");
-  if (confTable) {
-    const tableW = 200;
-    const tableH = 200;
-    const tableX = rmX + (areaW - tableW) / 2;
-    const tableY = ty(18) + (TILE * 3 - tableH) / 2 + 60;
-    ctx.drawImage(confTable, tableX, tableY, tableW, tableH);
-  } else {
-    ctx.fillStyle = "#8B6914";
-    ctx.fillRect(rmX + (areaW - 200) / 2, ty(18) + (TILE * 3 - 200) / 2 + 40, 200, 200);
-  }
-}
+// (drawTearoom and drawMeetingRoom removed — now rendered via layout objects)
 
 // ── 區域標籤 ──────────────────────────────────────────────
 
@@ -390,17 +252,38 @@ function drawWatermark(ctx: CanvasRenderingContext2D) {
 export function renderStaticScene(
   ctx: CanvasRenderingContext2D,
   tileImg: HTMLImageElement | null,
+  layout?: OfficeLayout,
 ) {
   ctx.fillStyle = "#888";
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-  drawFloor(ctx, tileImg);
+  // Draw floor using layout colors if available, otherwise defaults
+  if (layout) {
+    drawFloorFromLayout(ctx, layout);
+  } else {
+    drawFloor(ctx, tileImg);
+  }
   drawWatermark(ctx);
-  drawWalls(ctx, tileImg);
-  // Post-its removed — whiteboard PNG already includes content
-  drawDesks(ctx, tileImg);
+
+  if (layout) {
+    // Layout-based rendering: all walls, desks, tearoom, meeting room objects
+    drawLayoutObjects(ctx, layout);
+  }
+
+  // Preserved: plant (uses old tileset sprite atlas) and bulletin board
   drawPlant(ctx, tileImg);
-  drawTearoom(ctx);
-  drawMeetingRoom(ctx);
-  // drawLabels(ctx);  // 移除茶水間/會議室文字標籤
+  drawBulletinBoard(ctx);
+}
+
+/** Draw floor areas using layout-provided colors */
+function drawFloorFromLayout(ctx: CanvasRenderingContext2D, layout: OfficeLayout) {
+  const areas: Array<{ r: { x: number; y: number; w: number; h: number }; color: string }> = [
+    { r: ROOMS.work,        color: layout.floorColors.work },
+    { r: ROOMS.tearoom,     color: layout.floorColors.tearoom },
+    { r: ROOMS.meetingRoom, color: layout.floorColors.meetingRoom },
+  ];
+  for (const { r, color } of areas) {
+    ctx.fillStyle = color;
+    ctx.fillRect(tx(r.x), ty(r.y), r.w * TILE, r.h * TILE);
+  }
 }
