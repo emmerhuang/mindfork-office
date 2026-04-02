@@ -4,6 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "MindFork Office",
   description: "Pixel art office visualization for the MindFork team",
+  viewport: "width=device-width, initial-scale=1, user-scalable=yes",
 };
 
 export default function RootLayout({
@@ -13,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-TW">
-      <body className="h-screen bg-[#c4a87a] text-gray-800 antialiased overflow-hidden">
+      <body className="min-h-screen bg-[#c4a87a] text-gray-800 antialiased">
         {children}
       </body>
     </html>
