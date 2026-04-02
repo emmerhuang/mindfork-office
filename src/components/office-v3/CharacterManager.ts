@@ -449,26 +449,41 @@ export class CharacterManager {
   private idleIcons: Record<string, string> = {};
 
   private updateStatusIcon(c: CharInstance, _tick: number) {
-    // emote-0: WORKING, emote-1: THINKING, emote-2: LOVE
-    // emote-3: SLEEPING, emote-4: COFFEE, emote-5: HAPPY
+    // emote-0: WORKING (wrench/gear)    emote-1: THINKING (lightbulb)
+    // emote-2: LOVE (heart)             emote-3: SLEEPING (ZZZ)
+    // emote-4: COFFEE (cup)             emote-5: HAPPY (music note)
+    // emote-6: ALERT (exclamation)      emote-7: CELEBRATING (stars)
+    // emote-8: CONFUSED (question mark)
     switch (c.state) {
       case "working":
         c.statusIcon = "emote-0";
         break;
       case "celebrating":
-        c.statusIcon = "emote-5"; // HAPPY
+        c.statusIcon = "emote-7"; // CELEBRATING (stars)
         break;
       case "walking":
         c.statusIcon = ""; // 走路有動畫，不需額外圖示
         // 清除 idle icon 快取，下次 idle 重新選
         delete this.idleIcons[c.def.id];
         break;
-      case "idle_home":
-        c.statusIcon = "emote-4"; // COFFEE
+      case "idle_home": {
+        // 隨機從 coffee / love / happy 選一個（進入 idle 時選一次，站定期間不切換）
+        if (!this.idleIcons[c.def.id]) {
+          const choices = ["emote-4", "emote-2", "emote-5"]; // coffee, love, happy
+          this.idleIcons[c.def.id] = choices[Math.floor(Math.random() * choices.length)];
+        }
+        c.statusIcon = this.idleIcons[c.def.id];
         break;
-      case "idle_away":
-        c.statusIcon = "emote-1"; // THINKING
+      }
+      case "idle_away": {
+        // 隨機從 thinking / confused / sleeping 選一個（進入 idle 時選一次）
+        if (!this.idleIcons[c.def.id]) {
+          const choices = ["emote-1", "emote-8", "emote-3"]; // thinking, confused, sleeping
+          this.idleIcons[c.def.id] = choices[Math.floor(Math.random() * choices.length)];
+        }
+        c.statusIcon = this.idleIcons[c.def.id];
         break;
+      }
       default:
         c.statusIcon = "";
     }
