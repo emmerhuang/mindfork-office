@@ -86,6 +86,11 @@ function drawWalls(ctx: CanvasRenderingContext2D, _img: HTMLImageElement | null)
         const cx = i * segW + (segW - cw) / 2;
         const cy = (wallH - ch) / 2;
         ctx.drawImage(wallImg, cx, cy, cw, ch);
+      } else if (segNames[i] === "wall-bookshelf") {
+        // 書櫃加寬 20%，居中
+        const bw = Math.round(segW * 1.2);
+        const bx = i * segW + (segW - bw) / 2;
+        ctx.drawImage(wallImg, bx, 0, bw, wallH);
       } else {
         ctx.drawImage(wallImg, i * segW, 0, segW + 1, wallH);
       }
