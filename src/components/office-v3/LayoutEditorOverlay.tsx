@@ -6,7 +6,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { TILE, CANVAS_W, CANVAS_H, COLS, ROWS } from "./officeData";
 import { saveLayout, exportLayout } from "./LayoutManager";
-import { MAP_OBJ_NAMES } from "./TileRenderer";
+import { MAP_OBJ_NAMES, getMapObj } from "./TileRenderer";
 import type { OfficeLayout, LayoutObject } from "./LayoutManager";
 
 // ── Sprite palette categories ────────────────────────────────
@@ -64,7 +64,10 @@ function genId(): string {
 }
 
 function snapToGrid(v: number): number {
-  return Math.round(v / TILE) * TILE;
+  return Math.round(v);  // 1px precision
+}
+function snapToTile(v: number): number {
+  return Math.round(v / TILE) * TILE;  // tile-aligned (for new objects)
 }
 
 // ── Component ────────────────────────────────────────────────
@@ -97,6 +100,7 @@ export default function LayoutEditorOverlay({ layout, onSave, onCancel, canvasRe
     corner?: string;
   } | null>(null);
   const [dropPreview, setDropPreview] = useState<{ sprite: string; x: number; y: number; w: number; h: number } | null>(null);
+  const [lockAspectRatio, setLockAspectRatio] = useState(true);
   const overlayRef = useRef<HTMLDivElement>(null);
   const dragSpriteRef = useRef<SpriteInfo | null>(null);
 
@@ -282,8 +286,8 @@ export default function LayoutEditorOverlay({ layout, onSave, onCancel, canvasRe
           const info = dragSpriteRef.current;
           setDropPreview({
             sprite: info.name,
-            x: snapToGrid(coords.cx - info.defaultW / 2),
-            y: snapToGrid(coords.cy - info.defaultH / 2),
+            x: snapToTile(coords.cx - info.defaultW / 2),
+            y: snapToTile(coords.cy - info.defaultH / 2),
             w: info.defaultW,
             h: info.defaultH,
           });
@@ -309,27 +313,51 @@ export default function LayoutEditorOverlay({ layout, onSave, onCancel, canvasRe
             };
           }
           // Resize
-          let newX = obj.x, newY = obj.y, newW = obj.width, newH = obj.height;
+          let newX = dragState.objStartX, newY = dragState.objStartY;
+          let newW = dragState.objStartW, newH = dragState.objStartH;
           const corner = dragState.corner!;
           if (corner.includes("e")) {
             newW = Math.max(TILE, snapToGrid(dragState.objStartW + dx));
           }
           if (corner.includes("w")) {
             newW = Math.max(TILE, snapToGrid(dragState.objStartW - dx));
-            newX = snapToGrid(dragState.objStartX + dx);
+            newX = snapToGrid(dragState.objStartX + (dragState.objStartW - newW));
           }
           if (corner.includes("s")) {
             newH = Math.max(TILE, snapToGrid(dragState.objStartH + dy));
           }
           if (corner.includes("n")) {
             newH = Math.max(TILE, snapToGrid(dragState.objStartH - dy));
-            newY = snapToGrid(dragState.objStartY + dy);
+            newY = snapToGrid(dragState.objStartY + (dragState.objStartH - newH));
+          }
+          // Aspect ratio lock
+          if (lockAspectRatio && obj.sprite) {
+            const img = getMapObj(obj.sprite);
+            if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
+              const aspect = img.naturalWidth / img.naturalHeight;
+              // Use the dominant axis based on which corner is being dragged
+              const dxAbs = Math.abs(dx);
+              const dyAbs = Math.abs(dy);
+              if (dxAbs >= dyAbs) {
+                // Width drives height
+                newH = Math.max(TILE, snapToGrid(Math.round(newW / aspect)));
+                if (corner.includes("n")) {
+                  newY = snapToGrid(dragState.objStartY + dragState.objStartH - newH);
+                }
+              } else {
+                // Height drives width
+                newW = Math.max(TILE, snapToGrid(Math.round(newH * aspect)));
+                if (corner.includes("w")) {
+                  newX = snapToGrid(dragState.objStartX + dragState.objStartW - newW);
+                }
+              }
+            }
           }
           return { ...obj, x: newX, y: newY, width: newW, height: newH };
         }),
       );
     },
-    [editing, dragState, selectedId, toCanvasCoords],
+    [editing, dragState, selectedId, toCanvasCoords, lockAspectRatio],
   );
 
   const handleMouseUp = useCallback(() => {
@@ -638,8 +666,8 @@ export default function LayoutEditorOverlay({ layout, onSave, onCancel, canvasRe
                           if (coords) {
                             setDropPreview({
                               sprite: info.name,
-                              x: snapToGrid(coords.cx - info.defaultW / 2),
-                              y: snapToGrid(coords.cy - info.defaultH / 2),
+                              x: snapToTile(coords.cx - info.defaultW / 2),
+                              y: snapToTile(coords.cy - info.defaultH / 2),
                               w: info.defaultW,
                               h: info.defaultH,
                             });
@@ -653,8 +681,8 @@ export default function LayoutEditorOverlay({ layout, onSave, onCancel, canvasRe
                             const newObj: LayoutObject = {
                               id: genId(),
                               sprite: info.name,
-                              x: snapToGrid(coords.cx - info.defaultW / 2),
-                              y: snapToGrid(coords.cy - info.defaultH / 2),
+                              x: snapToTile(coords.cx - info.defaultW / 2),
+                              y: snapToTile(coords.cy - info.defaultH / 2),
                               width: info.defaultW,
                               height: info.defaultH,
                               zIndex: 20,
@@ -691,43 +719,99 @@ export default function LayoutEditorOverlay({ layout, onSave, onCancel, canvasRe
       </div>
 
       {/* Selected object info */}
-      {selectedObj && (
-        <div
-          className="absolute bottom-2 left-2 bg-gray-900/90 border border-gray-700 rounded p-2 text-xs font-mono text-gray-300 z-30"
-          style={{ pointerEvents: "auto" }}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          <div>{selectedObj.id}</div>
-          <div>sprite: {selectedObj.sprite || "(special)"}</div>
-          <div>pos: ({selectedObj.x}, {selectedObj.y})</div>
-          <div>size: {selectedObj.width} x {selectedObj.height}</div>
-          <div className="flex gap-2 mt-1">
-            <label className="flex items-center gap-1">
-              <input
-                type="checkbox"
-                checked={selectedObj.walkable}
-                onChange={(e) => {
-                  setObjects((prev) =>
-                    prev.map((o) =>
-                      o.id === selectedObj.id ? { ...o, walkable: e.target.checked } : o
-                    )
-                  );
+      {selectedObj && (() => {
+        const spriteImg = selectedObj.sprite ? getMapObj(selectedObj.sprite) : undefined;
+        const natW = spriteImg?.naturalWidth ?? 0;
+        const natH = spriteImg?.naturalHeight ?? 0;
+        const aspect = natW > 0 && natH > 0 ? natW / natH : 0;
+
+        const updateField = (field: "x" | "y" | "width" | "height", raw: string) => {
+          const v = parseInt(raw, 10);
+          if (isNaN(v) || v < 0) return;
+          setObjects((prev) =>
+            prev.map((o) => {
+              if (o.id !== selectedObj.id) return o;
+              const updated = { ...o, [field]: v };
+              // Aspect ratio coupling for width/height
+              if (lockAspectRatio && aspect > 0) {
+                if (field === "width") {
+                  updated.height = Math.max(TILE, Math.round(v / aspect));
+                } else if (field === "height") {
+                  updated.width = Math.max(TILE, Math.round(v * aspect));
+                }
+              }
+              return updated;
+            })
+          );
+        };
+
+        return (
+          <div
+            className="absolute bottom-2 left-2 bg-gray-900/90 border border-gray-700 rounded p-2 text-xs font-mono text-gray-300 z-30"
+            style={{ pointerEvents: "auto", minWidth: 260 }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="mb-1">{selectedObj.id}</div>
+            <div className="mb-1">sprite: {selectedObj.sprite || "(special)"}</div>
+            {natW > 0 && (
+              <div className="mb-1 text-gray-500">
+                original: {natW} x {natH}
+              </div>
+            )}
+            {/* Coordinate & size inputs */}
+            <div className="grid grid-cols-4 gap-1 mb-1">
+              {(["x", "y", "width", "height"] as const).map((field) => (
+                <label key={field} className="flex flex-col">
+                  <span className="text-gray-500 text-[9px]">{field.charAt(0).toUpperCase() + field.slice(1)}</span>
+                  <input
+                    type="number"
+                    value={selectedObj[field]}
+                    onChange={(e) => updateField(field, e.target.value)}
+                    className="w-full bg-gray-800 text-white border border-gray-600 rounded px-1 py-0.5 text-xs font-mono focus:outline-none focus:border-cyan-400"
+                    min={0}
+                    step={TILE}
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-2 items-center mb-1">
+              <label className="flex items-center gap-1">
+                <input
+                  type="checkbox"
+                  checked={lockAspectRatio}
+                  onChange={(e) => setLockAspectRatio(e.target.checked)}
+                />
+                Lock Aspect Ratio
+              </label>
+            </div>
+            <div className="flex gap-2">
+              <label className="flex items-center gap-1">
+                <input
+                  type="checkbox"
+                  checked={selectedObj.walkable}
+                  onChange={(e) => {
+                    setObjects((prev) =>
+                      prev.map((o) =>
+                        o.id === selectedObj.id ? { ...o, walkable: e.target.checked } : o
+                      )
+                    );
+                  }}
+                />
+                walkable
+              </label>
+              <button
+                onClick={() => {
+                  setObjects((prev) => prev.filter((o) => o.id !== selectedObj.id));
+                  setSelectedId(null);
                 }}
-              />
-              walkable
-            </label>
-            <button
-              onClick={() => {
-                setObjects((prev) => prev.filter((o) => o.id !== selectedObj.id));
-                setSelectedId(null);
-              }}
-              className="px-2 py-0.5 bg-red-800 text-red-200 rounded hover:bg-red-700"
-            >
-              Delete
-            </button>
+                className="px-2 py-0.5 bg-red-800 text-red-200 rounded hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
