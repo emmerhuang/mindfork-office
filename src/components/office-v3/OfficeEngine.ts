@@ -346,8 +346,11 @@ export class OfficeEngine {
             const floatY = Math.sin((this.tick / 60) * Math.PI * 2) * 6;
             const emoteImg = getMapObj(c.statusIcon);
             if (emoteImg) {
-              const sz = 48;
-              ctx.drawImage(emoteImg, c.px - sz / 2, footY - dh - sz - 8 + floatY, sz, sz);
+              const maxSz = 48;
+              const eAspect = emoteImg.naturalWidth / emoteImg.naturalHeight;
+              const ew = eAspect >= 1 ? maxSz : maxSz * eAspect;
+              const eh = eAspect >= 1 ? maxSz / eAspect : maxSz;
+              ctx.drawImage(emoteImg, c.px - ew / 2, footY - dh - eh - 8 + floatY, ew, eh);
             } else {
               ctx.save();
               ctx.font = "56px serif";
