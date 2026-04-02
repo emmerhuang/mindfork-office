@@ -804,8 +804,34 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
 
         return (
           <div
-            className="fixed bg-gray-900/95 border border-cyan-500 rounded-lg p-3 text-xs font-mono text-gray-300 z-50 shadow-lg"
-            style={{ pointerEvents: "auto", width: 216, top: 60, left: 10 }}
+            className="absolute bg-gray-900/95 border border-cyan-500 rounded-lg p-3 text-xs font-mono text-gray-300 z-50 shadow-lg"
+            style={{
+              pointerEvents: "auto",
+              width: 216,
+              ...(() => {
+                // Position panel to the left of the selected object
+                const canvasEl = canvasRef?.current;
+                if (!canvasEl) return { top: 60, left: 10 };
+                const r = canvasEl.getBoundingClientRect();
+                const canvasAspect = CANVAS_W / CANVAS_H;
+                const boxAspect = r.width / r.height;
+                let renderW: number, renderH: number, offsetX: number, offsetY: number;
+                if (boxAspect > canvasAspect) {
+                  renderH = r.height; renderW = renderH * canvasAspect;
+                  offsetX = (r.width - renderW) / 2; offsetY = 0;
+                } else {
+                  renderW = r.width; renderH = renderW / canvasAspect;
+                  offsetX = 0; offsetY = 0;
+                }
+                const scale = renderW / CANVAS_W;
+                const panelLeft = offsetX + selectedObj.x * scale - 226;
+                const panelTop = offsetY + selectedObj.y * scale;
+                return {
+                  top: Math.max(4, Math.min(panelTop, r.height - 300)),
+                  left: Math.max(4, panelLeft),
+                };
+              })(),
+            }}
             onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="mb-1 text-cyan-400 font-bold truncate">{selectedObj.sprite || selectedObj.id}</div>
