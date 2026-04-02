@@ -804,8 +804,8 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
 
         return (
           <div
-            className="absolute bottom-2 left-2 bg-gray-900/90 border border-gray-700 rounded p-2 text-xs font-mono text-gray-300 z-30"
-            style={{ pointerEvents: "auto", minWidth: 260 }}
+            className="fixed bg-gray-900/95 border border-cyan-500 rounded-lg p-3 text-xs font-mono text-gray-300 z-50 shadow-lg"
+            style={{ pointerEvents: "auto", width: 180, top: 60, right: 10 }}
             onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="mb-1">{selectedObj.id}</div>
