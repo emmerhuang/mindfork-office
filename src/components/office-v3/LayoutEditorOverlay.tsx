@@ -284,12 +284,15 @@ export default function LayoutEditorOverlay({ layout, onSave, onCancel, canvasRe
         const coords = toCanvasCoords(e.clientX, e.clientY);
         if (coords) {
           const info = dragSpriteRef.current;
+          const pImg = getMapObj(info.name);
+          const pw = pImg ? pImg.naturalWidth : info.defaultW;
+          const ph = pImg ? pImg.naturalHeight : info.defaultH;
           setDropPreview({
             sprite: info.name,
-            x: snapToTile(coords.cx - info.defaultW / 2),
-            y: snapToTile(coords.cy - info.defaultH / 2),
-            w: info.defaultW,
-            h: info.defaultH,
+            x: snapToTile(coords.cx - pw / 2),
+            y: snapToTile(coords.cy - ph / 2),
+            w: pw,
+            h: ph,
           });
         }
         return;
@@ -366,13 +369,17 @@ export default function LayoutEditorOverlay({ layout, onSave, onCancel, canvasRe
     // Drop from palette
     if (dragSpriteRef.current && dropPreview) {
       const info = dragSpriteRef.current;
+      // Use original image dimensions for faithful 1:1 rendering
+      const srcImg = getMapObj(info.name);
+      const dropW = srcImg ? srcImg.naturalWidth : info.defaultW;
+      const dropH = srcImg ? srcImg.naturalHeight : info.defaultH;
       const newObj: LayoutObject = {
         id: genId(),
         sprite: info.name,
         x: dropPreview.x,
         y: dropPreview.y,
-        width: info.defaultW,
-        height: info.defaultH,
+        width: dropW,
+        height: dropH,
         zIndex: 20,
         walkable: false,
         category: info.category,
@@ -661,15 +668,18 @@ export default function LayoutEditorOverlay({ layout, onSave, onCancel, canvasRe
                         e.stopPropagation();
                         handlePaletteDragStart(info);
                         // Use document-level mousemove/mouseup for palette drag
+                        const srcI = getMapObj(info.name);
+                        const iW = srcI ? srcI.naturalWidth : info.defaultW;
+                        const iH = srcI ? srcI.naturalHeight : info.defaultH;
                         const onMove = (me: MouseEvent) => {
                           const coords = toCanvasCoords(me.clientX, me.clientY);
                           if (coords) {
                             setDropPreview({
                               sprite: info.name,
-                              x: snapToTile(coords.cx - info.defaultW / 2),
-                              y: snapToTile(coords.cy - info.defaultH / 2),
-                              w: info.defaultW,
-                              h: info.defaultH,
+                              x: snapToTile(coords.cx - iW / 2),
+                              y: snapToTile(coords.cy - iH / 2),
+                              w: iW,
+                              h: iH,
                             });
                           }
                         };
@@ -681,10 +691,10 @@ export default function LayoutEditorOverlay({ layout, onSave, onCancel, canvasRe
                             const newObj: LayoutObject = {
                               id: genId(),
                               sprite: info.name,
-                              x: snapToTile(coords.cx - info.defaultW / 2),
-                              y: snapToTile(coords.cy - info.defaultH / 2),
-                              width: info.defaultW,
-                              height: info.defaultH,
+                              x: snapToTile(coords.cx - iW / 2),
+                              y: snapToTile(coords.cy - iH / 2),
+                              width: iW,
+                              height: iH,
                               zIndex: 20,
                               walkable: false,
                               category: info.category,
