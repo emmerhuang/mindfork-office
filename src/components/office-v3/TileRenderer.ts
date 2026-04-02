@@ -85,7 +85,16 @@ function drawWalls(ctx: CanvasRenderingContext2D, _img: HTMLImageElement | null)
   for (let i = 0; i < segNames.length; i++) {
     const wallImg = getMapObj(segNames[i]);
     if (wallImg) {
-      ctx.drawImage(wallImg, i * segW, 0, segW + 1, wallH);
+      if (segNames[i] === "wall-clock") {
+        // 時鐘縮小 2/3，居中
+        const cw = Math.round(segW * 2 / 3);
+        const ch = Math.round(wallH * 2 / 3);
+        const cx = i * segW + (segW - cw) / 2;
+        const cy = (wallH - ch) / 2;
+        ctx.drawImage(wallImg, cx, cy, cw, ch);
+      } else {
+        ctx.drawImage(wallImg, i * segW, 0, segW + 1, wallH);
+      }
       anyDrawn = true;
     }
   }
@@ -166,61 +175,64 @@ function drawTearoom(ctx: CanvasRenderingContext2D) {
   const bx = tx(ROOMS.tearoom.x);
   const by = ty(ROOMS.tearoom.y);   // row 17
 
-  // ── 冰箱 (96×160 原圖) → 約 1.5 cols × 2.5 rows (96×160) ──
+  // All tearoom objects scaled 1.5x from original PNG size
+  const S = 1.5;
+
+  // ── 冰箱 (96×160 × 1.5 = 144×240) ──
   const fridge = getMapObj("fridge");
   if (fridge) {
-    ctx.drawImage(fridge, bx + 2, by, 96, 160);
+    ctx.drawImage(fridge, bx + 2, by, 96 * S, 160 * S);
   } else {
     ctx.fillStyle = "#AABBCC";
-    ctx.fillRect(bx + 2, by, 96, 160);
+    ctx.fillRect(bx + 2, by, 96 * S, 160 * S);
   }
 
-  // ── 飲水機 (64×128 原圖) → 約 1 col × 2 rows (64×128) ──
+  // ── 飲水機 (64×128 × 1.5 = 96×192) ──
   const waterCooler = getMapObj("water-cooler");
   if (waterCooler) {
-    ctx.drawImage(waterCooler, bx + 102, by + 16, 64, 128);
+    ctx.drawImage(waterCooler, bx + 150, by + 24, 64 * S, 128 * S);
   } else {
     ctx.fillStyle = "#88AACC";
-    ctx.fillRect(bx + 102, by + 16, 64, 128);
+    ctx.fillRect(bx + 150, by + 24, 64 * S, 128 * S);
   }
 
-  // ── 咖啡機 (64×96 原圖) → 約 1 col × 1.5 rows (64×96) ──
+  // ── 咖啡機 (96×128 × 1.5 = 144×192) ──
   const coffee = getMapObj("coffee-machine");
   if (coffee) {
-    ctx.drawImage(coffee, bx + 170, by + 32, 64, 96);
+    ctx.drawImage(coffee, bx + 248, by + 24, 96 * S, 128 * S);
   } else {
     ctx.fillStyle = "#996644";
-    ctx.fillRect(bx + 170, by + 32, 64, 96);
+    ctx.fillRect(bx + 248, by + 24, 96 * S, 128 * S);
   }
 
-  // ── 零食機 (96×160 原圖) → 約 1.5 cols × 2.5 rows (96×160)，col 4 起始 ──
+  // ── 零食機 (96×160 × 1.5 = 144×240)，右側 ──
   const vending = getMapObj("vending-machine");
   if (vending) {
-    ctx.drawImage(vending, tx(4), by, 96, 160);
+    ctx.drawImage(vending, tx(4) + 8, by, 96 * S, 160 * S);
   } else {
     ctx.fillStyle = "#CC6644";
-    ctx.fillRect(tx(4), by, 96, 160);
+    ctx.fillRect(tx(4) + 8, by, 96 * S, 160 * S);
   }
 
-  // ── 咖啡桌 (128×96 原圖) → 約 2 cols × 1.5 rows (128×96)，居中在 rows 19-20 ──
+  // ── 咖啡桌 (128×96 × 1.5 = 192×144)，居中在 rows 19-20 ──
   const cafeTable = getMapObj("cafe-table");
   if (cafeTable) {
-    const areaW = ROOMS.tearoom.w * TILE;         // 384
-    const tableW = 128;
-    const tableH = 96;
+    const areaW = ROOMS.tearoom.w * TILE;
+    const tableW = 128 * S;
+    const tableH = 96 * S;
     const tableX = bx + (areaW - tableW) / 2;
     const tableY = ty(19) + (TILE * 2 - tableH) / 2;
     ctx.drawImage(cafeTable, tableX, tableY, tableW, tableH);
   } else {
     ctx.fillStyle = "#AA8866";
     const areaW = ROOMS.tearoom.w * TILE;
-    ctx.fillRect(bx + (areaW - 128) / 2, ty(19) + (TILE * 2 - 96) / 2, 128, 96);
+    ctx.fillRect(bx + (areaW - 192) / 2, ty(19) + (TILE * 2 - 144) / 2, 192, 144);
   }
 
-  // ── 垃圾桶 (64×80 原圖) → 約 0.8 col × 1 row (51×64)，左下角 row 21 ──
+  // ── 垃圾桶 (64×80 × 1.5 = 96×120)，左下角 row 21 ──
   const trashCan = getMapObj("trash-can");
   if (trashCan) {
-    ctx.drawImage(trashCan, bx + 8, ty(21) + (TILE - 64), 51, 64);
+    ctx.drawImage(trashCan, bx + 8, ty(21) + (TILE - 80), 64 * S, 80 * S);
   } else {
     ctx.fillStyle = "#666666";
     ctx.fillRect(bx + 8, ty(21) + (TILE - 64), 51, 64);
@@ -404,7 +416,7 @@ export function renderStaticScene(
   drawFloor(ctx, tileImg);
   drawWatermark(ctx);
   drawWalls(ctx, tileImg);
-  drawWhiteboardPostIts(ctx);
+  // Post-its removed — whiteboard PNG already includes content
   drawDesks(ctx, tileImg);
   drawPlant(ctx, tileImg);
   drawTearoom(ctx);
