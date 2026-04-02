@@ -387,7 +387,7 @@ function drawLabels(ctx: CanvasRenderingContext2D) {
 function drawWatermark(ctx: CanvasRenderingContext2D) {
   ctx.save();
   const centerX = tx(6);
-  const centerY = ty(10) + 200;
+  const centerY = ty(10) + 400;
   ctx.font = "bold 48px 'Courier New', monospace";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
