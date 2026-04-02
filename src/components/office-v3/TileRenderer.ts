@@ -91,6 +91,13 @@ function drawWalls(ctx: CanvasRenderingContext2D, _img: HTMLImageElement | null)
         const bw = Math.round(segW * 1.44);
         const bx = i * segW + (segW - bw) / 2;
         ctx.drawImage(wallImg, bx, 0, bw, wallH);
+      } else if (segNames[i] === "wall-whiteboard") {
+        // 白板加寬 20%，4:3 比例，居中
+        const ww = Math.round(segW * 1.2);
+        const wh = Math.round(ww * 3 / 4);
+        const wx = i * segW + (segW - ww) / 2;
+        const wy = (wallH - wh) / 2;
+        ctx.drawImage(wallImg, wx, wy, ww, wh);
       } else {
         ctx.drawImage(wallImg, i * segW, 0, segW + 1, wallH);
       }
@@ -182,7 +189,7 @@ function drawTearoom(ctx: CanvasRenderingContext2D) {
   const vendW = 120, vendH = 120;
   const vending = getMapObj("vending-machine");
   if (vending) {
-    ctx.drawImage(vending, bx + 2, by - vendH + 10, vendW, vendH);
+    ctx.drawImage(vending, bx + 2, by - vendH + 110, vendW, vendH);
   } else {
     ctx.fillStyle = "#CC6644";
     ctx.fillRect(bx + 2, by - vendH + 10, vendW, vendH);
