@@ -44,7 +44,7 @@ export default function Home() {
   const isSleeping = metrics ? metrics.rateLimitPercent >= 90 : false;
 
   return (
-    <div className="h-screen w-screen bg-gray-950 flex flex-col overflow-hidden">
+    <div className="h-screen w-screen bg-[#D4CFC8] flex flex-col overflow-hidden">
       {/* Office Canvas — title rendered as watermark on floor */}
       <main className="flex-1 min-h-0">
         {isSleeping ? (
