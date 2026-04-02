@@ -87,8 +87,8 @@ function drawWalls(ctx: CanvasRenderingContext2D, _img: HTMLImageElement | null)
         const cy = (wallH - ch) / 2;
         ctx.drawImage(wallImg, cx, cy, cw, ch);
       } else if (segNames[i] === "wall-bookshelf") {
-        // 書櫃加寬 20%，居中
-        const bw = Math.round(segW * 1.2);
+        // 書櫃加寬 44%，居中
+        const bw = Math.round(segW * 1.44);
         const bx = i * segW + (segW - bw) / 2;
         ctx.drawImage(wallImg, bx, 0, bw, wallH);
       } else {
@@ -202,10 +202,10 @@ function drawTearoom(ctx: CanvasRenderingContext2D) {
   const barTable = getMapObj("bar-table") || getMapObj("cafe-table");
   const btW = 96, btH = 140;
   if (barTable) {
-    // 左桌
-    ctx.drawImage(barTable, bx + 40, ty(19), btW, btH);
-    // 右桌
-    ctx.drawImage(barTable, bx + areaW - btW - 40, ty(19), btW, btH);
+    // 左桌（靠近中間）
+    ctx.drawImage(barTable, bx + 80, ty(19), btW, btH);
+    // 右桌（靠近中間）
+    ctx.drawImage(barTable, bx + areaW - btW - 80, ty(19), btW, btH);
   } else {
     ctx.fillStyle = "#AA8866";
     ctx.fillRect(bx + 40, ty(19) + 20, 80, 80);
@@ -240,7 +240,7 @@ function drawMeetingRoom(ctx: CanvasRenderingContext2D) {
     const tableW = 200;
     const tableH = 200;
     const tableX = rmX + (areaW - tableW) / 2;
-    const tableY = ty(18) + (TILE * 3 - tableH) / 2 + 40;
+    const tableY = ty(18) + (TILE * 3 - tableH) / 2 + 60;
     ctx.drawImage(confTable, tableX, tableY, tableW, tableH);
   } else {
     ctx.fillStyle = "#8B6914";
