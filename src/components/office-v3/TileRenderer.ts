@@ -45,6 +45,56 @@ const FALLBACK_MAP_OBJ_NAMES = [
 
 const mapObjCache: Record<string, HTMLImageElement> = {};
 
+// ── Sprite tight-bounds 快取 ────────────────────────────────
+
+interface SpriteBounds {
+  ratioLeft: number;    // tightLeft / naturalWidth
+  ratioTop: number;     // tightTop / naturalHeight
+  ratioRight: number;   // tightRight / naturalWidth
+  ratioBottom: number;  // tightBottom / naturalHeight
+}
+
+const spriteBoundsCache: Record<string, SpriteBounds> = {};
+
+/** Scan image alpha channel to find tight bounding box of non-transparent pixels */
+function computeSpriteBounds(img: HTMLImageElement): SpriteBounds {
+  const w = img.naturalWidth;
+  const h = img.naturalHeight;
+  if (w === 0 || h === 0) return { ratioLeft: 0, ratioTop: 0, ratioRight: 1, ratioBottom: 1 };
+
+  const canvas = new OffscreenCanvas(w, h);
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(img, 0, 0);
+  const data = ctx.getImageData(0, 0, w, h).data;
+
+  let minX = w, minY = h, maxX = -1, maxY = -1;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const alpha = data[(y * w + x) * 4 + 3];
+      if (alpha > 10) { // skip anti-aliasing noise
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+
+  // Fully transparent fallback
+  if (maxX < 0) return { ratioLeft: 0, ratioTop: 0, ratioRight: 1, ratioBottom: 1 };
+
+  return {
+    ratioLeft: minX / w,
+    ratioTop: minY / h,
+    ratioRight: (maxX + 1) / w,
+    ratioBottom: (maxY + 1) / h,
+  };
+}
+
+export function getSpriteBounds(name: string): SpriteBounds | undefined {
+  return spriteBoundsCache[name];
+}
+
 export function getMapObj(name: string): HTMLImageElement | undefined {
   return mapObjCache[name];
 }
@@ -55,7 +105,7 @@ function preloadNames(names: string[]): Promise<void> {
     if (mapObjCache[name]) return Promise.resolve();
     return new Promise<void>((resolve) => {
       const img = new Image();
-      img.onload = () => { mapObjCache[name] = img; resolve(); };
+      img.onload = () => { mapObjCache[name] = img; spriteBoundsCache[name] = computeSpriteBounds(img); resolve(); };
       img.onerror = () => { resolve(); }; // graceful: missing PNG → skip
       img.src = `/sprites/map-objects/${name}.png`;
     });

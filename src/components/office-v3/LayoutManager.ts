@@ -1,6 +1,7 @@
 // LayoutManager.ts — Layout 讀寫管理、walkable map 計算
 
 import { TILE, COLS, ROWS, updateRooms } from "./officeData";
+import { getSpriteBounds } from "./TileRenderer";
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -120,20 +121,39 @@ export function computeWalkableMap(layout: OfficeLayout): boolean[][] {
     }
   }
 
-  // Block tiles covered by non-walkable objects (bounding box)
+  // Block tiles covered by non-walkable objects (tight sprite bounds when available)
   const HALF_TILE = TILE / 2; // 48px — thin objects below this threshold don't block tiles
   for (const obj of layout.objects) {
     if (obj.walkable) continue;
 
+    // Use tight sprite bounds if available, otherwise full bounding box
+    const bounds = obj.sprite ? getSpriteBounds(obj.sprite) : undefined;
+
+    let blockX: number, blockY: number, blockW: number, blockH: number;
+
+    if (bounds) {
+      // Tight bounds from non-transparent pixels
+      blockX = obj.x + bounds.ratioLeft * obj.width;
+      blockY = obj.y + bounds.ratioTop * obj.height;
+      blockW = (bounds.ratioRight - bounds.ratioLeft) * obj.width;
+      blockH = (bounds.ratioBottom - bounds.ratioTop) * obj.height;
+    } else {
+      // No sprite (kickboard etc.): use full object bounds
+      blockX = obj.x;
+      blockY = obj.y;
+      blockW = obj.width;
+      blockH = obj.height;
+    }
+
     // Skip thin objects: if either dimension is less than half a tile,
-    // the object is too thin to meaningfully block movement (e.g. kickboard at 6px high)
-    if (obj.width < HALF_TILE || obj.height < HALF_TILE) continue;
+    // the object is too thin to meaningfully block movement
+    if (blockW < HALF_TILE || blockH < HALF_TILE) continue;
 
     // Convert pixel bounds to tile bounds
-    const tileLeft = Math.floor(obj.x / TILE);
-    const tileTop = Math.floor(obj.y / TILE);
-    const tileRight = Math.ceil((obj.x + obj.width) / TILE) - 1;
-    const tileBottom = Math.ceil((obj.y + obj.height) / TILE) - 1;
+    const tileLeft = Math.floor(blockX / TILE);
+    const tileTop = Math.floor(blockY / TILE);
+    const tileRight = Math.ceil((blockX + blockW) / TILE) - 1;
+    const tileBottom = Math.ceil((blockY + blockH) / TILE) - 1;
 
     for (let r = tileTop; r <= tileBottom; r++) {
       for (let c = tileLeft; c <= tileRight; c++) {
