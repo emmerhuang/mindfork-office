@@ -317,7 +317,12 @@ function drawFloorFromLayout(ctx: CanvasRenderingContext2D, layout: OfficeLayout
     if (floor.sprite) {
       const img = getMapObj(floor.sprite);
       if (img) {
-        // Draw each floor tile at its original size (covers 2x2 or more tiles)
+        // Clip to room area so tiles don't overflow
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(px, py, pw, ph);
+        ctx.clip();
+        // Draw each floor tile at its original size
         const tw = img.naturalWidth;
         const th = img.naturalHeight;
         for (let y = 0; y < ph; y += th) {
@@ -325,6 +330,7 @@ function drawFloorFromLayout(ctx: CanvasRenderingContext2D, layout: OfficeLayout
             ctx.drawImage(img, px + x, py + y, tw, th);
           }
         }
+        ctx.restore();
         continue;
       }
     }
