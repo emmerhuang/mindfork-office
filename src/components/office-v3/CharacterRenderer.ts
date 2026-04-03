@@ -10,10 +10,10 @@ import { getMapObj } from "./TileRenderer";
 import type { CharState } from "./CharacterManager";
 
 // 顯示大小（依 sprite 來源分開，避免變形）
-// V2 sprites 180x180 — 原尺寸顯示
-const PIXELLAB_W = 180, PIXELLAB_H = 180;
-// V2 Waffles（柯基稍小）
-const PIXELLAB_DOG_W = 180, PIXELLAB_DOG_H = 180;
+// V2 sprites 180x180 × 1.2 = 216x216
+const PIXELLAB_W = 216, PIXELLAB_H = 216;
+// V2 Waffles（柯基同比例放大）
+const PIXELLAB_DOG_W = 216, PIXELLAB_DOG_H = 216;
 // Gemini atlas sprites — 原始 80x135 * 1.5
 const GEMINI_W = 120, GEMINI_H = 202;
 // Waffles fallback（原始 80x120 * 1.5）
