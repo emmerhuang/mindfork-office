@@ -292,6 +292,22 @@
       "zIndex": 15,
       "walkable": false,
       "category": "decoration"
+    },
+    {
+      "id": "text-mindfork",
+      "sprite": "",
+      "special": "text",
+      "x": 276,
+      "y": 1280,
+      "width": 600,
+      "height": 60,
+      "zIndex": 3,
+      "walkable": true,
+      "category": "text",
+      "text": "MindFork Office",
+      "fontSize": 48,
+      "fontColor": "rgba(0,0,0,0.12)",
+      "fontFamily": "'Courier New', monospace"
     }
   ]
 }

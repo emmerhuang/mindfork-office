@@ -14,8 +14,12 @@ export interface LayoutObject {
   zIndex: number;
   walkable: boolean;
   anchorCharId?: string;
-  category: string;      // "wall" | "desk" | "tearoom" | "meeting" | "decoration"
-  special?: string;      // "kickboard" etc. for canvas-drawn specials
+  category: string;      // "wall" | "desk" | "tearoom" | "meeting" | "decoration" | "text"
+  special?: string;      // "kickboard" | "text" etc. for canvas-drawn specials
+  text?: string;         // text content (for text blocks)
+  fontSize?: number;     // font size in px (for text blocks)
+  fontColor?: string;    // color hex or rgba (for text blocks)
+  fontFamily?: string;   // CSS font-family (for text blocks)
 }
 
 export interface RoomFloor {

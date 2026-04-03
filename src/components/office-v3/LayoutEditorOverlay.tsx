@@ -72,6 +72,8 @@ const PALETTE_SPRITES: SpriteInfo[] = [
   { name: "succulents", category: "decoration", defaultW: 160, defaultH: 160 },
   { name: "tree-indoor", category: "decoration", defaultW: 160, defaultH: 240 },
   { name: "table-lamp", category: "decoration", defaultW: 160, defaultH: 240 },
+  // Text
+  { name: "text-block", category: "text", defaultW: 400, defaultH: 60, special: "text" },
   // Trigger zones
   { name: "trigger-dashboard", category: "trigger", defaultW: 192, defaultH: 192, special: "trigger-dashboard" },
   { name: "trigger-bulletin", category: "trigger", defaultW: 384, defaultH: 192, special: "trigger-bulletin" },
@@ -84,6 +86,7 @@ const CATEGORIES = [
   { key: "tearoom", label: "Tearoom" },
   { key: "meeting", label: "Meeting" },
   { key: "decoration", label: "Decoration" },
+  { key: "text", label: "Text" },
   { key: "trigger", label: "Trigger Zone" },
 ];
 
@@ -612,6 +615,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
         walkable: !!info.special,
         category: info.category,
         ...(info.special ? { special: info.special } : {}),
+        ...(info.special === "text" ? { text: "Text", fontSize: 48, fontColor: "#000000", fontFamily: "'Courier New', monospace" } : {}),
       };
       setObjectsAndPreview((prev) => [...prev, newObj]);
       setSelectedId(newObj.id);
@@ -876,11 +880,12 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
         );
       })()}
 
-      {/* Trigger zone overlays + anchor character labels */}
+      {/* Text block overlays + Trigger zone overlays + anchor character labels */}
       {objects.map((obj) => {
+        const isText = obj.special === "text";
         const isTrigger = obj.category === "trigger";
         const hasAnchor = !!obj.anchorCharId;
-        if (!isTrigger && !hasAnchor) return null;
+        if (!isText && !isTrigger && !hasAnchor) return null;
         const p1 = fromCanvasCoords(obj.x, obj.y);
         const p2 = fromCanvasCoords(obj.x + obj.width, obj.y + obj.height);
         if (!p1 || !p2) return null;
@@ -890,6 +895,32 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
         const top = p1.dy - overlay.top;
         const width = p2.dx - p1.dx;
         const height = p2.dy - p1.dy;
+
+        if (isText) {
+          return (
+            <div
+              key={obj.id}
+              className="absolute pointer-events-none flex items-center justify-center overflow-hidden"
+              style={{
+                left, top, width, height,
+                background: "rgba(255,255,255,0.08)",
+                border: "1px dashed rgba(255,255,255,0.3)",
+              }}
+            >
+              <span
+                className="font-bold whitespace-nowrap"
+                style={{
+                  fontSize: Math.max(8, (obj.fontSize ?? 48) * (width / (obj.width || 400)) * 0.6),
+                  color: obj.fontColor ?? "#000",
+                  fontFamily: obj.fontFamily ?? "'Courier New', monospace",
+                  opacity: 0.7,
+                }}
+              >
+                {obj.text ?? "Text"}
+              </span>
+            </div>
+          );
+        }
 
         if (isTrigger) {
           const isDash = obj.special === "trigger-dashboard";
@@ -1100,6 +1131,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
                                 walkable: !!info.special,
                                 category: info.category,
                                 ...(info.special ? { special: info.special } : {}),
+                                ...(info.special === "text" ? { text: "Text", fontSize: 48, fontColor: "#000000", fontFamily: "'Courier New', monospace" } : {}),
                               };
                               setObjectsAndPreview((prev) => [...prev, newObj]);
                               setSelectedId(newObj.id);
@@ -1113,6 +1145,17 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
                       }}
                     >
                       {info.special ? (
+                        info.special === "text" ? (
+                          <div
+                            className="w-14 h-14 flex items-center justify-center rounded"
+                            style={{
+                              background: "rgba(255,255,255,0.1)",
+                              border: "2px dashed rgba(255,255,255,0.4)",
+                            }}
+                          >
+                            <span className="text-white text-[10px] font-bold font-mono">Aa</span>
+                          </div>
+                        ) : (
                         <div
                           className="w-14 h-14 flex items-center justify-center rounded"
                           style={{
@@ -1126,6 +1169,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
                             {info.special === "trigger-dashboard" ? "Dash\nboard" : "Hall of\nFame"}
                           </span>
                         </div>
+                        )
                       ) : (
                         <img
                           src={`/sprites/map-objects/${info.name}.png`}
@@ -1267,6 +1311,69 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
                 Walkable
               </label>
             </div>
+            {/* Text block editing fields */}
+            {selectedObj.special === "text" && (
+              <div className="mb-1 border-t border-gray-700 pt-1 mt-1">
+                <span className="text-gray-500 text-[9px] block mb-1">Text Properties</span>
+                <label className="flex flex-col mb-1">
+                  <span className="text-gray-500 text-[9px]">Text</span>
+                  <input
+                    type="text"
+                    value={selectedObj.text ?? ""}
+                    onChange={(e) => {
+                      setObjectsAndPreview((prev) => prev.map((o) => o.id === selectedObj.id ? { ...o, text: e.target.value } : o));
+                    }}
+                    className="w-full bg-gray-800 text-white border border-gray-600 rounded px-1 py-0.5 text-xs font-mono focus:outline-none focus:border-cyan-400"
+                  />
+                </label>
+                <div className="grid grid-cols-2 gap-1 mb-1">
+                  <label className="flex flex-col">
+                    <span className="text-gray-500 text-[9px]">Font Size</span>
+                    <input
+                      type="number"
+                      value={selectedObj.fontSize ?? 48}
+                      min={8}
+                      max={200}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        if (!isNaN(v) && v > 0) {
+                          setObjectsAndPreview((prev) => prev.map((o) => o.id === selectedObj.id ? { ...o, fontSize: v } : o));
+                        }
+                      }}
+                      className="w-full bg-gray-800 text-white border border-gray-600 rounded px-1 py-0.5 text-xs font-mono focus:outline-none focus:border-cyan-400"
+                    />
+                  </label>
+                  <label className="flex flex-col">
+                    <span className="text-gray-500 text-[9px]">Color</span>
+                    <input
+                      type="color"
+                      value={(() => {
+                        const c = selectedObj.fontColor ?? "#000000";
+                        // Convert rgba to hex for color input if needed
+                        if (c.startsWith("#")) return c;
+                        return "#000000";
+                      })()}
+                      onChange={(e) => {
+                        setObjectsAndPreview((prev) => prev.map((o) => o.id === selectedObj.id ? { ...o, fontColor: e.target.value } : o));
+                      }}
+                      className="w-full h-6 rounded cursor-pointer border border-gray-600"
+                    />
+                  </label>
+                </div>
+                <label className="flex flex-col mb-1">
+                  <span className="text-gray-500 text-[9px]">Font Color (raw)</span>
+                  <input
+                    type="text"
+                    value={selectedObj.fontColor ?? ""}
+                    onChange={(e) => {
+                      setObjectsAndPreview((prev) => prev.map((o) => o.id === selectedObj.id ? { ...o, fontColor: e.target.value } : o));
+                    }}
+                    className="w-full bg-gray-800 text-white border border-gray-600 rounded px-1 py-0.5 text-xs font-mono focus:outline-none focus:border-cyan-400"
+                    placeholder="rgba(0,0,0,0.12) or #000000"
+                  />
+                </label>
+              </div>
+            )}
             <button
               onClick={() => { setSelectedId(null); }}
               className="w-full px-2 py-1 bg-green-800 text-green-200 rounded hover:bg-green-700 text-[10px]"
