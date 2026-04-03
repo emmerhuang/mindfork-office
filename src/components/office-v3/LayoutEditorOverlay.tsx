@@ -161,6 +161,7 @@ const ROOM_LABELS: Record<RoomKey, string> = {
 const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function LayoutEditorOverlay({ layout, onSave, onCancel, canvasRef, onPreview }, ref) {
   const [editing, setEditing] = useState(false);
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
+  const [paletteSprites, setPaletteSprites] = useState<SpriteInfo[]>(PALETTE_SPRITES);
   const originalObjectsRef = useRef<LayoutObject[]>([]);
   const onPreviewRef = useRef(onPreview);
   onPreviewRef.current = onPreview;
@@ -234,6 +235,46 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       return objs;
     });
   }, []);
+
+  // Fetch dynamic palette from Turso when entering edit mode
+  useEffect(() => {
+    if (!editing) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/assets");
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        const tursoAssets: Array<{ id: string; name: string; category: string; filename: string; width: string; height: string }> = data.assets ?? [];
+        if (tursoAssets.length === 0) return; // keep hardcoded fallback
+
+        // Build SpriteInfo from Turso, skip emotes (not palette items) and special types
+        const tursoSprites: SpriteInfo[] = tursoAssets
+          .filter((a) => a.category !== "emote")
+          .map((a) => ({
+            name: a.name,
+            category: a.category,
+            defaultW: parseInt(a.width) || 160,
+            defaultH: parseInt(a.height) || 160,
+          }));
+
+        // Merge: Turso sprites + hardcoded special items (text-block, triggers)
+        const specialItems = PALETTE_SPRITES.filter((s) => s.special);
+        const tursoNames = new Set(tursoSprites.map((s) => s.name));
+
+        // Add any hardcoded items not in Turso (text-block, triggers, etc.)
+        const merged = [...tursoSprites];
+        for (const sp of specialItems) {
+          if (!tursoNames.has(sp.name)) merged.push(sp);
+        }
+
+        if (!cancelled) setPaletteSprites(merged);
+      } catch {
+        // silently keep hardcoded fallback
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [editing]);
 
   // Enter edit mode
   const handleSecretClick = useCallback(() => {
@@ -1115,7 +1156,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
               </button>
               {openCategories[cat.key] && (
                 <div className="grid grid-cols-3 gap-1 p-1 mt-1">
-                  {PALETTE_SPRITES.filter((s) => s.category === cat.key).map((info) => (
+                  {paletteSprites.filter((s) => s.category === cat.key).map((info) => (
                     <div
                       key={info.name}
                       className="flex flex-col items-center cursor-grab bg-gray-800 rounded p-1 hover:bg-gray-700"
@@ -1292,7 +1333,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
             )}
             {/* Change sprite dropdown — only for objects with a sprite, not trigger/text */}
             {selectedObj.sprite && !selectedObj.special && (() => {
-              const sameCat = PALETTE_SPRITES.filter(
+              const sameCat = paletteSprites.filter(
                 (s) => s.category === selectedObj.category && !s.special
               );
               if (sameCat.length <= 1) return null;
@@ -1510,7 +1551,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       {selectedRoom && !selectedObj && (() => {
         const room = ROOMS[selectedRoom];
         const roomFloor = floors[selectedRoom];
-        const floorSprites = PALETTE_SPRITES.filter((s) => s.category === "floor");
+        const floorSprites = paletteSprites.filter((s) => s.category === "floor");
         return (
           <div
             className="absolute bg-gray-900/95 border border-amber-500 rounded-lg p-3 text-xs font-mono text-gray-300 z-50 shadow-lg"

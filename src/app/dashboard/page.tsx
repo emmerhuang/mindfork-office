@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
+
+const AssetLibraryModal = lazy(() => import("@/components/AssetLibraryModal"));
 
 function formatTW(iso: string): string {
   const d = new Date(iso);
@@ -86,6 +88,7 @@ export default function Dashboard() {
   const [members, setMembers] = useState<Record<string, MemberStatus>>({});
   const [memberOs, setMemberOs] = useState<Record<string, Array<{text: string; task?: string; at?: string}>>>({});
   const [lastFetch, setLastFetch] = useState("");
+  const [showAssetLib, setShowAssetLib] = useState(false);
 
   useEffect(() => {
     async function fetchStatus() {
@@ -118,7 +121,15 @@ export default function Dashboard() {
           <span className="text-orange-400">Fork</span>
           <span className="text-gray-500 ml-2 text-sm sm:text-base">Dashboard</span>
         </h1>
-        <span className="text-gray-600 text-xs sm:text-sm">{lastFetch || "--"}</span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowAssetLib(true)}
+            className="px-2 py-1 text-xs sm:text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 rounded border border-gray-700"
+          >
+            Asset Library
+          </button>
+          <span className="text-gray-600 text-xs sm:text-sm">{lastFetch || "--"}</span>
+        </div>
       </div>
 
       {!metrics ? (
@@ -249,6 +260,13 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Asset Library Modal */}
+      {showAssetLib && (
+        <Suspense fallback={null}>
+          <AssetLibraryModal onClose={() => setShowAssetLib(false)} />
+        </Suspense>
       )}
     </div>
   );
