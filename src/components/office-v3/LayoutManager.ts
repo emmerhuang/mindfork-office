@@ -121,8 +121,13 @@ export function computeWalkableMap(layout: OfficeLayout): boolean[][] {
   }
 
   // Block tiles covered by non-walkable objects (bounding box)
+  const HALF_TILE = TILE / 2; // 48px — thin objects below this threshold don't block tiles
   for (const obj of layout.objects) {
     if (obj.walkable) continue;
+
+    // Skip thin objects: if either dimension is less than half a tile,
+    // the object is too thin to meaningfully block movement (e.g. kickboard at 6px high)
+    if (obj.width < HALF_TILE || obj.height < HALF_TILE) continue;
 
     // Convert pixel bounds to tile bounds
     const tileLeft = Math.floor(obj.x / TILE);
@@ -130,12 +135,10 @@ export function computeWalkableMap(layout: OfficeLayout): boolean[][] {
     const tileRight = Math.ceil((obj.x + obj.width) / TILE) - 1;
     const tileBottom = Math.ceil((obj.y + obj.height) / TILE) - 1;
 
-    {
-      for (let r = tileTop; r <= tileBottom; r++) {
-        for (let c = tileLeft; c <= tileRight; c++) {
-          if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
-            map[r][c] = false;
-          }
+    for (let r = tileTop; r <= tileBottom; r++) {
+      for (let c = tileLeft; c <= tileRight; c++) {
+        if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
+          map[r][c] = false;
         }
       }
     }

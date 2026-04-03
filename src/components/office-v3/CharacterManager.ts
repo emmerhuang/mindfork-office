@@ -50,11 +50,11 @@ function homePos(d: CharacterDef) {
   return { px: d.deskTile.x * TILE + TILE, py: d.deskTile.y * TILE + TILE };
 }
 
-// 白板位置（牆面上方，時鐘旁）
-const WHITEBOARD = { x: 5, y: 3.5 };
+// 白板位置（row 4 — row 3 被 kickboard 封鎖，改為站在白板前方）
+const WHITEBOARD = { x: 5, y: 4 };
 
 function randomDest(charId?: string): { px: number; py: number } | null {
-  const MAX_RETRIES = 3;
+  const MAX_RETRIES = 10;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     let px: number, py: number;
@@ -62,7 +62,7 @@ function randomDest(charId?: string): { px: number; py: number } | null {
     // Lego 和 Sherlock 有機會去白板
     if ((charId === "lego" || charId === "sherlock") && Math.random() < 0.4) {
       px = WHITEBOARD.x * TILE + (Math.random() - 0.5) * TILE * 2;
-      py = WHITEBOARD.y * TILE;
+      py = WHITEBOARD.y * TILE + TILE / 2;
     } else {
       const r = Math.random() < 0.5 ? ROOMS.tearoom : ROOMS.meetingRoom;
       const jitterX = (Math.random() - 0.5) * TILE * 3;
@@ -79,7 +79,15 @@ function randomDest(charId?: string): { px: number; py: number } | null {
     }
   }
 
-  // 3 次都落在不可走的 tile，放棄
+  // Fallback：在走廊區域（col 3-7, row 5-15）隨機找一個 walkable tile
+  for (let fb = 0; fb < 20; fb++) {
+    const col = rand(3, 7);
+    const row = rand(5, 15);
+    if (isWalkable(col, row)) {
+      return { px: col * TILE + TILE / 2, py: row * TILE + TILE / 2 };
+    }
+  }
+
   return null;
 }
 
