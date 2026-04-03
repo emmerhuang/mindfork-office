@@ -21,6 +21,7 @@ export interface CharacterDef {
   color: string;
   dialogues: string[];
   deskTile: { x: number; y: number };
+  homePixel?: { px: number; py: number };
   isWaffles?: boolean;
 }
 
@@ -264,10 +265,13 @@ export function updateCharacterPositions(layout: { objects: Array<{ anchorCharId
       // Position character at bottom center of desk + offset
       const ox = obj.charOffsetX ?? 0;
       const oy = obj.charOffsetY ?? 0;
+      const homePx = obj.x + obj.width / 2 + ox;
+      const homePy = obj.y + obj.height + oy;
       char.deskTile = {
-        x: Math.floor((obj.x + obj.width / 2 + ox) / TILE),
-        y: Math.floor((obj.y + obj.height + oy) / TILE),
+        x: Math.floor(homePx / TILE),
+        y: Math.floor(homePy / TILE),
       };
+      char.homePixel = { px: homePx, py: homePy };
     }
   }
 }

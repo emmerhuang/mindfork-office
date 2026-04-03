@@ -47,6 +47,7 @@ const STAY_MAX = 10 * 30;           // 10s
 const rand = (lo: number, hi: number) => Math.floor(Math.random() * (hi - lo + 1)) + lo;
 
 function homePos(d: CharacterDef) {
+  if (d.homePixel) return { px: d.homePixel.px, py: d.homePixel.py };
   return { px: d.deskTile.x * TILE + TILE, py: d.deskTile.y * TILE + TILE };
 }
 
