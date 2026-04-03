@@ -1,7 +1,6 @@
 // LayoutManager.ts — Layout 讀寫管理、walkable map 計算
 
 import { TILE, COLS, ROWS, updateRooms } from "./officeData";
-import { getMapObj } from "./TileRenderer";
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -121,8 +120,7 @@ export function computeWalkableMap(layout: OfficeLayout): boolean[][] {
     }
   }
 
-  // Block tiles covered by non-walkable objects
-  // Uses PNG alpha channel when sprite image is available; falls back to bounding box otherwise.
+  // Block tiles covered by non-walkable objects (bounding box)
   for (const obj of layout.objects) {
     if (obj.walkable) continue;
 
@@ -132,50 +130,7 @@ export function computeWalkableMap(layout: OfficeLayout): boolean[][] {
     const tileRight = Math.ceil((obj.x + obj.width) / TILE) - 1;
     const tileBottom = Math.ceil((obj.y + obj.height) / TILE) - 1;
 
-    // Try alpha-based detection if sprite image is loaded
-    const img = obj.sprite ? getMapObj(obj.sprite) : undefined;
-    if (img) {
-      // Read alpha channel via offscreen canvas (once per object)
-      const tmpCanvas = document.createElement("canvas");
-      tmpCanvas.width = img.naturalWidth;
-      tmpCanvas.height = img.naturalHeight;
-      const tmpCtx = tmpCanvas.getContext("2d")!;
-      tmpCtx.drawImage(img, 0, 0);
-      const imageData = tmpCtx.getImageData(0, 0, tmpCanvas.width, tmpCanvas.height);
-      const pixels = imageData.data;
-
-      const scaleX = obj.width / img.naturalWidth;
-      const scaleY = obj.height / img.naturalHeight;
-
-      for (let r = tileTop; r <= tileBottom; r++) {
-        for (let c = tileLeft; c <= tileRight; c++) {
-          if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
-
-          // Map this tile back to image pixel region
-          const imgX0 = Math.floor((c * TILE - obj.x) / scaleX);
-          const imgY0 = Math.floor((r * TILE - obj.y) / scaleY);
-          const imgX1 = Math.ceil(((c + 1) * TILE - obj.x) / scaleX);
-          const imgY1 = Math.ceil(((r + 1) * TILE - obj.y) / scaleY);
-
-          // Check for any opaque pixel (alpha > 128) in the region
-          let hasOpaque = false;
-          for (let py = Math.max(0, imgY0); py < Math.min(imgY1, tmpCanvas.height); py++) {
-            for (let px = Math.max(0, imgX0); px < Math.min(imgX1, tmpCanvas.width); px++) {
-              if (pixels[(py * tmpCanvas.width + px) * 4 + 3] > 128) {
-                hasOpaque = true;
-                break;
-              }
-            }
-            if (hasOpaque) break;
-          }
-
-          if (hasOpaque) {
-            map[r][c] = false;
-          }
-        }
-      }
-    } else {
-      // No sprite or image not loaded — fallback to bounding box
+    {
       for (let r = tileTop; r <= tileBottom; r++) {
         for (let c = tileLeft; c <= tileRight; c++) {
           if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
