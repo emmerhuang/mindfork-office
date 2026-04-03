@@ -30,7 +30,7 @@ export interface OfficeLayout {
   floorColors?: { work: string; tearoom: string; meetingRoom: string };
   objects: LayoutObject[];
   /** Room boundary config (workRows default 14, tearoomCols default 6) */
-  roomConfig?: { workRows: number; tearoomCols: number };
+  roomConfig?: { wallRows?: number; workRows: number; tearoomCols: number };
 }
 
 const STORAGE_KEY = "mindfork-office-layout";
@@ -62,7 +62,7 @@ export async function loadLayout(): Promise<OfficeLayout> {
 
   // Apply room boundary config
   if (layout!.roomConfig) {
-    updateRooms(layout!.roomConfig.workRows, layout!.roomConfig.tearoomCols);
+    updateRooms(layout!.roomConfig.wallRows ?? 3, layout!.roomConfig.workRows, layout!.roomConfig.tearoomCols);
   }
 
   return layout!;

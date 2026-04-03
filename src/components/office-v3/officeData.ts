@@ -157,9 +157,8 @@ export let ROOMS: {
   meetingRoom: { x: 6, y: 17, w: 6,  h: 5, dest: { x: 9, y: 19 } },
 };
 
-/** Recalculate ROOMS geometry from workRows and tearoomCols */
-export function updateRooms(workRows: number, tearoomCols: number) {
-  const wallRows = 3;
+/** Recalculate ROOMS geometry from wallRows, workRows and tearoomCols */
+export function updateRooms(wallRows: number, workRows: number, tearoomCols: number) {
   const totalRows = 22;
   const lowerRows = totalRows - wallRows - workRows;
   ROOMS = {

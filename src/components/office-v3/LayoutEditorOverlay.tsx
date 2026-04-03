@@ -177,10 +177,11 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
     work: { color: "#D4CFC8" }, tearoom: { color: "#E8DFC8" }, meetingRoom: { color: "#D8D0E0" },
   });
   // Room boundary state
+  const [wallRows, setWallRows] = useState(3);
   const [workRows, setWorkRows] = useState(14);
   const [tearoomCols, setTearoomCols] = useState(6);
-  const [boundaryDrag, setBoundaryDrag] = useState<"horizontal" | "vertical" | null>(null);
-  const [hoverBoundary, setHoverBoundary] = useState<"horizontal" | "vertical" | null>(null);
+  const [boundaryDrag, setBoundaryDrag] = useState<"wall" | "horizontal" | "vertical" | null>(null);
+  const [hoverBoundary, setHoverBoundary] = useState<"wall" | "horizontal" | "vertical" | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const dragSpriteRef = useRef<SpriteInfo | null>(null);
 
@@ -211,8 +212,8 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
   }, []);
 
   /** Apply room boundary changes: update ROOMS global + trigger rerender preview */
-  const applyRoomBoundary = useCallback((newWorkRows: number, newTearoomCols: number) => {
-    updateRooms(newWorkRows, newTearoomCols);
+  const applyRoomBoundary = useCallback((newWallRows: number, newWorkRows: number, newTearoomCols: number) => {
+    updateRooms(newWallRows, newWorkRows, newTearoomCols);
     // Trigger preview so floor + labels rerender with new ROOMS
     setObjects((objs) => {
       onPreviewRef.current?.(objs, floorsRef.current);
@@ -238,7 +239,8 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       } : { work: { color: "#D4CFC8" }, tearoom: { color: "#E8DFC8" }, meetingRoom: { color: "#D8D0E0" } });
       setFloors(JSON.parse(JSON.stringify(f)));
       // Initialize room boundaries from layout
-      const rc = layout.roomConfig ?? { workRows: 14, tearoomCols: 6 };
+      const rc = layout.roomConfig ?? { wallRows: 3, workRows: 14, tearoomCols: 6 };
+      setWallRows(rc.wallRows ?? 3);
       setWorkRows(rc.workRows);
       setTearoomCols(rc.tearoomCols);
       setEditing(true);
@@ -362,10 +364,17 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
 
       // Check boundary line hit (priority over object selection)
       const BOUNDARY_HIT = 10; // canvas pixels tolerance
+      const wallLineY = ROOMS.wall.h * TILE;
       const hLineY = (ROOMS.work.y + ROOMS.work.h) * TILE;
       const vLineX = ROOMS.tearoom.w * TILE;
       const vLineTop = hLineY;
 
+      if (Math.abs(cy - wallLineY) < BOUNDARY_HIT && cx >= 0 && cx <= CANVAS_W) {
+        setBoundaryDrag("wall");
+        setSelectedId(null);
+        setSelectedRoom(null);
+        return;
+      }
       if (Math.abs(cy - hLineY) < BOUNDARY_HIT && cx >= 0 && cx <= CANVAS_W) {
         setBoundaryDrag("horizontal");
         setSelectedId(null);
@@ -436,20 +445,29 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       // Handle boundary drag
       if (boundaryDrag && coords) {
         const { cx, cy } = coords;
-        if (boundaryDrag === "horizontal") {
-          const wallRows = 3;
+        if (boundaryDrag === "wall") {
+          const newWallRows = Math.round(cy / TILE);
+          const clamped = Math.max(1, Math.min(6, newWallRows));
+          if (clamped !== wallRows) {
+            const totalLower = ROWS - clamped;
+            const newWork = Math.min(workRows, totalLower - 2);
+            setWallRows(clamped);
+            setWorkRows(newWork);
+            applyRoomBoundary(clamped, newWork, tearoomCols);
+          }
+        } else if (boundaryDrag === "horizontal") {
           const newWorkRows = Math.round(cy / TILE) - wallRows;
           const clamped = Math.max(5, Math.min(ROWS - wallRows - 2, newWorkRows));
           if (clamped !== workRows) {
             setWorkRows(clamped);
-            applyRoomBoundary(clamped, tearoomCols);
+            applyRoomBoundary(wallRows, clamped, tearoomCols);
           }
         } else {
           const newTearoomCols = Math.round(cx / TILE);
           const clamped = Math.max(2, Math.min(10, newTearoomCols));
           if (clamped !== tearoomCols) {
             setTearoomCols(clamped);
-            applyRoomBoundary(workRows, clamped);
+            applyRoomBoundary(wallRows, workRows, clamped);
           }
         }
         return;
@@ -458,11 +476,14 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       // Hover detection for boundary lines (cursor change)
       if (!dragState && !dragSpriteRef.current && coords) {
         const BOUNDARY_HIT = 10;
+        const wallLineY = ROOMS.wall.h * TILE;
         const hLineY = (ROOMS.work.y + ROOMS.work.h) * TILE;
         const vLineX = ROOMS.tearoom.w * TILE;
         const vLineTop = hLineY;
         const { cx, cy } = coords;
-        if (Math.abs(cy - hLineY) < BOUNDARY_HIT && cx >= 0 && cx <= CANVAS_W) {
+        if (Math.abs(cy - wallLineY) < BOUNDARY_HIT && cx >= 0 && cx <= CANVAS_W) {
+          setHoverBoundary("wall");
+        } else if (Math.abs(cy - hLineY) < BOUNDARY_HIT && cx >= 0 && cx <= CANVAS_W) {
           setHoverBoundary("horizontal");
         } else if (Math.abs(cx - vLineX) < BOUNDARY_HIT && cy >= vLineTop && cy <= CANVAS_H) {
           setHoverBoundary("vertical");
@@ -626,7 +647,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       version: layout.version,
       floors,
       objects: objects,
-      roomConfig: { workRows, tearoomCols },
+      roomConfig: { wallRows, workRows, tearoomCols },
     };
     const result = await saveLayout(updated, PASSWORD);
     setSaving(false);
@@ -710,8 +731,11 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
   const scale = getScale();
 
   // Compute boundary line positions in DOM space
+  const wallLineCanvasY = ROOMS.wall.h * TILE;
   const hLineCanvasY = (ROOMS.work.y + ROOMS.work.h) * TILE;
   const vLineCanvasX = ROOMS.tearoom.w * TILE;
+  const wallLineDOM = fromCanvasCoords(0, wallLineCanvasY);
+  const wallLineEnd = fromCanvasCoords(CANVAS_W, wallLineCanvasY);
   const hLineDOM = fromCanvasCoords(0, hLineCanvasY);
   const hLineEnd = fromCanvasCoords(CANVAS_W, hLineCanvasY);
   const vLineDOM = fromCanvasCoords(vLineCanvasX, hLineCanvasY);
@@ -723,7 +747,9 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       className="absolute inset-0 z-20"
       style={{
         imageRendering: "auto",
-        cursor: boundaryDrag === "horizontal" || hoverBoundary === "horizontal"
+        cursor: boundaryDrag === "wall" || hoverBoundary === "wall"
+          ? "row-resize"
+          : boundaryDrag === "horizontal" || hoverBoundary === "horizontal"
           ? "row-resize"
           : boundaryDrag === "vertical" || hoverBoundary === "vertical"
           ? "col-resize"
@@ -748,6 +774,31 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
           backgroundSize: `${TILE * scale}px ${TILE * scale}px`,
         }}
       />
+
+      {/* Wall boundary line (wall / work) */}
+      {wallLineDOM && wallLineEnd && overlayRef.current && (() => {
+        const ov = overlayRef.current!.getBoundingClientRect();
+        const y = wallLineDOM.dy - ov.top;
+        const isActive = boundaryDrag === "wall" || hoverBoundary === "wall";
+        return (
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              left: wallLineDOM.dx - ov.left,
+              top: y - 2,
+              width: (wallLineEnd.dx - wallLineDOM.dx),
+              height: isActive ? 6 : 3,
+              background: isActive ? "rgba(255,160,0,0.9)" : "rgba(255,160,0,0.5)",
+              borderTop: "2px dashed rgba(255,200,0,0.8)",
+              zIndex: 40,
+            }}
+          >
+            <span className="absolute text-[9px] text-orange-300 bg-gray-900/80 px-1 rounded" style={{ top: -16, left: 4 }}>
+              Wall: {wallRows} rows
+            </span>
+          </div>
+        );
+      })()}
 
       {/* Horizontal boundary line (work / tearoom+meeting) */}
       {hLineDOM && hLineEnd && overlayRef.current && (() => {
