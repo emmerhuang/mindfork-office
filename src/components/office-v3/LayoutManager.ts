@@ -46,35 +46,25 @@ const STORAGE_KEY = "mindfork-office-layout";
 
 // ── Load / Save ──────────────────────────────────────────────
 
-/** Load layout: Turso API first, then fallback to default.json.
+/** Load layout from Turso API (single source of truth).
  *  Applies roomConfig to update ROOMS geometry if present. */
 export async function loadLayout(): Promise<OfficeLayout> {
-  let layout: OfficeLayout | null = null;
-
-  // Try Turso API
-  try {
-    const resp = await fetch("/api/layout");
-    if (resp.ok) {
-      const data = await resp.json();
-      if (data.layout && data.layout.version && data.layout.objects?.length) {
-        layout = data.layout as OfficeLayout;
-      }
-    }
-  } catch { /* Turso unavailable, fallback */ }
-
-  // Fallback: fetch default.json
-  if (!layout) {
-    const resp = await fetch("/layout/default.json");
-    if (!resp.ok) throw new Error(`Failed to load default layout: ${resp.status}`);
-    layout = await resp.json();
+  const resp = await fetch("/api/layout");
+  if (!resp.ok) {
+    throw new Error(`Failed to load layout from Turso API: ${resp.status}`);
   }
+  const data = await resp.json();
+  if (!data.layout || !data.layout.version || !data.layout.objects?.length) {
+    throw new Error("Turso returned invalid or empty layout");
+  }
+  const layout = data.layout as OfficeLayout;
 
   // Apply room boundary config
-  if (layout!.roomConfig) {
-    updateRooms(layout!.roomConfig.wallRows ?? 3, layout!.roomConfig.workRows, layout!.roomConfig.tearoomCols);
+  if (layout.roomConfig) {
+    updateRooms(layout.roomConfig.wallRows ?? 3, layout.roomConfig.workRows, layout.roomConfig.tearoomCols);
   }
 
-  return layout!;
+  return layout;
 }
 
 /** Save layout to localStorage (local backup) + Turso API (shared persistence) */

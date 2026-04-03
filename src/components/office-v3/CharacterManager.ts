@@ -479,6 +479,9 @@ export class CharacterManager {
 
   private arriveAtDest(c: CharInstance) {
     if (c.goingHome) {
+      // Snap to exact home pixel position (not just tile center)
+      c.px = c.homePx;
+      c.py = c.homePy;
       c.state = "idle_home";
       c.facing = "north";
       c.goingHome = false;
