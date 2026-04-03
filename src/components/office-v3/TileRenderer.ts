@@ -33,6 +33,7 @@ export const MAP_OBJ_NAMES = [
   "conference-table", "conference-table-wide", "conference-table-west",
   "projector-screen", "projector-screen-wide", "projector-screen-west",
   "tv-screen", "long-table-north", "long-table-east",
+  "painting-landscape", "painting-abstract", "painting-portrait",
   // 通用擺設
   "plant-monstera", "plant-cactus", "succulents", "tree-indoor", "table-lamp",
   // Emotes

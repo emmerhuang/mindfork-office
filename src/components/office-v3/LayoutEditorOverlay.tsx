@@ -79,6 +79,9 @@ const PALETTE_SPRITES: SpriteInfo[] = [
   { name: "succulents", category: "decoration", defaultW: 160, defaultH: 160 },
   { name: "tree-indoor", category: "decoration", defaultW: 160, defaultH: 240 },
   { name: "table-lamp", category: "decoration", defaultW: 160, defaultH: 240 },
+  { name: "painting-landscape", category: "decoration", defaultW: 200, defaultH: 200 },
+  { name: "painting-abstract", category: "decoration", defaultW: 200, defaultH: 200 },
+  { name: "painting-portrait", category: "decoration", defaultW: 200, defaultH: 200 },
   // Text
   { name: "text-block", category: "text", defaultW: 400, defaultH: 60, special: "text" },
   // Trigger zones
