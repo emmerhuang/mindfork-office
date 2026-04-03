@@ -260,6 +260,11 @@ export class OfficeEngine {
     renderStaticScene(this.offCtx, this.tileImg, this.layout ?? undefined);
   }
 
+  /** Reset all characters to home position (for editor mode) */
+  resetCharactersToHome() {
+    this.mgr.resetAllToHome();
+  }
+
   /** Re-render static scene (called after layout edits) */
   rerender() {
     if (this.layout) {

@@ -233,6 +233,25 @@ export class CharacterManager {
     });
   }
 
+  /** Reset all characters to their home (desk) position, idle_home facing north */
+  resetAllToHome() {
+    for (const c of this.characters) {
+      const h = homePos(c.def);
+      c.px = h.px;
+      c.py = h.py;
+      c.targetPx = h.px;
+      c.targetPy = h.py;
+      c.homePx = h.px;
+      c.homePy = h.py;
+      c.state = "idle_home";
+      c.facing = "north";
+      c.path = [];
+      c.pathIndex = 0;
+      c.goingHome = false;
+      c.walkTimer = rand(WALK_MIN, WALK_MAX);
+    }
+  }
+
   /** Recalculate home positions from CHARACTERS deskTile (call after updateCharacterPositions) */
   refreshHomePositions() {
     for (const c of this.characters) {

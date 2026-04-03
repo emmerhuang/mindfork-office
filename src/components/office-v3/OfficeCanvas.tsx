@@ -344,6 +344,8 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, onCh
           if (engineRef.current && engineRef.current.layout) {
             if (!preEditLayoutRef.current) {
               preEditLayoutRef.current = JSON.parse(JSON.stringify(engineRef.current.layout));
+              // First time entering editor mode: send all characters home
+              engineRef.current.resetCharactersToHome();
             }
             engineRef.current.editorMode = true;
             engineRef.current.layout = {

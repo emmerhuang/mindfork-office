@@ -195,6 +195,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
   const [tearoomCols, setTearoomCols] = useState(6);
   const [boundaryDrag, setBoundaryDrag] = useState<"wall" | "horizontal" | "vertical" | null>(null);
   const [hoverBoundary, setHoverBoundary] = useState<"wall" | "horizontal" | "vertical" | null>(null);
+  const [paletteCollapsed, setPaletteCollapsed] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
   const dragSpriteRef = useRef<SpriteInfo | null>(null);
 
@@ -1027,9 +1028,9 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
         );
       })()}
 
-      {/* Top toolbar */}
+      {/* Top toolbar — fixed to viewport top */}
       <div
-        className="absolute top-2 left-2 right-[220px] flex gap-1 z-30"
+        className="fixed top-0 left-0 right-0 flex gap-1 z-[60] px-2 py-1 bg-gray-900/90 border-b border-gray-700"
         style={{ pointerEvents: "auto" }}
         onMouseDown={(e) => e.stopPropagation()}
       >
@@ -1071,14 +1072,38 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
         </button>
       </div>
 
-      {/* Right-side sprite palette */}
+      {/* Left-side sprite palette — fixed to viewport left, collapsible */}
+      {paletteCollapsed ? (
+        <div
+          className="fixed top-10 left-0 z-[55]"
+          style={{ pointerEvents: "auto" }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => setPaletteCollapsed(false)}
+            className="bg-gray-900/90 border border-gray-700 rounded-r-lg px-1.5 py-3 text-gray-400 hover:text-white hover:bg-gray-800 text-sm font-mono"
+            title="Show Sprites"
+          >
+            &raquo;
+          </button>
+        </div>
+      ) : (
       <div
-        className="absolute top-0 right-0 w-[210px] h-full bg-gray-900/90 border-l border-gray-700 overflow-y-auto z-30"
-        style={{ pointerEvents: "auto" }}
+        className="fixed top-10 left-0 w-[210px] bg-gray-900/90 border-r border-gray-700 overflow-y-auto z-[55]"
+        style={{ pointerEvents: "auto", maxHeight: "calc(100vh - 40px)" }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="p-2">
-          <p className="text-gray-400 text-xs font-mono mb-2 text-center">Sprites</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-gray-400 text-xs font-mono text-center flex-1">Sprites</p>
+            <button
+              onClick={() => setPaletteCollapsed(true)}
+              className="text-gray-500 hover:text-white text-xs font-mono px-1"
+              title="Collapse"
+            >
+              &laquo;
+            </button>
+          </div>
           {CATEGORIES.map((cat) => (
             <div key={cat.key} className="mb-1">
               <button
@@ -1200,6 +1225,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
           ))}
         </div>
       </div>
+      )}
 
       {/* Selected object info */}
       {selectedObj && (() => {
