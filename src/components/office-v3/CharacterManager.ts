@@ -53,21 +53,34 @@ function homePos(d: CharacterDef) {
 // 白板位置（牆面上方，時鐘旁）
 const WHITEBOARD = { x: 5, y: 3.5 };
 
-function randomDest(charId?: string) {
-  // Lego 和 Sherlock 有機會去白板
-  if ((charId === "lego" || charId === "sherlock") && Math.random() < 0.4) {
-    return {
-      px: WHITEBOARD.x * TILE + (Math.random() - 0.5) * TILE * 2,
-      py: WHITEBOARD.y * TILE,
-    };
+function randomDest(charId?: string): { px: number; py: number } | null {
+  const MAX_RETRIES = 3;
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    let px: number, py: number;
+
+    // Lego 和 Sherlock 有機會去白板
+    if ((charId === "lego" || charId === "sherlock") && Math.random() < 0.4) {
+      px = WHITEBOARD.x * TILE + (Math.random() - 0.5) * TILE * 2;
+      py = WHITEBOARD.y * TILE;
+    } else {
+      const r = Math.random() < 0.5 ? ROOMS.tearoom : ROOMS.meetingRoom;
+      const jitterX = (Math.random() - 0.5) * TILE * 3;
+      const jitterY = (Math.random() - 0.5) * TILE * 1.5;
+      px = r.dest.x * TILE + TILE / 2 + jitterX;
+      py = r.dest.y * TILE + TILE / 2 + jitterY;
+    }
+
+    // 檢查目的地 tile 是否 walkable
+    const tileX = Math.floor(px / TILE);
+    const tileY = Math.floor(py / TILE);
+    if (isWalkable(tileX, tileY)) {
+      return { px, py };
+    }
   }
-  const r = Math.random() < 0.5 ? ROOMS.tearoom : ROOMS.meetingRoom;
-  const jitterX = (Math.random() - 0.5) * TILE * 3;
-  const jitterY = (Math.random() - 0.5) * TILE * 1.5;
-  return {
-    px: r.dest.x * TILE + TILE / 2 + jitterX,
-    py: r.dest.y * TILE + TILE / 2 + jitterY,
-  };
+
+  // 3 次都落在不可走的 tile，放棄
+  return null;
 }
 
 // ── A* Pathfinding ──────────────────────────────────────────
@@ -328,7 +341,7 @@ export class CharacterManager {
             // 30% 機率站起來走走
             if (Math.random() < 0.3) {
               const d = randomDest(c.def.id);
-              this.startWalkTo(c, d.px, d.py, false);
+              if (d) this.startWalkTo(c, d.px, d.py, false);
               // 走到目的地 -> idle_away -> 回家 -> idle_home -> updateStatuses 恢復 working
             }
             c.walkTimer = rand(60 * 30, 120 * 30); // 60-120 秒 @ 30fps
@@ -338,7 +351,7 @@ export class CharacterManager {
       case "idle_home":
         if (--c.walkTimer <= 0) {
           const d = randomDest(c.def.id);
-          this.startWalkTo(c, d.px, d.py, false);
+          if (d) this.startWalkTo(c, d.px, d.py, false);
           c.walkTimer = rand(WALK_MIN, WALK_MAX);
         }
         break;
@@ -408,8 +421,9 @@ export class CharacterManager {
         }
       }
     } else {
-      // No path (direct movement fallback)
-      this.moveDirect(c);
+      // No path found — stay in place instead of moving through obstacles
+      this.arriveAtDest(c);
+      return; // skip collision/clamp since we didn't move
     }
 
     // Collision avoidance with other characters
@@ -420,6 +434,8 @@ export class CharacterManager {
       const od = Math.sqrt(odx * odx + ody * ody);
       const MIN_DIST = 50;
       if (od < MIN_DIST && od > 0) {
+        const prevPx = c.px;
+        const prevPy = c.py;
         if (c.state === "walking" && other.state === "walking") {
           // Both walking: randomly turn left or right to avoid
           const perpX = -ody / od;
@@ -428,38 +444,28 @@ export class CharacterManager {
           const dir = Math.random() < 0.5 ? 1 : -1;
           c.px += perpX * push * dir;
           c.py += perpY * push * dir;
-          // Recalculate path from new position
-          c.path = findPath(c.px, c.py, c.targetPx, c.targetPy, this.buildDynamicBlocked(c));
-          c.pathIndex = 0;
         } else {
           // One is stationary: simple push avoidance
           c.px += (odx / od) * (MIN_DIST - od) * 0.3;
           c.py += (ody / od) * (MIN_DIST - od) * 0.3;
         }
+        // Validate pushed position is walkable; revert if not
+        const newTx = Math.floor(c.px / TILE);
+        const newTy = Math.floor(c.py / TILE);
+        if (!isWalkable(newTx, newTy)) {
+          c.px = prevPx;
+          c.py = prevPy;
+        } else if (c.state === "walking" && other.state === "walking") {
+          // Recalculate path from new (valid) position
+          c.path = findPath(c.px, c.py, c.targetPx, c.targetPy, this.buildDynamicBlocked(c));
+          c.pathIndex = 0;
+        }
       }
     }
 
-    // Boundary clamp
+    // Boundary clamp (also enforce walkable)
     c.px = Math.max(30, Math.min(CANVAS_W - 30, c.px));
     c.py = Math.max(TILE * 3 + 20, Math.min(CANVAS_H - 20, c.py));
-  }
-
-  private moveDirect(c: CharInstance) {
-    const dx = c.targetPx - c.px;
-    const dy = c.targetPy - c.py;
-
-    if (Math.abs(dx) > SPEED) {
-      c.px += Math.sign(dx) * SPEED;
-      c.facing = dx > 0 ? "east" : "west";
-    } else if (Math.abs(dy) > SPEED) {
-      c.px = c.targetPx;
-      c.py += Math.sign(dy) * SPEED;
-      c.facing = dy > 0 ? "south" : "north";
-    } else {
-      c.px = c.targetPx;
-      c.py = c.targetPy;
-      this.arriveAtDest(c);
-    }
   }
 
   private arriveAtDest(c: CharInstance) {
