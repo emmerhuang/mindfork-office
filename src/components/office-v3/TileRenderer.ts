@@ -30,7 +30,9 @@ export const MAP_OBJ_NAMES = [
   "vending-machine", "trash-can", "bar-table",
   "fruit-bowl", "microwave",
   // 會議室
-  "conference-table", "projector-screen", "tv-screen",
+  "conference-table", "conference-table-wide", "conference-table-west",
+  "projector-screen", "projector-screen-wide", "projector-screen-west",
+  "tv-screen", "long-table-north", "long-table-east",
   // 通用擺設
   "plant-monstera", "plant-cactus", "succulents", "tree-indoor", "table-lamp",
   // Emotes

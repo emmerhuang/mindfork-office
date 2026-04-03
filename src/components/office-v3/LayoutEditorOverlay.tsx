@@ -65,8 +65,14 @@ const PALETTE_SPRITES: SpriteInfo[] = [
   { name: "microwave", category: "tearoom", defaultW: 160, defaultH: 160 },
   // Meeting
   { name: "conference-table", category: "meeting", defaultW: 160, defaultH: 240 },
+  { name: "conference-table-wide", category: "meeting", defaultW: 400, defaultH: 300 },
+  { name: "conference-table-west", category: "meeting", defaultW: 300, defaultH: 400 },
   { name: "projector-screen", category: "meeting", defaultW: 240, defaultH: 160 },
+  { name: "projector-screen-wide", category: "meeting", defaultW: 400, defaultH: 300 },
+  { name: "projector-screen-west", category: "meeting", defaultW: 300, defaultH: 400 },
   { name: "tv-screen", category: "meeting", defaultW: 240, defaultH: 160 },
+  { name: "long-table-north", category: "meeting", defaultW: 400, defaultH: 300 },
+  { name: "long-table-east", category: "meeting", defaultW: 300, defaultH: 400 },
   // Decoration
   { name: "plant-monstera", category: "decoration", defaultW: 160, defaultH: 240 },
   { name: "plant-cactus", category: "decoration", defaultW: 160, defaultH: 240 },
@@ -1054,7 +1060,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
           <span className="px-2 py-1 text-red-400 text-xs font-mono">{saveError}</span>
         )}
         <button
-          onClick={onCancel}
+          onClick={() => { setEditing(false); onCancel(); }}
           className="px-3 py-1 bg-gray-700 text-gray-300 rounded text-xs font-mono hover:bg-gray-600"
           onMouseDown={(e) => e.stopPropagation()}
         >
