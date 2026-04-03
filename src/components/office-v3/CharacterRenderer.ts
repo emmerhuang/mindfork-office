@@ -145,7 +145,7 @@ function drawStatusIcon(ctx: CanvasRenderingContext2D, cx: number, topY: number,
     const dw = aspect >= 1 ? maxSide : maxSide * aspect;
     const dh = aspect >= 1 ? maxSide / aspect : maxSide;
     const bounce = Math.abs(Math.sin((tick / 24) * Math.PI)) * 5;
-    ctx.drawImage(emoteImg, cx - dw / 2, topY - dh - 8 - bounce, dw, dh);
+    ctx.drawImage(emoteImg, cx - dw / 2, topY - dh + 22 - bounce, dw, dh);
   } else {
     // Fallback: render as text (for any non-emote icon strings)
     ctx.save();

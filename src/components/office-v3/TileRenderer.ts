@@ -22,7 +22,7 @@ export const MAP_OBJ_NAMES = [
   "desk-monitor", "desk-laptop", "desk-standing", "dog-bed",
   "sofa-teal", "filing-cabinet", "printer",
   // 茶水間
-  "fridge", "fridge-retro", "water-cooler",
+  "fridge", "fridge-retro", "fridge-teal", "fridge-red", "fridge-yellow", "water-cooler",
   "coffee-machine", "coffee-machine-red",
   "kitchen-counter", "kitchen-cabinet",
   "kitchen-cabinet-south", "kitchen-cabinet-east", "kitchen-cabinet-north", "kitchen-cabinet-west",

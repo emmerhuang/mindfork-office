@@ -49,6 +49,9 @@ const PALETTE_SPRITES: SpriteInfo[] = [
   // Tearoom
   { name: "fridge", category: "tearoom", defaultW: 160, defaultH: 240 },
   { name: "fridge-retro", category: "tearoom", defaultW: 160, defaultH: 240 },
+  { name: "fridge-teal", category: "tearoom", defaultW: 200, defaultH: 300 },
+  { name: "fridge-red", category: "tearoom", defaultW: 200, defaultH: 300 },
+  { name: "fridge-yellow", category: "tearoom", defaultW: 200, defaultH: 300 },
   { name: "water-cooler", category: "tearoom", defaultW: 160, defaultH: 240 },
   { name: "coffee-machine", category: "tearoom", defaultW: 160, defaultH: 240 },
   { name: "coffee-machine-red", category: "tearoom", defaultW: 160, defaultH: 240 },
