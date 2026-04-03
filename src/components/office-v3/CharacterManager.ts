@@ -520,19 +520,20 @@ export class CharacterManager {
         // 清除 idle icon 快取，下次 idle 重新選
         delete this.idleIcons[c.def.id];
         break;
-      case "idle_home": {
-        // 隨機從 coffee / love / happy 選一個（進入 idle 時選一次，站定期間不切換）
-        if (!this.idleIcons[c.def.id]) {
-          const choices = ["emote-4", "emote-2", "emote-5"]; // coffee, love, happy
-          this.idleIcons[c.def.id] = choices[Math.floor(Math.random() * choices.length)];
-        }
-        c.statusIcon = this.idleIcons[c.def.id];
-        break;
-      }
+      case "idle_home":
       case "idle_away": {
-        // 隨機從 thinking / confused / sleeping 選一個（進入 idle 時選一次）
+        // 從所有可用 emote 中均勻隨機選一個（進入 idle 時選一次，站定期間不切換）
+        // 排除 emote-0（已回收）和 emote-7（working/celebrating 專用）
         if (!this.idleIcons[c.def.id]) {
-          const choices = ["emote-1", "emote-8", "emote-3"]; // thinking, confused, sleeping
+          const choices = [
+            "emote-1", // thinking
+            "emote-2", // love
+            "emote-3", // sleeping
+            "emote-4", // coffee
+            "emote-5", // happy
+            "emote-6", // alert
+            "emote-8", // confused
+          ];
           this.idleIcons[c.def.id] = choices[Math.floor(Math.random() * choices.length)];
         }
         c.statusIcon = this.idleIcons[c.def.id];
