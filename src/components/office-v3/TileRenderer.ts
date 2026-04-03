@@ -24,7 +24,9 @@ export const MAP_OBJ_NAMES = [
   // 茶水間
   "fridge", "fridge-retro", "water-cooler",
   "coffee-machine", "coffee-machine-red",
-  "kitchen-counter", "cafe-table",
+  "kitchen-counter", "kitchen-cabinet",
+  "kitchen-cabinet-south", "kitchen-cabinet-east", "kitchen-cabinet-north", "kitchen-cabinet-west",
+  "cafe-table",
   "vending-machine", "trash-can", "bar-table",
   "fruit-bowl", "microwave",
   // 會議室
