@@ -724,7 +724,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
               onClick={() => { setShowPasswordPrompt(false); setPassword(""); }}
               className="flex-1 py-1 bg-gray-700 text-gray-300 rounded text-xs hover:bg-gray-600"
             >
-              Cancel
+              Exit
             </button>
           </div>
         </div>
@@ -1058,7 +1058,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
           className="px-3 py-1 bg-gray-700 text-gray-300 rounded text-xs font-mono hover:bg-gray-600"
           onMouseDown={(e) => e.stopPropagation()}
         >
-          Cancel
+          Exit
         </button>
       </div>
 
