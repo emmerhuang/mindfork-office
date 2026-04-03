@@ -6,7 +6,7 @@
 import { useState, useRef, useCallback, useEffect, useImperativeHandle, forwardRef } from "react";
 import { TILE, CANVAS_W, CANVAS_H, COLS, ROWS, ROOMS, updateRooms } from "./officeData";
 import { saveLayout, exportLayout } from "./LayoutManager";
-import { MAP_OBJ_NAMES, getMapObj } from "./TileRenderer";
+import { getMapObj } from "./TileRenderer";
 import type { OfficeLayout, LayoutObject, RoomFloor } from "./LayoutManager";
 
 // ── Sprite palette categories ────────────────────────────────
@@ -19,75 +19,9 @@ interface SpriteInfo {
   special?: string;  // for trigger zones
 }
 
-const PALETTE_SPRITES: SpriteInfo[] = [
-  // Floor (96x96)
-  { name: "floor-gray-carpet", category: "floor", defaultW: 96, defaultH: 96 },
-  { name: "floor-honey-wood", category: "floor", defaultW: 96, defaultH: 96 },
-  { name: "floor-walnut", category: "floor", defaultW: 96, defaultH: 96 },
-  { name: "floor-marble", category: "floor", defaultW: 96, defaultH: 96 },
-  { name: "floor-beige-wood", category: "floor", defaultW: 96, defaultH: 96 },
-  { name: "floor-lavender", category: "floor", defaultW: 96, defaultH: 96 },
-  { name: "floor-herringbone", category: "floor", defaultW: 96, defaultH: 96 },
-  { name: "floor-slate", category: "floor", defaultW: 96, defaultH: 96 },
-  { name: "floor-terracotta", category: "floor", defaultW: 96, defaultH: 96 },
-  { name: "floor-bamboo", category: "floor", defaultW: 96, defaultH: 96 },
-  // Walls
-  { name: "wall-bookshelf", category: "wall", defaultW: 240, defaultH: 160 },
-  { name: "wall-window", category: "wall", defaultW: 160, defaultH: 240 },
-  { name: "wall-whiteboard", category: "wall", defaultW: 160, defaultH: 240 },
-  { name: "wall-clock", category: "wall", defaultW: 64, defaultH: 64 },
-  { name: "wall-panoramic-window", category: "wall", defaultW: 240, defaultH: 160 },
-  { name: "wall-shelf-painting", category: "wall", defaultW: 240, defaultH: 160 },
-  // Office
-  { name: "desk-monitor", category: "office", defaultW: 240, defaultH: 160 },
-  { name: "desk-laptop", category: "office", defaultW: 240, defaultH: 160 },
-  { name: "desk-standing", category: "office", defaultW: 240, defaultH: 160 },
-  { name: "dog-bed", category: "office", defaultW: 240, defaultH: 160 },
-  { name: "sofa-teal", category: "office", defaultW: 240, defaultH: 160 },
-  { name: "filing-cabinet", category: "office", defaultW: 160, defaultH: 240 },
-  { name: "printer", category: "office", defaultW: 160, defaultH: 160 },
-  // Tearoom
-  { name: "fridge", category: "tearoom", defaultW: 160, defaultH: 240 },
-  { name: "fridge-retro", category: "tearoom", defaultW: 160, defaultH: 240 },
-  { name: "fridge-teal", category: "tearoom", defaultW: 200, defaultH: 300 },
-  { name: "fridge-red", category: "tearoom", defaultW: 200, defaultH: 300 },
-  { name: "fridge-yellow", category: "tearoom", defaultW: 200, defaultH: 300 },
-  { name: "water-cooler", category: "tearoom", defaultW: 160, defaultH: 240 },
-  { name: "coffee-machine", category: "tearoom", defaultW: 160, defaultH: 240 },
-  { name: "coffee-machine-red", category: "tearoom", defaultW: 160, defaultH: 240 },
-  { name: "kitchen-counter", category: "tearoom", defaultW: 240, defaultH: 160 },
-  { name: "kitchen-cabinet-south", category: "tearoom", defaultW: 400, defaultH: 400 },
-  { name: "kitchen-cabinet-east", category: "tearoom", defaultW: 400, defaultH: 400 },
-  { name: "kitchen-cabinet-north", category: "tearoom", defaultW: 400, defaultH: 400 },
-  { name: "kitchen-cabinet-west", category: "tearoom", defaultW: 400, defaultH: 400 },
-  { name: "cafe-table", category: "tearoom", defaultW: 160, defaultH: 240 },
-  { name: "vending-machine", category: "tearoom", defaultW: 160, defaultH: 240 },
-  { name: "trash-can", category: "tearoom", defaultW: 160, defaultH: 160 },
-  { name: "bar-table", category: "tearoom", defaultW: 160, defaultH: 240 },
-  { name: "fruit-bowl", category: "tearoom", defaultW: 160, defaultH: 160 },
-  { name: "microwave", category: "tearoom", defaultW: 160, defaultH: 160 },
-  // Meeting
-  { name: "conference-table", category: "meeting", defaultW: 160, defaultH: 240 },
-  { name: "conference-table-wide", category: "meeting", defaultW: 400, defaultH: 300 },
-  { name: "conference-table-west", category: "meeting", defaultW: 300, defaultH: 400 },
-  { name: "projector-screen", category: "meeting", defaultW: 240, defaultH: 160 },
-  { name: "projector-screen-wide", category: "meeting", defaultW: 400, defaultH: 300 },
-  { name: "projector-screen-west", category: "meeting", defaultW: 300, defaultH: 400 },
-  { name: "tv-screen", category: "meeting", defaultW: 240, defaultH: 160 },
-  { name: "long-table-north", category: "meeting", defaultW: 400, defaultH: 300 },
-  { name: "long-table-east", category: "meeting", defaultW: 300, defaultH: 400 },
-  // Decoration
-  { name: "plant-monstera", category: "decoration", defaultW: 160, defaultH: 240 },
-  { name: "plant-cactus", category: "decoration", defaultW: 160, defaultH: 240 },
-  { name: "succulents", category: "decoration", defaultW: 160, defaultH: 160 },
-  { name: "tree-indoor", category: "decoration", defaultW: 160, defaultH: 240 },
-  { name: "table-lamp", category: "decoration", defaultW: 160, defaultH: 240 },
-  { name: "painting-landscape", category: "decoration", defaultW: 200, defaultH: 200 },
-  { name: "painting-abstract", category: "decoration", defaultW: 200, defaultH: 200 },
-  { name: "painting-portrait", category: "decoration", defaultW: 200, defaultH: 200 },
-  // Text
+/** Special palette items (not from Turso — canvas-drawn or trigger zones) */
+const SPECIAL_PALETTE_SPRITES: SpriteInfo[] = [
   { name: "text-block", category: "text", defaultW: 400, defaultH: 60, special: "text" },
-  // Trigger zones
   { name: "trigger-dashboard", category: "trigger", defaultW: 192, defaultH: 192, special: "trigger-dashboard" },
   { name: "trigger-bulletin", category: "trigger", defaultW: 384, defaultH: 192, special: "trigger-bulletin" },
 ];
@@ -164,7 +98,7 @@ const ROOM_LABELS: Record<RoomKey, string> = {
 const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function LayoutEditorOverlay({ layout, onSave, onCancel, canvasRef, onPreview }, ref) {
   const [editing, setEditing] = useState(false);
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
-  const [paletteSprites, setPaletteSprites] = useState<SpriteInfo[]>(PALETTE_SPRITES);
+  const [paletteSprites, setPaletteSprites] = useState<SpriteInfo[]>(SPECIAL_PALETTE_SPRITES);
   const originalObjectsRef = useRef<LayoutObject[]>([]);
   const onPreviewRef = useRef(onPreview);
   onPreviewRef.current = onPreview;
@@ -261,13 +195,12 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
             defaultH: parseInt(a.height) || 160,
           }));
 
-        // Merge: Turso sprites + hardcoded special items (text-block, triggers)
-        const specialItems = PALETTE_SPRITES.filter((s) => s.special);
+        // Merge: Turso sprites + special items (text-block, triggers)
         const tursoNames = new Set(tursoSprites.map((s) => s.name));
 
-        // Add any hardcoded items not in Turso (text-block, triggers, etc.)
+        // Add special items not in Turso (text-block, triggers, etc.)
         const merged = [...tursoSprites];
-        for (const sp of specialItems) {
+        for (const sp of SPECIAL_PALETTE_SPRITES) {
           if (!tursoNames.has(sp.name)) merged.push(sp);
         }
 

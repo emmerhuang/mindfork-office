@@ -8,7 +8,9 @@ const tx = (c: number) => c * TILE;
 const ty = (r: number) => r * TILE;
 
 // ── Map Object PNG 快取 ─────────────────────────────────
-export const MAP_OBJ_NAMES = [
+
+/** Fallback list — used only when /api/assets is unreachable */
+const FALLBACK_MAP_OBJ_NAMES = [
   // 地板 tiles (original)
   "floor-blue", "floor-wood", "floor-purple",
   // 地板 tiles (128px)
@@ -39,7 +41,7 @@ export const MAP_OBJ_NAMES = [
   // Emotes
   "emote-0", "emote-1", "emote-2", "emote-3", "emote-4", "emote-5",
   "emote-6", "emote-7", "emote-8",
-] as const;
+];
 
 const mapObjCache: Record<string, HTMLImageElement> = {};
 
@@ -47,9 +49,9 @@ export function getMapObj(name: string): HTMLImageElement | undefined {
   return mapObjCache[name];
 }
 
-/** Preload all map-object PNGs. Call once during init, await before renderStaticScene. */
-export function preloadMapObjects(): Promise<void> {
-  const loads = MAP_OBJ_NAMES.map((name) => {
+/** Preload a list of map-object PNGs into cache */
+function preloadNames(names: string[]): Promise<void> {
+  const loads = names.map((name) => {
     if (mapObjCache[name]) return Promise.resolve();
     return new Promise<void>((resolve) => {
       const img = new Image();
@@ -59,6 +61,31 @@ export function preloadMapObjects(): Promise<void> {
     });
   });
   return Promise.all(loads).then(() => {});
+}
+
+/**
+ * Preload all map-object PNGs. Fetches asset list from Turso via /api/assets,
+ * falls back to hardcoded list if the API is unreachable.
+ * Call once during init, await before renderStaticScene.
+ */
+export async function preloadMapObjects(): Promise<void> {
+  try {
+    const res = await fetch("/api/assets");
+    if (res.ok) {
+      const data = await res.json();
+      const assets: Array<{ filename: string }> = data.assets ?? [];
+      if (assets.length > 0) {
+        const names = assets.map((a) => a.filename.replace(/\.png$/i, ""));
+        await preloadNames(names);
+        return;
+      }
+    }
+  } catch {
+    // API unreachable — fall through to fallback
+  }
+
+  // Fallback: use hardcoded list
+  await preloadNames(FALLBACK_MAP_OBJ_NAMES);
 }
 
 function drawSprite(
