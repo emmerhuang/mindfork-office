@@ -15,9 +15,19 @@ export interface OsEntry {
   at?: string;
 }
 
+export interface TaskQueueItem {
+  id: number;
+  task: string;
+  status: string;
+  assigned_to?: string;
+  received_at?: string;
+  note?: string;
+}
+
 interface Props {
   memberStatuses?: Record<string, { status: string; task: string }>;
   memberOs?: Record<string, OsEntry[]>;
+  taskQueue?: TaskQueueItem[];
   onCharacterClick?: (charId: string) => void;
   className?: string;
   metrics?: {
@@ -45,12 +55,13 @@ const MEMBER_COLORS: Record<string, string> = {
 
 // ── Component ──────────────────────────────────────────────
 
-export default function OfficeCanvas({ memberStatuses, memberOs, onCharacterClick, className, metrics }: Props) {
+export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, onCharacterClick, className, metrics }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<OfficeEngine | null>(null);
   const clickRef = useRef(onCharacterClick);
   const [showBulletin, setShowBulletin] = useState(false);
   const [showBossScreen, setShowBossScreen] = useState(false);
+  const [showTaskList, setShowTaskList] = useState(false);
   const [wafflesZoom, setWafflesZoom] = useState<WafflesAnim | null>(null);
   const [editorMode, setEditorMode] = useState(false);
   const editorRef = useRef<LayoutEditorHandle>(null);
@@ -233,8 +244,11 @@ export default function OfficeCanvas({ memberStatuses, memberOs, onCharacterClic
                 <span className="text-white font-bold">{metrics?.contextUsedPercent !== undefined ? `${metrics?.contextUsedPercent}%` : "--"}</span>
               </div>
               <div className="grid grid-cols-3 gap-3 text-center">
-                <div>
-                  <span className="text-gray-500 text-xs block">Tasks</span>
+                <div
+                  className="cursor-pointer hover:bg-gray-800 rounded-lg transition-colors"
+                  onClick={() => setShowTaskList(prev => !prev)}
+                >
+                  <span className="text-gray-500 text-xs block">Tasks {showTaskList ? "▲" : "▼"}</span>
                   <span className="text-white text-xl font-bold">{metrics?.pendingTasks ?? "--"}</span>
                 </div>
                 <div>
@@ -246,6 +260,31 @@ export default function OfficeCanvas({ memberStatuses, memberOs, onCharacterClic
                   <span className="text-amber-400 font-bold">{metrics?.totalCostUsd !== undefined ? `$${metrics?.totalCostUsd.toFixed(0)}` : "--"}</span>
                 </div>
               </div>
+              {/* Task Queue Detail */}
+              {showTaskList && (
+                <div className="border border-gray-700 rounded-lg p-2 max-h-40 overflow-y-auto">
+                  {taskQueue && taskQueue.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {taskQueue.map(t => (
+                        <div key={t.id} className="flex items-start gap-2 text-xs">
+                          <span className="text-gray-500 shrink-0">#{t.id}</span>
+                          <span className="text-gray-200 flex-1 break-all">{t.task}</span>
+                          <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] ${
+                            t.status === "pending" ? "bg-yellow-900 text-yellow-300" :
+                            t.status === "in_progress" ? "bg-blue-900 text-blue-300" :
+                            "bg-gray-800 text-gray-400"
+                          }`}>{t.status}</span>
+                          {t.assigned_to && (
+                            <span className="text-gray-500 shrink-0">{t.assigned_to}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-xs text-center">No pending tasks</p>
+                  )}
+                </div>
+              )}
               <div className="border-t border-gray-700 pt-2">
                 <span className="text-gray-500 text-xs">Team</span>
                 <div className="grid grid-cols-4 gap-1 mt-1">

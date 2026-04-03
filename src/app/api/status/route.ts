@@ -71,7 +71,7 @@ const FALLBACK_METRICS = {
 export async function GET() {
   try {
     const result = await tursoExecute([
-      { sql: "SELECT key, value FROM mindfork_status WHERE key IN ('metrics', 'members', 'member_os')" },
+      { sql: "SELECT key, value FROM mindfork_status WHERE key IN ('metrics', 'members', 'member_os', 'task_queue')" },
     ]);
 
     const map = rowsToMap(result);
@@ -81,6 +81,7 @@ export async function GET() {
       : { ...FALLBACK_METRICS };
     const members = map.members ? JSON.parse(map.members) : {};
     const rawOs = map.member_os ? JSON.parse(map.member_os) : {};
+    const taskQueue = map.task_queue ? JSON.parse(map.task_queue) : [];
     // Normalize: support legacy string[], new {text,task,at}[], or plain string
     const memberOs: Record<string, Array<{text: string; task?: string; at?: string}>> = {};
     for (const [k, v] of Object.entries(rawOs)) {
@@ -96,7 +97,7 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({ members, metrics, memberOs });
+    return NextResponse.json({ members, metrics, memberOs, taskQueue });
   } catch (err) {
     console.error("GET /api/status error:", err);
     return NextResponse.json({

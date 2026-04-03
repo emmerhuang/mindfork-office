@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 function formatTW(iso: string): string {
   const d = new Date(iso);
@@ -51,6 +51,35 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
   meeting: { label: "開會中", color: "#3b82f6" },
   sleeping: { label: "休息中", color: "#a855f7" },
 };
+
+function CelebrateAvatar({ id, name, emoji }: { id: string; name: string; emoji: string }) {
+  const [frame, setFrame] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    intervalRef.current = setInterval(() => {
+      setFrame(f => (f + 1) % 4);
+    }, 200);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  return (
+    <img
+      src={`/sprites/v2/${id}/celebrate-south-${frame}.png`}
+      alt={name}
+      title={emoji}
+      className="shrink-0"
+      style={{
+        imageRendering: "pixelated",
+        clipPath: "inset(0 40px 0 40px)",
+        marginLeft: -40,
+        marginRight: -40,
+      }}
+    />
+  );
+}
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
@@ -176,18 +205,7 @@ export default function Dashboard() {
                   <div key={m.id} className="bg-gray-700 border border-gray-600 rounded-lg p-2.5">
                     {/* Header: Avatar left + Name right */}
                     <div className="flex items-center gap-2 mb-1.5">
-                      <img
-                        src={`/sprites/${m.id}-pixellab.png`}
-                        alt={m.name}
-                        title={m.emoji}
-                        className="shrink-0"
-                        style={{
-                          imageRendering: "pixelated",
-                          clipPath: "inset(0 40px 0 40px)",
-                          marginLeft: -40,
-                          marginRight: -40,
-                        }}
-                      />
+                      <CelebrateAvatar id={m.id} name={m.name} emoji={m.emoji} />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs sm:text-sm text-gray-400">{m.role}</p>
                         <p className="text-base sm:text-lg font-bold">{m.name}</p>

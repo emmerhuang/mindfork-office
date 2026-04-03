@@ -19,6 +19,7 @@ export default function Home() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [memberStatuses, setMemberStatuses] = useState<Record<string, { status: MemberStatus; task: string }>>({});
   const [memberOs, setMemberOs] = useState<Record<string, Array<{text: string; task?: string; at?: string}>>>({});
+  const [taskQueue, setTaskQueue] = useState<Array<{id: number; task: string; status: string; assigned_to?: string; received_at?: string; note?: string}>>([]);
 
   useEffect(() => {
     async function fetchStatus() {
@@ -31,6 +32,7 @@ export default function Home() {
             setMemberStatuses(data.members);
           }
           if (data.memberOs) setMemberOs(data.memberOs);
+          if (data.taskQueue) setTaskQueue(data.taskQueue);
         }
       } catch { /* ignore */ }
     }
@@ -55,6 +57,7 @@ export default function Home() {
           <OfficeCanvas
             memberStatuses={memberStatuses}
             memberOs={memberOs}
+            taskQueue={taskQueue}
             metrics={metrics ? {
               rateLimitPercent: metrics.rateLimitPercent,
               pendingTasks: metrics.pendingTasks,
