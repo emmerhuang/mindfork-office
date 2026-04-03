@@ -3,9 +3,9 @@
 // LayoutEditorOverlay.tsx — Visual drag-and-drop layout editor
 // Overlays on top of the canvas. Coordinates are converted from DOM to canvas space.
 
-import { useState, useRef, useCallback, useEffect, useImperativeHandle, forwardRef } from "react";
+import { useState, useRef, useCallback, useEffect, useImperativeHandle, forwardRef, useMemo } from "react";
 import { TILE, CANVAS_W, CANVAS_H, COLS, ROWS, ROOMS, updateRooms } from "./officeData";
-import { saveLayout, exportLayout } from "./LayoutManager";
+import { saveLayout, exportLayout, computeWalkableMap } from "./LayoutManager";
 import { getMapObj } from "./TileRenderer";
 import type { OfficeLayout, LayoutObject, RoomFloor } from "./LayoutManager";
 
@@ -134,6 +134,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
   const [boundaryDrag, setBoundaryDrag] = useState<"wall" | "horizontal" | "vertical" | null>(null);
   const [hoverBoundary, setHoverBoundary] = useState<"wall" | "horizontal" | "vertical" | null>(null);
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
+  const [showWalkable, setShowWalkable] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
   const dragSpriteRef = useRef<SpriteInfo | null>(null);
 
@@ -767,6 +768,33 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
         }}
       />
 
+      {/* Walkable map overlay */}
+      {showWalkable && (() => {
+        const wMap = computeWalkableMap({ version: layout.version, floors, objects, roomConfig: { wallRows, workRows, tearoomCols } });
+        const tiles: React.ReactNode[] = [];
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            const walkable = wMap[r]?.[c] ?? false;
+            tiles.push(
+              <div
+                key={`wt-${r}-${c}`}
+                className="absolute pointer-events-none"
+                style={{
+                  left: c * TILE * scale,
+                  top: r * TILE * scale,
+                  width: TILE * scale,
+                  height: TILE * scale,
+                  backgroundColor: walkable ? "rgba(0,200,0,0.25)" : "rgba(200,0,0,0.25)",
+                  border: "1px solid " + (walkable ? "rgba(0,200,0,0.4)" : "rgba(200,0,0,0.4)"),
+                  boxSizing: "border-box",
+                }}
+              />
+            );
+          }
+        }
+        return <>{tiles}</>;
+      })()}
+
       {/* Wall boundary line (wall / work) */}
       {wallLineDOM && wallLineEnd && overlayRef.current && (() => {
         const ov = overlayRef.current!.getBoundingClientRect();
@@ -1025,6 +1053,15 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
           onMouseDown={(e) => e.stopPropagation()}
         >
           Export
+        </button>
+        <button
+          onClick={() => setShowWalkable((v) => !v)}
+          className={`pointer-events-auto px-3 py-1 rounded text-xs font-mono ${
+            showWalkable ? "bg-cyan-600 text-white" : "bg-gray-800/90 text-gray-300 hover:bg-gray-700"
+          }`}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          Walkable
         </button>
         <button
           onClick={handleSave}

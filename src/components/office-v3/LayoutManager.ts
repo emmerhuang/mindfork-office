@@ -145,6 +145,12 @@ export function computeWalkableMap(layout: OfficeLayout): boolean[][] {
       blockH = obj.height;
     }
 
+    // Desk objects with anchored characters: only block the top portion (desk surface).
+    // The bottom row of tiles is where the character stands and needs to pass through.
+    if (obj.anchorCharId) {
+      blockH = Math.max(0, blockH - TILE);
+    }
+
     // Skip thin objects: if either dimension is less than half a tile,
     // the object is too thin to meaningfully block movement
     if (blockW < HALF_TILE || blockH < HALF_TILE) continue;
@@ -159,6 +165,42 @@ export function computeWalkableMap(layout: OfficeLayout): boolean[][] {
       for (let c = tileLeft; c <= tileRight; c++) {
         if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
           map[r][c] = false;
+        }
+      }
+    }
+  }
+
+  // Force-unlock anchor character home tiles + ensure exit path:
+  // Characters stand at the bottom-center of their desk, which often falls
+  // within the desk's blocked tile footprint. Ensure those tiles are walkable,
+  // and that at least one adjacent tile is also walkable (so the character
+  // can actually leave).
+  for (const obj of layout.objects) {
+    if (!obj.anchorCharId) continue;
+    const ox = obj.charOffsetX ?? 0;
+    const oy = obj.charOffsetY ?? 0;
+    const homePx = obj.x + obj.width / 2 + ox;
+    const homePy = obj.y + obj.height + oy;
+    const hCol = Math.floor(homePx / TILE);
+    const hRow = Math.floor(homePy / TILE);
+    if (hRow >= 0 && hRow < ROWS && hCol >= 0 && hCol < COLS) {
+      map[hRow][hCol] = true;
+
+      // Ensure at least one neighbor is walkable (prefer below, then sides, then above)
+      const neighbors: Array<[number, number]> = [
+        [hRow + 1, hCol],     // below
+        [hRow, hCol - 1],     // left
+        [hRow, hCol + 1],     // right
+        [hRow - 1, hCol],     // above
+      ];
+      const hasExit = neighbors.some(([nr, nc]) =>
+        nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && map[nr][nc]
+      );
+      if (!hasExit) {
+        // Unlock below (most natural exit — character walks away from desk)
+        const exitR = hRow + 1;
+        if (exitR < ROWS && hCol >= 0 && hCol < COLS) {
+          map[exitR][hCol] = true;
         }
       }
     }

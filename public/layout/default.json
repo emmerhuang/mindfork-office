@@ -288,7 +288,7 @@
       "width": 160,
       "height": 240,
       "zIndex": 15,
-      "walkable": false,
+      "walkable": true,
       "category": "decoration"
     },
     {
@@ -299,7 +299,7 @@
       "width": 160,
       "height": 240,
       "zIndex": 15,
-      "walkable": false,
+      "walkable": true,
       "category": "decoration"
     },
     {
