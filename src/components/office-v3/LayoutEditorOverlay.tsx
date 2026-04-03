@@ -66,6 +66,7 @@ const PALETTE_SPRITES: SpriteInfo[] = [
   // Meeting
   { name: "conference-table", category: "meeting", defaultW: 160, defaultH: 240 },
   { name: "projector-screen", category: "meeting", defaultW: 240, defaultH: 160 },
+  { name: "tv-screen", category: "meeting", defaultW: 240, defaultH: 160 },
   // Decoration
   { name: "plant-monstera", category: "decoration", defaultW: 160, defaultH: 240 },
   { name: "plant-cactus", category: "decoration", defaultW: 160, defaultH: 240 },
