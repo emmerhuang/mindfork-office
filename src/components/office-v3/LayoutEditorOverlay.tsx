@@ -91,7 +91,7 @@ const CATEGORIES = [
   { key: "trigger", label: "Trigger Zone" },
 ];
 
-const PASSWORD = "millet99";
+const PASSWORD = "emmer99";
 
 /** Handle exposed via ref for external triggers */
 export interface LayoutEditorHandle {

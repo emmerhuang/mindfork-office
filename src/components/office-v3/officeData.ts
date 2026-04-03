@@ -256,14 +256,15 @@ export const BOSS_SCREEN = { x: 1, y: 3, w: 2, h: 2 } as const;
  *  Converts pixel coords to tile coords (pixel / TILE, floored).
  *  Call this after loading layout, before CharacterManager uses deskTile.
  */
-export function updateCharacterPositions(layout: { objects: Array<{ anchorCharId?: string; x: number; y: number }> }) {
+export function updateCharacterPositions(layout: { objects: Array<{ anchorCharId?: string; x: number; y: number; width: number; height: number }> }) {
   for (const obj of layout.objects) {
     if (!obj.anchorCharId) continue;
     const char = CHARACTERS.find((c) => c.id === obj.anchorCharId);
     if (char) {
+      // Position character at bottom center of desk
       char.deskTile = {
-        x: Math.floor(obj.x / TILE),
-        y: Math.floor(obj.y / TILE),
+        x: Math.floor((obj.x + obj.width / 2) / TILE),
+        y: Math.floor((obj.y + obj.height) / TILE),
       };
     }
   }

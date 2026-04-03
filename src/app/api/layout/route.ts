@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { layout, password } = body;
 
-    if (password !== "millet99") {
+    if (password !== "emmer99") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
