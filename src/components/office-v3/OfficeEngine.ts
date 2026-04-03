@@ -258,6 +258,11 @@ export class OfficeEngine {
     }
 
     renderStaticScene(this.offCtx, this.tileImg, this.layout ?? undefined);
+
+    // Trigger celebrate animation for all characters on load
+    for (const c of this.mgr.characters) {
+      this.mgr.triggerCelebrate(c.def.id);
+    }
   }
 
   /** Reset all characters to home position (for editor mode) */
