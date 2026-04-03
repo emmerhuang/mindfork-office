@@ -405,18 +405,13 @@ export class CharacterManager {
       const MIN_DIST = 50;
       if (od < MIN_DIST && od > 0) {
         if (c.state === "walking" && other.state === "walking") {
-          // Both walking: deflect perpendicular to the line between them
+          // Both walking: randomly turn left or right to avoid
           const perpX = -ody / od;
           const perpY = odx / od;
-          const push = MIN_DIST * 0.4;
-          // Use ID comparison to decide direction: lower ID goes right, higher goes left
-          if (c.def.id < other.def.id) {
-            c.px += perpX * push;
-            c.py += perpY * push;
-          } else {
-            c.px -= perpX * push;
-            c.py -= perpY * push;
-          }
+          const push = MIN_DIST * 0.5;
+          const dir = Math.random() < 0.5 ? 1 : -1;
+          c.px += perpX * push * dir;
+          c.py += perpY * push * dir;
           // Recalculate path from new position
           c.path = findPath(c.px, c.py, c.targetPx, c.targetPy, this.buildDynamicBlocked(c));
           c.pathIndex = 0;
