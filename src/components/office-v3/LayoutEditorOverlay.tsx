@@ -4,7 +4,7 @@
 // Overlays on top of the canvas. Coordinates are converted from DOM to canvas space.
 
 import { useState, useRef, useCallback, useEffect, useImperativeHandle, forwardRef } from "react";
-import { TILE, CANVAS_W, CANVAS_H, COLS, ROWS, ROOMS } from "./officeData";
+import { TILE, CANVAS_W, CANVAS_H, COLS, ROWS, ROOMS, updateRooms } from "./officeData";
 import { saveLayout, exportLayout } from "./LayoutManager";
 import { MAP_OBJ_NAMES, getMapObj } from "./TileRenderer";
 import type { OfficeLayout, LayoutObject, RoomFloor } from "./LayoutManager";
@@ -176,6 +176,11 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
   const [floors, setFloors] = useState<{ work: RoomFloor; tearoom: RoomFloor; meetingRoom: RoomFloor }>({
     work: { color: "#D4CFC8" }, tearoom: { color: "#E8DFC8" }, meetingRoom: { color: "#D8D0E0" },
   });
+  // Room boundary state
+  const [workRows, setWorkRows] = useState(14);
+  const [tearoomCols, setTearoomCols] = useState(6);
+  const [boundaryDrag, setBoundaryDrag] = useState<"horizontal" | "vertical" | null>(null);
+  const [hoverBoundary, setHoverBoundary] = useState<"horizontal" | "vertical" | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const dragSpriteRef = useRef<SpriteInfo | null>(null);
 
@@ -205,6 +210,16 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
     });
   }, []);
 
+  /** Apply room boundary changes: update ROOMS global + trigger rerender preview */
+  const applyRoomBoundary = useCallback((newWorkRows: number, newTearoomCols: number) => {
+    updateRooms(newWorkRows, newTearoomCols);
+    // Trigger preview so floor + labels rerender with new ROOMS
+    setObjects((objs) => {
+      onPreviewRef.current?.(objs, floorsRef.current);
+      return objs;
+    });
+  }, []);
+
   // Enter edit mode
   const handleSecretClick = useCallback(() => {
     setShowPasswordPrompt(true);
@@ -222,13 +237,17 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
         meetingRoom: { color: layout.floorColors.meetingRoom },
       } : { work: { color: "#D4CFC8" }, tearoom: { color: "#E8DFC8" }, meetingRoom: { color: "#D8D0E0" } });
       setFloors(JSON.parse(JSON.stringify(f)));
+      // Initialize room boundaries from layout
+      const rc = layout.roomConfig ?? { workRows: 14, tearoomCols: 6 };
+      setWorkRows(rc.workRows);
+      setTearoomCols(rc.tearoomCols);
       setEditing(true);
       setShowPasswordPrompt(false);
       setPassword("");
     } else {
       setPassword("");
     }
-  }, [password, layout.objects, layout.floors, layout.floorColors]);
+  }, [password, layout.objects, layout.floors, layout.floorColors, layout.roomConfig]);
 
   // Convert DOM event coords to canvas coords
   const toCanvasCoords = useCallback(
@@ -341,6 +360,25 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       if (!coords) return;
       const { cx, cy } = coords;
 
+      // Check boundary line hit (priority over object selection)
+      const BOUNDARY_HIT = 10; // canvas pixels tolerance
+      const hLineY = (ROOMS.work.y + ROOMS.work.h) * TILE;
+      const vLineX = ROOMS.tearoom.w * TILE;
+      const vLineTop = hLineY;
+
+      if (Math.abs(cy - hLineY) < BOUNDARY_HIT && cx >= 0 && cx <= CANVAS_W) {
+        setBoundaryDrag("horizontal");
+        setSelectedId(null);
+        setSelectedRoom(null);
+        return;
+      }
+      if (Math.abs(cx - vLineX) < BOUNDARY_HIT && cy >= vLineTop && cy <= CANVAS_H) {
+        setBoundaryDrag("vertical");
+        setSelectedId(null);
+        setSelectedRoom(null);
+        return;
+      }
+
       if (tool === "delete") {
         const obj = findObjectAt(cx, cy);
         if (obj) {
@@ -393,9 +431,48 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
     (e: React.MouseEvent) => {
       if (!editing) return;
 
+      const coords = toCanvasCoords(e.clientX, e.clientY);
+
+      // Handle boundary drag
+      if (boundaryDrag && coords) {
+        const { cx, cy } = coords;
+        if (boundaryDrag === "horizontal") {
+          const wallRows = 3;
+          const newWorkRows = Math.round(cy / TILE) - wallRows;
+          const clamped = Math.max(5, Math.min(ROWS - wallRows - 2, newWorkRows));
+          if (clamped !== workRows) {
+            setWorkRows(clamped);
+            applyRoomBoundary(clamped, tearoomCols);
+          }
+        } else {
+          const newTearoomCols = Math.round(cx / TILE);
+          const clamped = Math.max(2, Math.min(10, newTearoomCols));
+          if (clamped !== tearoomCols) {
+            setTearoomCols(clamped);
+            applyRoomBoundary(workRows, clamped);
+          }
+        }
+        return;
+      }
+
+      // Hover detection for boundary lines (cursor change)
+      if (!dragState && !dragSpriteRef.current && coords) {
+        const BOUNDARY_HIT = 10;
+        const hLineY = (ROOMS.work.y + ROOMS.work.h) * TILE;
+        const vLineX = ROOMS.tearoom.w * TILE;
+        const vLineTop = hLineY;
+        const { cx, cy } = coords;
+        if (Math.abs(cy - hLineY) < BOUNDARY_HIT && cx >= 0 && cx <= CANVAS_W) {
+          setHoverBoundary("horizontal");
+        } else if (Math.abs(cx - vLineX) < BOUNDARY_HIT && cy >= vLineTop && cy <= CANVAS_H) {
+          setHoverBoundary("vertical");
+        } else {
+          setHoverBoundary(null);
+        }
+      }
+
       // Handle palette drag preview
       if (dragSpriteRef.current) {
-        const coords = toCanvasCoords(e.clientX, e.clientY);
         if (coords) {
           const info = dragSpriteRef.current;
           const pImg = getMapObj(info.name);
@@ -413,7 +490,6 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       }
 
       if (!dragState || !selectedId) return;
-      const coords = toCanvasCoords(e.clientX, e.clientY);
       if (!coords) return;
       const { cx, cy } = coords;
       const dx = cx - dragState.startX;
@@ -474,11 +550,12 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
         }),
       );
     },
-    [editing, dragState, selectedId, toCanvasCoords, lockAspectRatio],
+    [editing, dragState, selectedId, toCanvasCoords, lockAspectRatio, boundaryDrag, workRows, tearoomCols, applyRoomBoundary],
   );
 
   const handleMouseUp = useCallback(() => {
     setDragState(null);
+    setBoundaryDrag(null);
 
     // Drop from palette
     if (dragSpriteRef.current && dropPreview) {
@@ -549,6 +626,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       version: layout.version,
       floors,
       objects: objects,
+      roomConfig: { workRows, tearoomCols },
     };
     const result = await saveLayout(updated, PASSWORD);
     setSaving(false);
@@ -557,7 +635,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       return;
     }
     onSave(updated);
-  }, [layout.version, objects, floors, onSave]);
+  }, [layout.version, objects, floors, onSave, workRows, tearoomCols]);
 
   // Toggle palette category
   const toggleCategory = (key: string) => {
@@ -631,11 +709,26 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
   // Editor mode
   const scale = getScale();
 
+  // Compute boundary line positions in DOM space
+  const hLineCanvasY = (ROOMS.work.y + ROOMS.work.h) * TILE;
+  const vLineCanvasX = ROOMS.tearoom.w * TILE;
+  const hLineDOM = fromCanvasCoords(0, hLineCanvasY);
+  const hLineEnd = fromCanvasCoords(CANVAS_W, hLineCanvasY);
+  const vLineDOM = fromCanvasCoords(vLineCanvasX, hLineCanvasY);
+  const vLineEnd = fromCanvasCoords(vLineCanvasX, CANVAS_H);
+
   return (
     <div
       ref={overlayRef}
       className="absolute inset-0 z-20"
-      style={{ imageRendering: "auto" }}
+      style={{
+        imageRendering: "auto",
+        cursor: boundaryDrag === "horizontal" || hoverBoundary === "horizontal"
+          ? "row-resize"
+          : boundaryDrag === "vertical" || hoverBoundary === "vertical"
+          ? "col-resize"
+          : undefined,
+      }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -655,6 +748,82 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
           backgroundSize: `${TILE * scale}px ${TILE * scale}px`,
         }}
       />
+
+      {/* Horizontal boundary line (work / tearoom+meeting) */}
+      {hLineDOM && hLineEnd && overlayRef.current && (() => {
+        const ov = overlayRef.current!.getBoundingClientRect();
+        const y = hLineDOM.dy - ov.top;
+        const isActive = boundaryDrag === "horizontal" || hoverBoundary === "horizontal";
+        return (
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              left: hLineDOM.dx - ov.left,
+              top: y - (isActive ? 3 : 2),
+              width: hLineEnd.dx - hLineDOM.dx,
+              height: isActive ? 6 : 4,
+              background: isActive ? "rgba(255,220,50,0.9)" : "rgba(255,220,50,0.6)",
+              borderTop: `2px dashed ${isActive ? "#FFE066" : "#CCAA33"}`,
+              transition: "height 0.1s, background 0.1s",
+            }}
+          />
+        );
+      })()}
+
+      {/* Vertical boundary line (tearoom / meetingRoom) */}
+      {vLineDOM && vLineEnd && overlayRef.current && (() => {
+        const ov = overlayRef.current!.getBoundingClientRect();
+        const x = vLineDOM.dx - ov.left;
+        const isActive = boundaryDrag === "vertical" || hoverBoundary === "vertical";
+        return (
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              left: x - (isActive ? 3 : 2),
+              top: vLineDOM.dy - ov.top,
+              width: isActive ? 6 : 4,
+              height: vLineEnd.dy - vLineDOM.dy,
+              background: isActive ? "rgba(255,220,50,0.9)" : "rgba(255,220,50,0.6)",
+              borderLeft: `2px dashed ${isActive ? "#FFE066" : "#CCAA33"}`,
+              transition: "width 0.1s, background 0.1s",
+            }}
+          />
+        );
+      })()}
+
+      {/* Boundary labels */}
+      {hLineDOM && overlayRef.current && (() => {
+        const ov = overlayRef.current!.getBoundingClientRect();
+        return (
+          <div
+            className="absolute pointer-events-none text-[10px] font-mono font-bold px-1 rounded"
+            style={{
+              left: hLineDOM.dx - ov.left + 4,
+              top: hLineDOM.dy - ov.top - 16,
+              color: "#FFE066",
+              background: "rgba(0,0,0,0.6)",
+            }}
+          >
+            Work: {workRows} rows | Lower: {ROWS - 3 - workRows} rows
+          </div>
+        );
+      })()}
+      {vLineDOM && overlayRef.current && (() => {
+        const ov = overlayRef.current!.getBoundingClientRect();
+        return (
+          <div
+            className="absolute pointer-events-none text-[10px] font-mono font-bold px-1 rounded"
+            style={{
+              left: vLineDOM.dx - ov.left + 4,
+              top: vLineDOM.dy - ov.top + 4,
+              color: "#FFE066",
+              background: "rgba(0,0,0,0.6)",
+            }}
+          >
+            Tea: {tearoomCols} | Meet: {12 - tearoomCols}
+          </div>
+        );
+      })()}
 
       {/* Trigger zone overlays + anchor character labels */}
       {objects.map((obj) => {
@@ -782,7 +951,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
         </button>
         <div className="flex-1" />
         <button
-          onClick={() => exportLayout({ version: layout.version, floors, objects })}
+          onClick={() => exportLayout({ version: layout.version, floors, objects, roomConfig: { workRows, tearoomCols } })}
           className="px-3 py-1 bg-gray-800 text-gray-300 rounded text-xs font-mono hover:bg-gray-700"
           onMouseDown={(e) => e.stopPropagation()}
         >

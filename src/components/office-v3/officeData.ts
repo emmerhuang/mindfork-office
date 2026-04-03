@@ -145,12 +145,30 @@ export const CHARACTERS: CharacterDef[] = [
 
 // ── 房間 ──────────────────────────────────────────────────
 
-export const ROOMS = {
+export let ROOMS: {
+  wall:        { x: number; y: number; w: number; h: number };
+  work:        { x: number; y: number; w: number; h: number };
+  tearoom:     { x: number; y: number; w: number; h: number; dest: { x: number; y: number } };
+  meetingRoom: { x: number; y: number; w: number; h: number; dest: { x: number; y: number } };
+} = {
   wall:        { x: 0, y: 0,  w: 12, h: 3 },
   work:        { x: 0, y: 3,  w: 12, h: 14 },
   tearoom:     { x: 0, y: 17, w: 6,  h: 5, dest: { x: 3, y: 19 } },
   meetingRoom: { x: 6, y: 17, w: 6,  h: 5, dest: { x: 9, y: 19 } },
-} as const;
+};
+
+/** Recalculate ROOMS geometry from workRows and tearoomCols */
+export function updateRooms(workRows: number, tearoomCols: number) {
+  const wallRows = 3;
+  const totalRows = 22;
+  const lowerRows = totalRows - wallRows - workRows;
+  ROOMS = {
+    wall:        { x: 0, y: 0, w: 12, h: wallRows },
+    work:        { x: 0, y: wallRows, w: 12, h: workRows },
+    tearoom:     { x: 0, y: wallRows + workRows, w: tearoomCols, h: lowerRows, dest: { x: Math.floor(tearoomCols / 2), y: wallRows + workRows + Math.floor(lowerRows / 2) } },
+    meetingRoom: { x: tearoomCols, y: wallRows + workRows, w: 12 - tearoomCols, h: lowerRows, dest: { x: tearoomCols + Math.floor((12 - tearoomCols) / 2), y: wallRows + workRows + Math.floor(lowerRows / 2) } },
+  };
+}
 
 // ── Walkable tile map (true = walkable) ────────────────────
 // 12 cols x 16 rows. Wall (rows 0-2) = blocked.

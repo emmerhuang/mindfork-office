@@ -1,6 +1,6 @@
 // LayoutManager.ts — Layout 讀寫管理、walkable map 計算
 
-import { TILE, COLS, ROWS } from "./officeData";
+import { TILE, COLS, ROWS, updateRooms } from "./officeData";
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -29,29 +29,43 @@ export interface OfficeLayout {
   /** @deprecated Use floors instead */
   floorColors?: { work: string; tearoom: string; meetingRoom: string };
   objects: LayoutObject[];
+  /** Room boundary config (workRows default 14, tearoomCols default 6) */
+  roomConfig?: { workRows: number; tearoomCols: number };
 }
 
 const STORAGE_KEY = "mindfork-office-layout";
 
 // ── Load / Save ──────────────────────────────────────────────
 
-/** Load layout: Turso API first, then fallback to default.json */
+/** Load layout: Turso API first, then fallback to default.json.
+ *  Applies roomConfig to update ROOMS geometry if present. */
 export async function loadLayout(): Promise<OfficeLayout> {
+  let layout: OfficeLayout | null = null;
+
   // Try Turso API
   try {
     const resp = await fetch("/api/layout");
     if (resp.ok) {
       const data = await resp.json();
       if (data.layout && data.layout.version && data.layout.objects?.length) {
-        return data.layout as OfficeLayout;
+        layout = data.layout as OfficeLayout;
       }
     }
   } catch { /* Turso unavailable, fallback */ }
 
   // Fallback: fetch default.json
-  const resp = await fetch("/layout/default.json");
-  if (!resp.ok) throw new Error(`Failed to load default layout: ${resp.status}`);
-  return resp.json();
+  if (!layout) {
+    const resp = await fetch("/layout/default.json");
+    if (!resp.ok) throw new Error(`Failed to load default layout: ${resp.status}`);
+    layout = await resp.json();
+  }
+
+  // Apply room boundary config
+  if (layout!.roomConfig) {
+    updateRooms(layout!.roomConfig.workRows, layout!.roomConfig.tearoomCols);
+  }
+
+  return layout!;
 }
 
 /** Save layout to localStorage (local backup) + Turso API (shared persistence) */
