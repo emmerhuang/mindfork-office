@@ -185,8 +185,9 @@ export function computeWalkableMap(layout: OfficeLayout): boolean[][] {
     if (y >= 0 && y < ROWS && x >= 0 && x < COLS) map[y][x] = true;
   }
 
-  // Corridor columns: ensure connected paths between desk groups
-  for (let r = 3; r < ROWS; r++) {
+  // Corridor columns: ensure connected paths between desk groups (work area only)
+  const corridorMaxRow = ROOMS.work.y + ROOMS.work.h;
+  for (let r = 3; r < corridorMaxRow; r++) {
     map[r][3] = true;   // left corridor (between col 1-2 desks and col 5-6 desks)
     map[r][7] = true;   // right corridor (between col 5-6 desks and col 9-10 desks)
     map[r][11] = true;  // far right edge
