@@ -1071,22 +1071,21 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
 
       {/* Top toolbar — fixed to viewport top */}
       <div
-        className="fixed top-0 left-0 right-0 flex gap-1 z-[60] px-2 py-1 bg-gray-900/90 border-b border-gray-700"
-        style={{ pointerEvents: "auto" }}
-        onMouseDown={(e) => e.stopPropagation()}
+        className="fixed top-0 left-0 flex gap-1 z-[60] px-2 py-1"
+        style={{ pointerEvents: "none" }}
       >
         <button
           onClick={() => setTool(tool === "delete" ? "select" : "delete")}
-          className={`px-3 py-1 rounded text-xs font-mono ${
-            tool === "delete" ? "bg-red-600 text-white" : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+          className={`pointer-events-auto px-3 py-1 rounded text-xs font-mono ${
+            tool === "delete" ? "bg-red-600 text-white" : "bg-gray-800/90 text-gray-300 hover:bg-gray-700"
           }`}
+          onMouseDown={(e) => e.stopPropagation()}
         >
           Delete
         </button>
-        <div className="flex-1" />
         <button
-          onClick={() => exportLayout({ version: layout.version, floors, objects, roomConfig: { workRows, tearoomCols } })}
-          className="px-3 py-1 bg-gray-800 text-gray-300 rounded text-xs font-mono hover:bg-gray-700"
+          onClick={() => exportLayout({ version: layout.version, floors, objects, roomConfig: { wallRows, workRows, tearoomCols } })}
+          className="pointer-events-auto px-3 py-1 bg-gray-800/90 text-gray-300 rounded text-xs font-mono hover:bg-gray-700"
           onMouseDown={(e) => e.stopPropagation()}
         >
           Export
@@ -1094,7 +1093,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
         <button
           onClick={handleSave}
           disabled={saving}
-          className={`px-3 py-1 rounded text-xs font-mono ${
+          className={`pointer-events-auto px-3 py-1 rounded text-xs font-mono ${
             saving ? "bg-gray-600 text-gray-400 cursor-wait" : "bg-green-700 text-white hover:bg-green-600"
           }`}
           onMouseDown={(e) => e.stopPropagation()}
@@ -1106,7 +1105,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
         )}
         <button
           onClick={() => { setEditing(false); onCancel(); }}
-          className="px-3 py-1 bg-gray-700 text-gray-300 rounded text-xs font-mono hover:bg-gray-600"
+          className="pointer-events-auto px-3 py-1 bg-gray-700/90 text-gray-300 rounded text-xs font-mono hover:bg-gray-600"
           onMouseDown={(e) => e.stopPropagation()}
         >
           Exit
