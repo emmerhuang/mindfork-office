@@ -139,8 +139,8 @@ function drawStatusIcon(ctx: CanvasRenderingContext2D, cx: number, topY: number,
   // icon is now "emote-N" key referencing a preloaded PNG
   const emoteImg = getMapObj(icon);
   if (emoteImg) {
-    // Draw at original aspect ratio, scaled to ~48px on the longer side
-    const maxSide = 48;
+    // Draw at original aspect ratio, scaled to ~120px on the longer side
+    const maxSide = 120;
     const aspect = emoteImg.naturalWidth / emoteImg.naturalHeight;
     const dw = aspect >= 1 ? maxSide : maxSide * aspect;
     const dh = aspect >= 1 ? maxSide / aspect : maxSide;

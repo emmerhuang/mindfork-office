@@ -486,7 +486,7 @@ export class CharacterManager {
     // emote-8: CONFUSED (question mark)
     switch (c.state) {
       case "working":
-        c.statusIcon = "emote-0";
+        c.statusIcon = "emote-7";
         break;
       case "celebrating":
         c.statusIcon = "emote-7"; // CELEBRATING (stars)

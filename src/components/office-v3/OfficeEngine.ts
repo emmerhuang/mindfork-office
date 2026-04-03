@@ -377,7 +377,7 @@ export class OfficeEngine {
             const floatY = Math.sin((this.tick / 60) * Math.PI * 2) * 6;
             const emoteImg = getMapObj(c.statusIcon);
             if (emoteImg) {
-              const maxSz = 48;
+              const maxSz = 120;
               const eAspect = emoteImg.naturalWidth / emoteImg.naturalHeight;
               const ew = eAspect >= 1 ? maxSz : maxSz * eAspect;
               const eh = eAspect >= 1 ? maxSz / eAspect : maxSz;
