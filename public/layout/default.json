@@ -22,7 +22,7 @@
       "y": 0,
       "width": 240,
       "height": 160,
-      "zIndex": 10,
+      "zIndex": 5,
       "walkable": false,
       "category": "wall"
     },
@@ -33,7 +33,7 @@
       "y": 0,
       "width": 160,
       "height": 240,
-      "zIndex": 10,
+      "zIndex": 5,
       "walkable": false,
       "category": "wall"
     },
@@ -44,7 +44,7 @@
       "y": 0,
       "width": 160,
       "height": 240,
-      "zIndex": 10,
+      "zIndex": 5,
       "walkable": false,
       "category": "wall"
     },
@@ -55,7 +55,7 @@
       "y": 0,
       "width": 160,
       "height": 240,
-      "zIndex": 10,
+      "zIndex": 5,
       "walkable": false,
       "category": "wall"
     },
@@ -66,7 +66,7 @@
       "y": 0,
       "width": 240,
       "height": 160,
-      "zIndex": 10,
+      "zIndex": 5,
       "walkable": false,
       "category": "wall"
     },
@@ -89,7 +89,7 @@
       "y": 360,
       "width": 240,
       "height": 160,
-      "zIndex": 20,
+      "zIndex": 15,
       "walkable": false,
       "anchorCharId": "boss",
       "category": "office"
@@ -101,7 +101,7 @@
       "y": 360,
       "width": 240,
       "height": 160,
-      "zIndex": 20,
+      "zIndex": 15,
       "walkable": false,
       "anchorCharId": "secretary",
       "category": "office"
@@ -113,7 +113,7 @@
       "y": 648,
       "width": 240,
       "height": 160,
-      "zIndex": 20,
+      "zIndex": 15,
       "walkable": false,
       "anchorCharId": "sherlock",
       "category": "office"
@@ -125,7 +125,7 @@
       "y": 648,
       "width": 240,
       "height": 160,
-      "zIndex": 20,
+      "zIndex": 15,
       "walkable": false,
       "anchorCharId": "lego",
       "category": "office"
@@ -137,7 +137,7 @@
       "y": 648,
       "width": 240,
       "height": 160,
-      "zIndex": 20,
+      "zIndex": 15,
       "walkable": false,
       "anchorCharId": "vault",
       "category": "office"
@@ -149,7 +149,7 @@
       "y": 936,
       "width": 240,
       "height": 160,
-      "zIndex": 20,
+      "zIndex": 15,
       "walkable": false,
       "anchorCharId": "forge",
       "category": "office"
@@ -161,7 +161,7 @@
       "y": 936,
       "width": 240,
       "height": 160,
-      "zIndex": 20,
+      "zIndex": 15,
       "walkable": false,
       "anchorCharId": "lens",
       "category": "office"
@@ -173,7 +173,7 @@
       "y": 936,
       "width": 240,
       "height": 160,
-      "zIndex": 20,
+      "zIndex": 15,
       "walkable": false,
       "anchorCharId": "waffles",
       "category": "office"
@@ -185,7 +185,7 @@
       "y": 1224,
       "width": 240,
       "height": 160,
-      "zIndex": 20,
+      "zIndex": 15,
       "walkable": false,
       "anchorCharId": "grant",
       "category": "office"
@@ -197,7 +197,7 @@
       "y": 1617,
       "width": 160,
       "height": 240,
-      "zIndex": 20,
+      "zIndex": 15,
       "walkable": false,
       "category": "tearoom"
     },
@@ -208,7 +208,7 @@
       "y": 1467,
       "width": 160,
       "height": 240,
-      "zIndex": 20,
+      "zIndex": 15,
       "walkable": false,
       "category": "tearoom"
     },
@@ -219,7 +219,7 @@
       "y": 1824,
       "width": 160,
       "height": 240,
-      "zIndex": 20,
+      "zIndex": 15,
       "walkable": false,
       "category": "tearoom"
     },
@@ -230,7 +230,7 @@
       "y": 1824,
       "width": 160,
       "height": 240,
-      "zIndex": 20,
+      "zIndex": 15,
       "walkable": false,
       "category": "tearoom"
     },
@@ -241,7 +241,7 @@
       "y": 1635,
       "width": 240,
       "height": 160,
-      "zIndex": 20,
+      "zIndex": 15,
       "walkable": false,
       "category": "meeting"
     },
@@ -252,7 +252,7 @@
       "y": 1812,
       "width": 160,
       "height": 240,
-      "zIndex": 20,
+      "zIndex": 15,
       "walkable": false,
       "category": "meeting"
     },
