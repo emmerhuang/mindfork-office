@@ -25,6 +25,8 @@ export interface CharInstance {
   celebrateFrame: number;
   celebrateTimer: number;
   celebrateTotal: number;
+  celebrateLoops: number;    // how many loops remaining
+  celebratePause: number;    // pause ticks between loops (30 = 1 sec @30fps)
   // Waffles special animation
   wafflesAnim: WafflesAnim;
   // Status icon
@@ -227,6 +229,8 @@ export class CharacterManager {
         celebrateFrame: 0,
         celebrateTimer: 0,
         celebrateTotal: 0,
+        celebrateLoops: 0,
+        celebratePause: 0,
         wafflesAnim: "walk" as WafflesAnim,
         statusIcon: "",
       };
@@ -279,14 +283,26 @@ export class CharacterManager {
 
     // Celebrate state has its own anim timer
     if (c.state === "celebrating") {
+      // Pause between loops
+      if (c.celebratePause > 0) {
+        c.celebratePause--;
+        return;
+      }
       if (++c.celebrateTimer >= ANIM_TICK_CELEBRATE) {
         c.celebrateFrame++;
         c.celebrateTimer = 0;
         if (c.celebrateFrame >= c.celebrateTotal) {
-          // Celebrate done, return to idle_home
-          c.state = "idle_home";
-          c.facing = "south";
-          c.celebrateFrame = 0;
+          c.celebrateLoops--;
+          if (c.celebrateLoops > 0) {
+            // Reset for next loop with 1 sec pause
+            c.celebrateFrame = 0;
+            c.celebratePause = 30; // 30 ticks = 1 sec @30fps
+          } else {
+            // All loops done, return to idle_home
+            c.state = "idle_home";
+            c.facing = "north";
+            c.celebrateFrame = 0;
+          }
         }
       }
       return;
@@ -462,7 +478,7 @@ export class CharacterManager {
   }
 
   /** Trigger celebrate animation for a character */
-  triggerCelebrate(charId: string) {
+  triggerCelebrate(charId: string, loops = 3) {
     const c = this.characters.find((ch) => ch.def.id === charId);
     if (!c) return;
     c.state = "celebrating";
@@ -470,6 +486,8 @@ export class CharacterManager {
     c.celebrateFrame = 0;
     c.celebrateTimer = 0;
     c.celebrateTotal = CELEBRATE_FRAME_COUNTS[charId] ?? 6;
+    c.celebrateLoops = loops;
+    c.celebratePause = 0;
     // Move back home first
     c.px = c.homePx;
     c.py = c.homePy;
