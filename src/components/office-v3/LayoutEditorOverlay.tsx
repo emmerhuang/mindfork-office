@@ -135,6 +135,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
   const [hoverBoundary, setHoverBoundary] = useState<"wall" | "horizontal" | "vertical" | null>(null);
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
   const [showWalkable, setShowWalkable] = useState(false);
+  const [walkableOverrides, setWalkableOverrides] = useState<Record<string, boolean>>({});
   const overlayRef = useRef<HTMLDivElement>(null);
   const dragSpriteRef = useRef<SpriteInfo | null>(null);
 
@@ -235,13 +236,14 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       setWallRows(rc.wallRows ?? 3);
       setWorkRows(rc.workRows);
       setTearoomCols(rc.tearoomCols);
+      setWalkableOverrides(layout.walkableOverrides ? { ...layout.walkableOverrides } : {});
       setEditing(true);
       setShowPasswordPrompt(false);
       setPassword("");
     } else {
       setPassword("");
     }
-  }, [password, layout.objects, layout.floors, layout.floorColors, layout.roomConfig]);
+  }, [password, layout.objects, layout.floors, layout.floorColors, layout.roomConfig, layout.walkableOverrides]);
 
   // Convert DOM event coords to canvas coords
   const toCanvasCoords = useCallback(
@@ -669,6 +671,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       floors,
       objects: objects,
       roomConfig: { wallRows, workRows, tearoomCols },
+      ...(Object.keys(walkableOverrides).length > 0 ? { walkableOverrides } : {}),
     };
     const result = await saveLayout(updated, PASSWORD);
     setSaving(false);
@@ -677,7 +680,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       return;
     }
     onSave(updated);
-  }, [layout.version, objects, floors, onSave, workRows, tearoomCols]);
+  }, [layout.version, objects, floors, onSave, workRows, tearoomCols, walkableOverrides]);
 
   // Toggle palette category
   const toggleCategory = (key: string) => {
@@ -799,26 +802,63 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
 
       {/* Walkable map overlay — aligned to canvas rendered area */}
       {showWalkable && (() => {
-        const wMap = computeWalkableMap({ version: layout.version, floors, objects, roomConfig: { wallRows, workRows, tearoomCols } });
+        const currentLayout: OfficeLayout = { version: layout.version, floors, objects, roomConfig: { wallRows, workRows, tearoomCols }, walkableOverrides };
+        const wMap = computeWalkableMap(currentLayout);
         const tiles: React.ReactNode[] = [];
         const s = canvasRect.scale;
         for (let r = 0; r < ROWS; r++) {
           for (let c = 0; c < COLS; c++) {
             const walkable = wMap[r]?.[c] ?? false;
+            const key = `${r}-${c}`;
+            const isOverridden = key in walkableOverrides;
             tiles.push(
               <div
                 key={`wt-${r}-${c}`}
-                className="absolute pointer-events-none"
+                className="absolute cursor-pointer"
                 style={{
                   left: canvasRect.offsetX + c * TILE * s,
                   top: canvasRect.offsetY + r * TILE * s,
                   width: TILE * s,
                   height: TILE * s,
                   backgroundColor: walkable ? "rgba(0,200,0,0.25)" : "rgba(200,0,0,0.25)",
-                  border: "1px solid " + (walkable ? "rgba(0,200,0,0.4)" : "rgba(200,0,0,0.4)"),
+                  border: isOverridden
+                    ? "2px solid rgba(255,255,0,0.8)"
+                    : "1px solid " + (walkable ? "rgba(0,200,0,0.4)" : "rgba(200,0,0,0.4)"),
                   boxSizing: "border-box",
+                  pointerEvents: "auto",
                 }}
-              />
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setWalkableOverrides((prev) => {
+                    const next = { ...prev };
+                    if (key in next) {
+                      // Already overridden — remove override (revert to auto)
+                      delete next[key];
+                    } else {
+                      // Add override: toggle current walkable state
+                      next[key] = !walkable;
+                    }
+                    // Notify parent for live preview
+                    onPreviewRef.current?.(objects, floorsRef.current);
+                    return next;
+                  });
+                }}
+              >
+                {isOverridden && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "50%",
+                      left: "50%",
+                      transform: "translate(-50%, -50%)",
+                      width: Math.max(4, TILE * s * 0.2),
+                      height: Math.max(4, TILE * s * 0.2),
+                      borderRadius: "50%",
+                      backgroundColor: "rgba(255,255,0,0.9)",
+                    }}
+                  />
+                )}
+              </div>
             );
           }
         }
@@ -1078,7 +1118,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
           Delete
         </button>
         <button
-          onClick={() => exportLayout({ version: layout.version, floors, objects, roomConfig: { wallRows, workRows, tearoomCols } })}
+          onClick={() => exportLayout({ version: layout.version, floors, objects, roomConfig: { wallRows, workRows, tearoomCols }, ...(Object.keys(walkableOverrides).length > 0 ? { walkableOverrides } : {}) })}
           className="pointer-events-auto px-3 py-1 bg-gray-800/90 text-gray-300 rounded text-xs font-mono hover:bg-gray-700"
           onMouseDown={(e) => e.stopPropagation()}
         >

@@ -38,6 +38,8 @@ export interface OfficeLayout {
   objects: LayoutObject[];
   /** Room boundary config (workRows default 14, tearoomCols default 6) */
   roomConfig?: { wallRows?: number; workRows: number; tearoomCols: number };
+  /** Manual walkable overrides: "row-col" -> true (walkable) / false (blocked) */
+  walkableOverrides?: Record<string, boolean>;
 }
 
 const STORAGE_KEY = "mindfork-office-layout";
@@ -202,6 +204,16 @@ export function computeWalkableMap(layout: OfficeLayout): boolean[][] {
         if (exitR < ROWS && hCol >= 0 && hCol < COLS) {
           map[exitR][hCol] = true;
         }
+      }
+    }
+  }
+
+  // Apply manual walkable overrides (editor-set per-tile toggles)
+  if (layout.walkableOverrides) {
+    for (const [key, val] of Object.entries(layout.walkableOverrides)) {
+      const [r, c] = key.split('-').map(Number);
+      if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
+        map[r][c] = val;
       }
     }
   }
