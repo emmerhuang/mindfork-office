@@ -311,6 +311,34 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
     }
   }, [canvasRef]);
 
+  // Get canvas rendered area relative to the overlay container (accounts for object-fit: contain)
+  const getCanvasRect = useCallback((): { offsetX: number; offsetY: number; renderW: number; renderH: number; scale: number } => {
+    const canvas = canvasRef.current;
+    const overlay = overlayRef.current;
+    if (!canvas || !overlay) return { offsetX: 0, offsetY: 0, renderW: 0, renderH: 0, scale: 1 };
+    const cr = canvas.getBoundingClientRect();
+    const or = overlay.getBoundingClientRect();
+    const canvasAspect = CANVAS_W / CANVAS_H;
+    const boxAspect = cr.width / cr.height;
+    let renderW: number, renderH: number, canvasOffX: number, canvasOffY: number;
+    if (boxAspect > canvasAspect) {
+      renderH = cr.height;
+      renderW = cr.height * canvasAspect;
+      canvasOffX = (cr.width - renderW) / 2;
+      canvasOffY = 0;
+    } else {
+      renderW = cr.width;
+      renderH = cr.width / canvasAspect;
+      canvasOffX = 0;
+      canvasOffY = 0; // object-position: top
+    }
+    // Canvas position relative to overlay
+    const offsetX = (cr.left - or.left) + canvasOffX;
+    const offsetY = (cr.top - or.top) + canvasOffY;
+    const s = renderW / CANVAS_W;
+    return { offsetX, offsetY, renderW, renderH, scale: s };
+  }, [canvasRef]);
+
   // Find object at canvas coords
   const findObjectAt = useCallback(
     (cx: number, cy: number): LayoutObject | null => {
@@ -722,6 +750,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
 
   // Editor mode
   const scale = getScale();
+  const canvasRect = getCanvasRect();
 
   // Compute boundary line positions in DOM space
   const wallLineCanvasY = ROOMS.wall.h * TILE;
@@ -752,26 +781,27 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
     >
-      {/* Grid overlay (drawn via CSS) */}
+      {/* Grid overlay (drawn via CSS) — aligned to canvas rendered area */}
       <div
         className="absolute pointer-events-none"
         style={{
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
+          top: canvasRect.offsetY,
+          left: canvasRect.offsetX,
+          width: canvasRect.renderW,
+          height: canvasRect.renderH,
           backgroundImage: `
             linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px),
             linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)
           `,
-          backgroundSize: `${TILE * scale}px ${TILE * scale}px`,
+          backgroundSize: `${TILE * canvasRect.scale}px ${TILE * canvasRect.scale}px`,
         }}
       />
 
-      {/* Walkable map overlay */}
+      {/* Walkable map overlay — aligned to canvas rendered area */}
       {showWalkable && (() => {
         const wMap = computeWalkableMap({ version: layout.version, floors, objects, roomConfig: { wallRows, workRows, tearoomCols } });
         const tiles: React.ReactNode[] = [];
+        const s = canvasRect.scale;
         for (let r = 0; r < ROWS; r++) {
           for (let c = 0; c < COLS; c++) {
             const walkable = wMap[r]?.[c] ?? false;
@@ -780,10 +810,10 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
                 key={`wt-${r}-${c}`}
                 className="absolute pointer-events-none"
                 style={{
-                  left: c * TILE * scale,
-                  top: r * TILE * scale,
-                  width: TILE * scale,
-                  height: TILE * scale,
+                  left: canvasRect.offsetX + c * TILE * s,
+                  top: canvasRect.offsetY + r * TILE * s,
+                  width: TILE * s,
+                  height: TILE * s,
                   backgroundColor: walkable ? "rgba(0,200,0,0.25)" : "rgba(200,0,0,0.25)",
                   border: "1px solid " + (walkable ? "rgba(0,200,0,0.4)" : "rgba(200,0,0,0.4)"),
                   boxSizing: "border-box",
