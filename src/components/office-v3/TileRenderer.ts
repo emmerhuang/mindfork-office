@@ -317,10 +317,12 @@ function drawFloorFromLayout(ctx: CanvasRenderingContext2D, layout: OfficeLayout
     if (floor.sprite) {
       const img = getMapObj(floor.sprite);
       if (img) {
-        // Tile the sprite across the room area
-        for (let row = 0; row < r.h; row++) {
-          for (let col = 0; col < r.w; col++) {
-            ctx.drawImage(img, px + col * TILE, py + row * TILE, TILE, TILE);
+        // Draw each floor tile at its original size (covers 2x2 or more tiles)
+        const tw = img.naturalWidth;
+        const th = img.naturalHeight;
+        for (let y = 0; y < ph; y += th) {
+          for (let x = 0; x < pw; x += tw) {
+            ctx.drawImage(img, px + x, py + y, tw, th);
           }
         }
         continue;
