@@ -294,8 +294,27 @@ export class OfficeEngine {
   private memberOsIndex: Record<string, number> = {};
 
   updateStatuses(data: Record<string, { status: string; task: string }>) {
+    // Detect members newly entering "celebrating" (before mgr updates state)
+    const newCelebrating: string[] = [];
+    for (const c of this.mgr.characters) {
+      const d = data[c.def.id];
+      if (d?.status === "celebrating" && c.state !== "celebrating") {
+        newCelebrating.push(c.def.id);
+      }
+    }
+
     this.memberStatuses = data;
     this.mgr.updateStatuses(data);
+
+    // Show dialogue bubble for newly celebrating members (not init celebrate)
+    const CELEBRATE_BUBBLE_DURATION = 210; // ~7 秒 @ 30fps, matches 3-loop celebrate animation
+    for (const charId of newCelebrating) {
+      const d = data[charId];
+      if (!d?.task) continue; // no task description = no bubble
+      const c = this.mgr.characters.find((ch) => ch.def.id === charId);
+      if (!c) continue;
+      this.dlg.show(charId, d.task, c.px, c.py, this.tick, CELEBRATE_BUBBLE_DURATION);
+    }
   }
 
   updateMemberOs(osData: Record<string, OsEntry[]>) {

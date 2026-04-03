@@ -6,6 +6,7 @@ interface Bubble {
   text: string;
   cx: number; cy: number;
   startTick: number;
+  duration: number;       // ticks before bubble disappears
 }
 
 const DURATION = 120;   // 4 秒 @ 30fps
@@ -16,13 +17,13 @@ const FONT = "30px 'Noto Sans TC', 'Microsoft JhengHei', sans-serif";
 export class DialogueSystem {
   private bubbles = new Map<string, Bubble>();
 
-  show(charId: string, text: string, cx: number, cy: number, tick: number) {
-    this.bubbles.set(charId, { charId, text, cx, cy, startTick: tick });
+  show(charId: string, text: string, cx: number, cy: number, tick: number, duration?: number) {
+    this.bubbles.set(charId, { charId, text, cx, cy, startTick: tick, duration: duration ?? DURATION });
   }
 
   update(tick: number) {
     for (const [id, b] of this.bubbles) {
-      if (tick - b.startTick > DURATION) this.bubbles.delete(id);
+      if (tick - b.startTick > b.duration) this.bubbles.delete(id);
     }
   }
 
@@ -34,7 +35,7 @@ export class DialogueSystem {
   render(ctx: CanvasRenderingContext2D, tick: number) {
     for (const b of this.bubbles.values()) {
       const elapsed = tick - b.startTick;
-      const remain = DURATION - elapsed;
+      const remain = b.duration - elapsed;
       let alpha = 1;
       if (elapsed < 5) alpha = elapsed / 5;
       if (remain < FADE) alpha = remain / FADE;
