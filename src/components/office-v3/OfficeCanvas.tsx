@@ -318,7 +318,7 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, onCh
       {/* Layout Editor Overlay — always rendered for secret button; layout may be null before engine init */}
       <LayoutEditorOverlay
         ref={editorRef}
-        layout={engineRef.current?.layout ?? { version: 1, floorColors: { work: "#D4CFC8", tearoom: "#E8DFC8", meetingRoom: "#D8D0E0" }, objects: [] }}
+        layout={engineRef.current?.layout ?? { version: 1, floors: { work: { color: "#D4CFC8" }, tearoom: { color: "#E8DFC8" }, meetingRoom: { color: "#D8D0E0" } }, objects: [] }}
         canvasRef={canvasRef}
         onSave={(updated: OfficeLayout) => {
           if (engineRef.current) {
@@ -340,13 +340,17 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, onCh
           }
           setEditorMode(false);
         }}
-        onPreview={(objects) => {
+        onPreview={(objects, floors) => {
           if (engineRef.current && engineRef.current.layout) {
             if (!preEditLayoutRef.current) {
               preEditLayoutRef.current = JSON.parse(JSON.stringify(engineRef.current.layout));
             }
             engineRef.current.editorMode = true;
-            engineRef.current.layout = { ...engineRef.current.layout, objects };
+            engineRef.current.layout = {
+              ...engineRef.current.layout,
+              objects,
+              ...(floors ? { floors } : {}),
+            };
             engineRef.current.rerender();
           }
         }}

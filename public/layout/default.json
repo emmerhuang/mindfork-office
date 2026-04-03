@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "floorColors": {
-    "work": "#D4CFC8",
-    "tearoom": "#E8DFC8",
-    "meetingRoom": "#D8D0E0"
+  "floors": {
+    "work": { "sprite": "floor-gray-carpet", "color": "#D4CFC8" },
+    "tearoom": { "sprite": "floor-honey-wood", "color": "#E8DFC8" },
+    "meetingRoom": { "sprite": "floor-lavender", "color": "#D8D0E0" }
   },
   "objects": [
     {

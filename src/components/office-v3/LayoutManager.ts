@@ -18,9 +18,16 @@ export interface LayoutObject {
   special?: string;      // "kickboard" etc. for canvas-drawn specials
 }
 
+export interface RoomFloor {
+  sprite?: string;   // map-object name for tile pattern (e.g. "floor-gray-carpet")
+  color: string;     // fallback solid color
+}
+
 export interface OfficeLayout {
   version: number;
-  floorColors: { work: string; tearoom: string; meetingRoom: string };
+  floors: { work: RoomFloor; tearoom: RoomFloor; meetingRoom: RoomFloor };
+  /** @deprecated Use floors instead */
+  floorColors?: { work: string; tearoom: string; meetingRoom: string };
   objects: LayoutObject[];
 }
 

@@ -286,15 +286,46 @@ export function renderStaticScene(
   // Plants and bulletin board are now layout objects
 }
 
-/** Draw floor areas using layout-provided colors */
+/** Draw floor areas using layout-provided floors (sprite pattern or fallback color) */
 function drawFloorFromLayout(ctx: CanvasRenderingContext2D, layout: OfficeLayout) {
-  const areas: Array<{ r: { x: number; y: number; w: number; h: number }; color: string }> = [
-    { r: ROOMS.work,        color: layout.floorColors.work },
-    { r: ROOMS.tearoom,     color: layout.floorColors.tearoom },
-    { r: ROOMS.meetingRoom, color: layout.floorColors.meetingRoom },
+  // Migrate legacy floorColors to floors
+  const floors = layout.floors ?? (layout.floorColors ? {
+    work: { color: layout.floorColors.work },
+    tearoom: { color: layout.floorColors.tearoom },
+    meetingRoom: { color: layout.floorColors.meetingRoom },
+  } : {
+    work: { color: "#D4CFC8" },
+    tearoom: { color: "#E8DFC8" },
+    meetingRoom: { color: "#D8D0E0" },
+  });
+
+  const areas: Array<{ r: { x: number; y: number; w: number; h: number }; floor: { sprite?: string; color: string } }> = [
+    { r: ROOMS.work,        floor: floors.work },
+    { r: ROOMS.tearoom,     floor: floors.tearoom },
+    { r: ROOMS.meetingRoom, floor: floors.meetingRoom },
   ];
-  for (const { r, color } of areas) {
-    ctx.fillStyle = color;
-    ctx.fillRect(tx(r.x), ty(r.y), r.w * TILE, r.h * TILE);
+
+  for (const { r, floor } of areas) {
+    const px = tx(r.x);
+    const py = ty(r.y);
+    const pw = r.w * TILE;
+    const ph = r.h * TILE;
+
+    // Try sprite tile pattern first
+    if (floor.sprite) {
+      const img = getMapObj(floor.sprite);
+      if (img) {
+        // Tile the sprite across the room area
+        for (let row = 0; row < r.h; row++) {
+          for (let col = 0; col < r.w; col++) {
+            ctx.drawImage(img, px + col * TILE, py + row * TILE, TILE, TILE);
+          }
+        }
+        continue;
+      }
+    }
+    // Fallback: solid color
+    ctx.fillStyle = floor.color;
+    ctx.fillRect(px, py, pw, ph);
   }
 }

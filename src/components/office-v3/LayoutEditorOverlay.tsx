@@ -4,10 +4,10 @@
 // Overlays on top of the canvas. Coordinates are converted from DOM to canvas space.
 
 import { useState, useRef, useCallback, useEffect, useImperativeHandle, forwardRef } from "react";
-import { TILE, CANVAS_W, CANVAS_H, COLS, ROWS } from "./officeData";
+import { TILE, CANVAS_W, CANVAS_H, COLS, ROWS, ROOMS } from "./officeData";
 import { saveLayout, exportLayout } from "./LayoutManager";
 import { MAP_OBJ_NAMES, getMapObj } from "./TileRenderer";
-import type { OfficeLayout, LayoutObject } from "./LayoutManager";
+import type { OfficeLayout, LayoutObject, RoomFloor } from "./LayoutManager";
 
 // ── Sprite palette categories ────────────────────────────────
 
@@ -111,10 +111,35 @@ interface Props {
   onSave: (layout: OfficeLayout) => void;
   onCancel: () => void;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
-  onPreview?: (objects: LayoutObject[]) => void;
+  onPreview?: (objects: LayoutObject[], floors?: { work: RoomFloor; tearoom: RoomFloor; meetingRoom: RoomFloor }) => void;
 }
 
 type Tool = "select" | "delete";
+
+type RoomKey = "work" | "tearoom" | "meetingRoom";
+
+/** Detect which room a canvas point falls in */
+function detectRoom(cx: number, cy: number): RoomKey | null {
+  const rooms: Array<{ key: RoomKey; r: { x: number; y: number; w: number; h: number } }> = [
+    { key: "work", r: ROOMS.work },
+    { key: "tearoom", r: ROOMS.tearoom },
+    { key: "meetingRoom", r: ROOMS.meetingRoom },
+  ];
+  for (const { key, r } of rooms) {
+    const px = r.x * TILE;
+    const py = r.y * TILE;
+    const pw = r.w * TILE;
+    const ph = r.h * TILE;
+    if (cx >= px && cx < px + pw && cy >= py && cy < py + ph) return key;
+  }
+  return null;
+}
+
+const ROOM_LABELS: Record<RoomKey, string> = {
+  work: "Work Area",
+  tearoom: "Tearoom",
+  meetingRoom: "Meeting Room",
+};
 
 const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function LayoutEditorOverlay({ layout, onSave, onCancel, canvasRef, onPreview }, ref) {
   const [editing, setEditing] = useState(false);
@@ -143,14 +168,35 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
   } | null>(null);
   const [dropPreview, setDropPreview] = useState<{ sprite: string; x: number; y: number; w: number; h: number } | null>(null);
   const [lockAspectRatio, setLockAspectRatio] = useState(true);
+  const [selectedRoom, setSelectedRoom] = useState<RoomKey | null>(null);
+  const [floors, setFloors] = useState<{ work: RoomFloor; tearoom: RoomFloor; meetingRoom: RoomFloor }>({
+    work: { color: "#D4CFC8" }, tearoom: { color: "#E8DFC8" }, meetingRoom: { color: "#D8D0E0" },
+  });
   const overlayRef = useRef<HTMLDivElement>(null);
   const dragSpriteRef = useRef<SpriteInfo | null>(null);
+
+  const floorsRef = useRef(floors);
+  floorsRef.current = floors;
 
   /** Shortcut: update objects state AND fire live preview in one call */
   const setObjectsAndPreview = useCallback((updater: (prev: LayoutObject[]) => LayoutObject[]) => {
     setObjects((prev) => {
       const next = updater(prev);
-      onPreviewRef.current?.(next);
+      onPreviewRef.current?.(next, floorsRef.current);
+      return next;
+    });
+  }, []);
+
+  /** Update a room's floor and fire live preview */
+  const updateRoomFloor = useCallback((roomKey: RoomKey, floor: RoomFloor) => {
+    setFloors((prev) => {
+      const next = { ...prev, [roomKey]: floor };
+      floorsRef.current = next;
+      // Trigger preview with updated floors
+      setObjects((objs) => {
+        onPreviewRef.current?.(objs, next);
+        return objs;
+      });
       return next;
     });
   }, []);
@@ -165,13 +211,20 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       const cloned = JSON.parse(JSON.stringify(layout.objects));
       originalObjectsRef.current = cloned;
       setObjects(cloned);
+      // Initialize floors from layout
+      const f = layout.floors ?? (layout.floorColors ? {
+        work: { color: layout.floorColors.work },
+        tearoom: { color: layout.floorColors.tearoom },
+        meetingRoom: { color: layout.floorColors.meetingRoom },
+      } : { work: { color: "#D4CFC8" }, tearoom: { color: "#E8DFC8" }, meetingRoom: { color: "#D8D0E0" } });
+      setFloors(JSON.parse(JSON.stringify(f)));
       setEditing(true);
       setShowPasswordPrompt(false);
       setPassword("");
     } else {
       setPassword("");
     }
-  }, [password, layout.objects]);
+  }, [password, layout.objects, layout.floors, layout.floorColors]);
 
   // Convert DOM event coords to canvas coords
   const toCanvasCoords = useCallback(
@@ -297,6 +350,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       const obj = findObjectAt(cx, cy);
       if (obj) {
         setSelectedId(obj.id);
+        setSelectedRoom(null);
         // Check if near corner for resize
         const corner = getResizeCorner(cx, cy, obj);
         if (corner) {
@@ -323,6 +377,9 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
         }
       } else {
         setSelectedId(null);
+        // Click on empty space — select the room
+        const room = detectRoom(cx, cy);
+        setSelectedRoom(room);
       }
     },
     [editing, tool, toCanvasCoords, findObjectAt, getResizeCorner],
@@ -422,6 +479,22 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
     // Drop from palette
     if (dragSpriteRef.current && dropPreview) {
       const info = dragSpriteRef.current;
+
+      // Floor sprite drop: detect room and update floor
+      if (info.category === "floor") {
+        const centerX = dropPreview.x + dropPreview.w / 2;
+        const centerY = dropPreview.y + dropPreview.h / 2;
+        const room = detectRoom(centerX, centerY);
+        if (room) {
+          updateRoomFloor(room, { sprite: info.name, color: floors[room].color });
+          setSelectedRoom(room);
+          setSelectedId(null);
+        }
+        dragSpriteRef.current = null;
+        setDropPreview(null);
+        return;
+      }
+
       // Use original image dimensions for faithful 1:1 rendering
       const srcImg = getMapObj(info.name);
       const dropW = srcImg ? srcImg.naturalWidth : info.defaultW;
@@ -443,7 +516,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       dragSpriteRef.current = null;
       setDropPreview(null);
     }
-  }, [dropPreview, setObjectsAndPreview]);
+  }, [dropPreview, setObjectsAndPreview, floors, updateRoomFloor]);
 
   // Keyboard: Delete key
   useEffect(() => {
@@ -469,7 +542,8 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
     setSaving(true);
     setSaveError(null);
     const updated: OfficeLayout = {
-      ...layout,
+      version: layout.version,
+      floors,
       objects: objects,
     };
     const result = await saveLayout(updated, PASSWORD);
@@ -479,7 +553,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       return;
     }
     onSave(updated);
-  }, [layout, objects, onSave]);
+  }, [layout.version, objects, floors, onSave]);
 
   // Toggle palette category
   const toggleCategory = (key: string) => {
@@ -695,15 +769,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
         onMouseDown={(e) => e.stopPropagation()}
       >
         <button
-          onClick={() => setTool("select")}
-          className={`px-3 py-1 rounded text-xs font-mono ${
-            tool === "select" ? "bg-cyan-600 text-white" : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-          }`}
-        >
-          Select
-        </button>
-        <button
-          onClick={() => setTool("delete")}
+          onClick={() => setTool(tool === "delete" ? "select" : "delete")}
           className={`px-3 py-1 rounded text-xs font-mono ${
             tool === "delete" ? "bg-red-600 text-white" : "bg-gray-800 text-gray-300 hover:bg-gray-700"
           }`}
@@ -712,7 +778,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
         </button>
         <div className="flex-1" />
         <button
-          onClick={() => exportLayout({ ...layout, objects })}
+          onClick={() => exportLayout({ version: layout.version, floors, objects })}
           className="px-3 py-1 bg-gray-800 text-gray-300 rounded text-xs font-mono hover:bg-gray-700"
           onMouseDown={(e) => e.stopPropagation()}
         >
@@ -788,20 +854,32 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
                           document.removeEventListener("mouseup", onUp);
                           const coords = toCanvasCoords(me.clientX, me.clientY);
                           if (coords && dragSpriteRef.current) {
-                            const newObj: LayoutObject = {
-                              id: genId(),
-                              sprite: info.special ? "" : info.name,
-                              x: snapToTile(coords.cx - iW / 2),
-                              y: snapToTile(coords.cy - iH / 2),
-                              width: iW,
-                              height: iH,
-                              zIndex: info.special ? 5 : 20,
-                              walkable: !!info.special,
-                              category: info.category,
-                              ...(info.special ? { special: info.special } : {}),
-                            };
-                            setObjectsAndPreview((prev) => [...prev, newObj]);
-                            setSelectedId(newObj.id);
+                            // Floor sprite: update room floor instead of adding object
+                            if (info.category === "floor") {
+                              const dropX = snapToTile(coords.cx - iW / 2) + iW / 2;
+                              const dropY = snapToTile(coords.cy - iH / 2) + iH / 2;
+                              const room = detectRoom(dropX, dropY);
+                              if (room) {
+                                updateRoomFloor(room, { sprite: info.name, color: floorsRef.current[room].color });
+                                setSelectedRoom(room);
+                                setSelectedId(null);
+                              }
+                            } else {
+                              const newObj: LayoutObject = {
+                                id: genId(),
+                                sprite: info.special ? "" : info.name,
+                                x: snapToTile(coords.cx - iW / 2),
+                                y: snapToTile(coords.cy - iH / 2),
+                                width: iW,
+                                height: iH,
+                                zIndex: info.special ? 5 : 20,
+                                walkable: !!info.special,
+                                category: info.category,
+                                ...(info.special ? { special: info.special } : {}),
+                              };
+                              setObjectsAndPreview((prev) => [...prev, newObj]);
+                              setSelectedId(newObj.id);
+                            }
                           }
                           dragSpriteRef.current = null;
                           setDropPreview(null);
@@ -966,10 +1044,87 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
               </label>
             </div>
             <button
-              onClick={() => { setObjectsAndPreview((prev) => prev.filter((o) => o.id !== selectedObj.id)); setSelectedId(null); }}
-              className="w-full px-2 py-1 bg-red-800 text-red-200 rounded hover:bg-red-700 text-[10px]"
+              onClick={() => { setSelectedId(null); }}
+              className="w-full px-2 py-1 bg-green-800 text-green-200 rounded hover:bg-green-700 text-[10px]"
             >
-              Delete
+              Confirm
+            </button>
+          </div>
+        );
+      })()}
+
+      {/* Room panel (shown when clicking empty space in a room) */}
+      {selectedRoom && !selectedObj && (() => {
+        const room = ROOMS[selectedRoom];
+        const roomFloor = floors[selectedRoom];
+        const floorSprites = PALETTE_SPRITES.filter((s) => s.category === "floor");
+        return (
+          <div
+            className="absolute bg-gray-900/95 border border-amber-500 rounded-lg p-3 text-xs font-mono text-gray-300 z-50 shadow-lg"
+            style={{
+              pointerEvents: "auto",
+              width: 220,
+              top: 60,
+              left: 10,
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="mb-2 text-amber-400 font-bold">{ROOM_LABELS[selectedRoom]}</div>
+            <div className="mb-1 text-gray-500 text-[9px]">
+              Position: ({room.x}, {room.y}) | Size: {room.w} x {room.h} tiles
+            </div>
+            <div className="mb-2">
+              <span className="text-gray-500 text-[9px] block mb-1">Floor Sprite</span>
+              <div className="grid grid-cols-4 gap-1">
+                {floorSprites.map((fs) => (
+                  <div
+                    key={fs.name}
+                    className={`cursor-pointer rounded p-0.5 border ${
+                      roomFloor.sprite === fs.name ? "border-amber-400 bg-amber-900/30" : "border-gray-700 hover:border-gray-500"
+                    }`}
+                    onClick={() => updateRoomFloor(selectedRoom, { ...roomFloor, sprite: fs.name })}
+                  >
+                    <img
+                      src={`/sprites/map-objects/${fs.name}.png`}
+                      alt={fs.name}
+                      className="w-full h-10 object-contain"
+                      style={{ imageRendering: "pixelated" }}
+                      draggable={false}
+                    />
+                    <span className="text-[6px] text-gray-500 block text-center truncate">{fs.name.replace("floor-", "")}</span>
+                  </div>
+                ))}
+                {/* Clear floor sprite option */}
+                <div
+                  className={`cursor-pointer rounded p-0.5 border flex flex-col items-center justify-center ${
+                    !roomFloor.sprite ? "border-amber-400 bg-amber-900/30" : "border-gray-700 hover:border-gray-500"
+                  }`}
+                  onClick={() => updateRoomFloor(selectedRoom, { ...roomFloor, sprite: undefined })}
+                >
+                  <div className="w-full h-10 flex items-center justify-center">
+                    <span className="text-gray-500 text-lg">X</span>
+                  </div>
+                  <span className="text-[6px] text-gray-500">none</span>
+                </div>
+              </div>
+            </div>
+            <div className="mb-2">
+              <label className="flex items-center gap-2">
+                <span className="text-gray-500 text-[9px]">Fallback Color</span>
+                <input
+                  type="color"
+                  value={roomFloor.color}
+                  onChange={(e) => updateRoomFloor(selectedRoom, { ...roomFloor, color: e.target.value })}
+                  className="w-6 h-6 rounded cursor-pointer border border-gray-600"
+                />
+                <span className="text-gray-400 text-[9px]">{roomFloor.color}</span>
+              </label>
+            </div>
+            <button
+              onClick={() => setSelectedRoom(null)}
+              className="w-full px-2 py-1 bg-green-800 text-green-200 rounded hover:bg-green-700 text-[10px]"
+            >
+              Confirm
             </button>
           </div>
         );
