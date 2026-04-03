@@ -1254,6 +1254,42 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
             {natW > 0 && (
               <div className="mb-1 text-gray-500">original: {natW} × {natH}</div>
             )}
+            {/* Change sprite dropdown — only for objects with a sprite, not trigger/text */}
+            {selectedObj.sprite && !selectedObj.special && (() => {
+              const sameCat = PALETTE_SPRITES.filter(
+                (s) => s.category === selectedObj.category && !s.special
+              );
+              if (sameCat.length <= 1) return null;
+              return (
+                <label className="flex flex-col mb-1">
+                  <span className="text-gray-500 text-[9px]">Change Sprite</span>
+                  <select
+                    value={selectedObj.sprite}
+                    onChange={(e) => {
+                      const newSprite = e.target.value;
+                      if (newSprite === selectedObj.sprite) return;
+                      const newImg = getMapObj(newSprite);
+                      setObjectsAndPreview((prev) =>
+                        prev.map((o) => {
+                          if (o.id !== selectedObj.id) return o;
+                          const updated = { ...o, sprite: newSprite };
+                          if (newImg && newImg.naturalWidth > 0 && newImg.naturalHeight > 0) {
+                            updated.width = newImg.naturalWidth;
+                            updated.height = newImg.naturalHeight;
+                          }
+                          return updated;
+                        })
+                      );
+                    }}
+                    className="w-full bg-gray-800 text-white border border-gray-600 rounded px-1 py-0.5 text-xs font-mono focus:outline-none focus:border-cyan-400 cursor-pointer"
+                  >
+                    {sameCat.map((s) => (
+                      <option key={s.name} value={s.name}>{s.name}</option>
+                    ))}
+                  </select>
+                </label>
+              );
+            })()}
             <div className="grid grid-cols-2 gap-1 mb-1">
               {(["x", "y", "width", "height"] as const).map((field) => (
                 <label key={field} className="flex flex-col">
