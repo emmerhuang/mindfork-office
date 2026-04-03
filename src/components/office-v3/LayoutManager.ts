@@ -14,6 +14,8 @@ export interface LayoutObject {
   zIndex: number;
   walkable: boolean;
   anchorCharId?: string;
+  charOffsetX?: number;  // character offset from desk bottom-center (px)
+  charOffsetY?: number;
   category: string;      // "wall" | "desk" | "tearoom" | "meeting" | "decoration" | "text"
   special?: string;      // "kickboard" | "text" etc. for canvas-drawn specials
   text?: string;         // text content (for text blocks)

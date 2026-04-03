@@ -1417,6 +1417,42 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
                 </label>
               </div>
             )}
+            {/* Character offset for desks with anchorCharId */}
+            {selectedObj.anchorCharId && (
+              <div className="mb-1">
+                <div className="text-[9px] text-purple-400 mb-0.5">Char Offset ({selectedObj.anchorCharId})</div>
+                <div className="grid grid-cols-2 gap-1">
+                  <label className="flex flex-col">
+                    <span className="text-gray-500 text-[9px]">OffX</span>
+                    <input
+                      type="number"
+                      value={selectedObj.charOffsetX ?? 0}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        if (isNaN(v)) return;
+                        setObjectsAndPreview((prev) => prev.map((o) => o.id === selectedObj.id ? { ...o, charOffsetX: v } : o));
+                      }}
+                      className="w-full bg-gray-800 text-white border border-gray-600 rounded px-1 py-0.5 text-xs font-mono focus:outline-none focus:border-purple-400"
+                      step={10}
+                    />
+                  </label>
+                  <label className="flex flex-col">
+                    <span className="text-gray-500 text-[9px]">OffY</span>
+                    <input
+                      type="number"
+                      value={selectedObj.charOffsetY ?? 0}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        if (isNaN(v)) return;
+                        setObjectsAndPreview((prev) => prev.map((o) => o.id === selectedObj.id ? { ...o, charOffsetY: v } : o));
+                      }}
+                      className="w-full bg-gray-800 text-white border border-gray-600 rounded px-1 py-0.5 text-xs font-mono focus:outline-none focus:border-purple-400"
+                      step={10}
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
             <button
               onClick={() => { setSelectedId(null); }}
               className="w-full px-2 py-1 bg-green-800 text-green-200 rounded hover:bg-green-700 text-[10px]"

@@ -217,7 +217,7 @@ export class CharacterManager {
         def, ...h, targetPx: h.px, targetPy: h.py,
         homePx: h.px, homePy: h.py,
         state: initState,
-        facing: initState === "working" ? "north" : "south",
+        facing: "north",
         animFrame: 0, animTimer: 0,
         dialogueTimer: rand(DLG_MIN, DLG_MAX),
         walkTimer: rand(60, 450), // 初始 2-15 秒就開始動（而非 20-60 秒）
