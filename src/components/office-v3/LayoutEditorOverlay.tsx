@@ -1356,6 +1356,20 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
                 }} />
                 Walkable
               </label>
+              <label className="flex flex-col text-[10px]">
+                <span className="text-gray-500">Z</span>
+                <input
+                  type="number"
+                  value={selectedObj.zIndex}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    if (isNaN(v)) return;
+                    setObjectsAndPreview((prev) => prev.map((o) => o.id === selectedObj.id ? { ...o, zIndex: v } : o));
+                  }}
+                  className="w-10 bg-gray-800 text-white border border-gray-600 rounded px-1 py-0.5 text-xs font-mono"
+                  step={1}
+                />
+              </label>
             </div>
             {/* Text block editing fields */}
             {selectedObj.special === "text" && (
