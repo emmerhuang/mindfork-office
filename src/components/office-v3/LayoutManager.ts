@@ -1,6 +1,6 @@
 // LayoutManager.ts — Layout 讀寫管理、walkable map 計算
 
-import { TILE, COLS, ROWS, updateRooms } from "./officeData";
+import { TILE, COLS, ROWS, updateRooms, CHARACTERS, ROOMS } from "./officeData";
 import { getSpriteBounds } from "./TileRenderer";
 
 // ── Types ────────────────────────────────────────────────────
@@ -162,6 +162,34 @@ export function computeWalkableMap(layout: OfficeLayout): boolean[][] {
         }
       }
     }
+  }
+
+  // ── Force critical tiles walkable ──────────────────────────
+  // Character home positions: homePos = (deskTile.x+1, deskTile.y+1) in tile coords
+  // (deskTile is already updated by updateCharacterPositions before this runs)
+  for (const ch of CHARACTERS) {
+    const homeX = ch.deskTile.x + 1;
+    const homeY = ch.deskTile.y + 1;
+    if (homeY >= 0 && homeY < ROWS && homeX >= 0 && homeX < COLS) {
+      map[homeY][homeX] = true;
+    }
+  }
+
+  // Room destinations
+  if (ROOMS.tearoom?.dest) {
+    const { x, y } = ROOMS.tearoom.dest;
+    if (y >= 0 && y < ROWS && x >= 0 && x < COLS) map[y][x] = true;
+  }
+  if (ROOMS.meetingRoom?.dest) {
+    const { x, y } = ROOMS.meetingRoom.dest;
+    if (y >= 0 && y < ROWS && x >= 0 && x < COLS) map[y][x] = true;
+  }
+
+  // Corridor columns: ensure connected paths between desk groups
+  for (let r = 3; r < ROWS; r++) {
+    map[r][3] = true;   // left corridor (between col 1-2 desks and col 5-6 desks)
+    map[r][7] = true;   // right corridor (between col 5-6 desks and col 9-10 desks)
+    map[r][11] = true;  // far right edge
   }
 
   return map;
