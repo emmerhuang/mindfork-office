@@ -6,7 +6,7 @@ import OfficeCanvas from "@/components/office-v3/OfficeCanvas";
 import SleepScene from "@/components/SleepScene";
 import packageJson from "../../package.json";
 
-const BUILD_TIME = process.env.NEXT_PUBLIC_BUILD_TIME || new Date().toISOString();
+const BUILD_TIME = process.env.NEXT_PUBLIC_BUILD_TIME || "dev";
 
 interface Metrics {
   rateLimitPercent: number;
@@ -85,8 +85,8 @@ export default function Home() {
       </main>
 
       {/* Version info */}
-      <div className="fixed bottom-1 left-1 text-[9px] text-gray-400 opacity-50 pointer-events-none">
-        v{packageJson.version} | {new Date(BUILD_TIME).toLocaleString("zh-TW", { timeZone: "Asia/Taipei" })}
+      <div className="fixed bottom-1 right-1 text-[9px] text-white opacity-50 pointer-events-none" suppressHydrationWarning>
+        v{packageJson.version} | {BUILD_TIME}
       </div>
     </div>
   );

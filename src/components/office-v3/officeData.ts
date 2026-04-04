@@ -2,16 +2,17 @@
 
 export const TILE = 96;
 export const CANVAS_W = 1152;   // 12 cols * 96
-export const CANVAS_H = 2112;   // 22 rows * 96
+export const CANVAS_H = 2208;   // 23 rows * 96
 export const COLS = 12;
-export const ROWS = 22;
+export const ROWS = 23;
 export const TARGET_FPS = 30;
 
 // ── 角色 ──────────────────────────────────────────────────
 
 export type CharacterId =
   | "boss" | "secretary" | "sherlock" | "lego"
-  | "vault" | "forge" | "lens" | "waffles" | "grant";
+  | "vault" | "forge" | "lens" | "waffles" | "grant"
+  | "mika" | "yuki";
 
 export interface CharacterDef {
   id: CharacterId;
@@ -22,6 +23,7 @@ export interface CharacterDef {
   dialogues: string[];
   deskTile: { x: number; y: number };
   homePixel?: { px: number; py: number };
+  homeFacing?: string;  // default "north"
   isWaffles?: boolean;
 }
 
@@ -127,6 +129,7 @@ export const CHARACTERS: CharacterDef[] = [
       "（把頭擠進 Lego 的螢幕前）我也要看架構圖。",
     ],
     deskTile: { x: 9, y: 10 },
+    homeFacing: "south",
     isWaffles: true,
   },
   {
@@ -142,6 +145,28 @@ export const CHARACTERS: CharacterDef[] = [
     ],
     deskTile: { x: 5, y: 13 },
   },
+  {
+    id: "mika", name: "Mika", nameCn: "Mika", role: "貓耳女孩",
+    color: "#C0C0C0", homeFacing: "south",
+    dialogues: [
+      "喵～今天辦公室好安靜。",
+      "（撥弄銀白色長髮）有人要一起去茶水間嗎？",
+      "我剛才看到 Waffles 在追自己的尾巴。",
+      "這個專案看起來好複雜，但好有趣。",
+    ],
+    deskTile: { x: 9, y: 2 },
+  },
+  {
+    id: "yuki", name: "Yuki", nameCn: "Yuki", role: "日本美少女",
+    color: "#FFB7C5", homeFacing: "south",
+    dialogues: [
+      "おはよう～今天天氣好好。",
+      "大家都好認真工作，我也要加油。",
+      "（整理桌面）整潔的桌面才能有好心情。",
+      "要不要一起喝下午茶？",
+    ],
+    deskTile: { x: 11, y: 2 },
+  },
 ];
 
 // ── 房間 ──────────────────────────────────────────────────
@@ -154,13 +179,13 @@ export let ROOMS: {
 } = {
   wall:        { x: 0, y: 0,  w: 12, h: 3 },
   work:        { x: 0, y: 3,  w: 12, h: 14 },
-  tearoom:     { x: 0, y: 17, w: 6,  h: 5, dest: { x: 3, y: 19 } },
-  meetingRoom: { x: 6, y: 17, w: 6,  h: 5, dest: { x: 9, y: 19 } },
+  tearoom:     { x: 0, y: 17, w: 6,  h: 6, dest: { x: 3, y: 19 } },
+  meetingRoom: { x: 6, y: 17, w: 6,  h: 6, dest: { x: 9, y: 19 } },
 };
 
 /** Recalculate ROOMS geometry from wallRows, workRows and tearoomCols */
 export function updateRooms(wallRows: number, workRows: number, tearoomCols: number) {
-  const totalRows = 22;
+  const totalRows = ROWS;
   const lowerRows = totalRows - wallRows - workRows;
   ROOMS = {
     wall:        { x: 0, y: 0, w: 12, h: wallRows },

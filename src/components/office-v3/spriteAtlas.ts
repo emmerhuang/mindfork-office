@@ -5,7 +5,7 @@ export interface SpriteFrame { sx: number; sy: number; sw: number; sh: number; }
 // Structure: /sprites/v2/{char}/{dir}.png, walk-{dir}-{frame}.png, celebrate-south-{frame}.png
 // ────────────────────────────────────────────────────────────
 
-export const PIXELLAB_CHARACTERS = new Set(["boss", "secretary", "sherlock", "lego", "vault", "forge", "lens", "waffles", "grant"]);
+export const PIXELLAB_CHARACTERS = new Set(["boss", "secretary", "sherlock", "lego", "vault", "forge", "lens", "waffles", "grant", "mika", "yuki"]);
 
 /** Frame size for v2 individual PNGs */
 export const V2_FRAME_SIZE = 180;
@@ -49,6 +49,8 @@ export const CELEBRATE_FRAME_COUNTS: Record<string, number> = {
   forge: 4,
   lens: 4,
   waffles: 4,
+  mika: 7,
+  yuki: 7,
 };
 
 // ────────────────────────────────────────────────────────────

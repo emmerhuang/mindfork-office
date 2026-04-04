@@ -1,23 +1,39 @@
 // OfficeEngine.ts — 主迴圈：init 載入圖片 → start rAF → render
 // 含公告欄/Boss 螢幕點擊事件、Waffles 點擊隨機動畫
 
-import { CANVAS_W, CANVAS_H, TILE, TARGET_FPS, BULLETIN_BOARD, BOSS_SCREEN, setActiveWalkableMap, updateCharacterPositions } from "./officeData";
+import { CANVAS_W, CANVAS_H, TILE, TARGET_FPS, BULLETIN_BOARD, BOSS_SCREEN, CHARACTERS, setActiveWalkableMap, updateCharacterPositions } from "./officeData";
 import { renderStaticScene, preloadMapObjects, getMapObj } from "./TileRenderer";
 import { loadLayout, saveLayout, computeWalkableMap } from "./LayoutManager";
 import type { OfficeLayout } from "./LayoutManager";
 import { drawCharacter } from "./CharacterRenderer";
 import { DialogueSystem } from "./DialogueSystem";
 import { CharacterManager } from "./CharacterManager";
-import { PIXELLAB_CHARACTERS, WAFFLES_ANIM_FRAMES, getWafflesFrame, V2_DIRS } from "./spriteAtlas";
+import { PIXELLAB_CHARACTERS, WAFFLES_ANIM_FRAMES, CELEBRATE_FRAME_COUNTS, getWafflesFrame, V2_DIRS } from "./spriteAtlas";
 import type { OsEntry } from "./OfficeCanvas";
 import type { WafflesAnim } from "./spriteAtlas";
+
+const rand = (lo: number, hi: number) => Math.floor(Math.random() * (hi - lo + 1)) + lo;
+
+export interface ConvBarData {
+  charAId: string;
+  charBId: string;
+  charAName: string;
+  charBName: string;
+  charARole: string;
+  charBRole: string;
+  charAColor: string;
+  charBColor: string;
+  speaker: "A" | "B";
+  text: string;
+}
 
 export interface EngineOptions {
   onCharacterClick?: (charId: string) => void;
   onDialogue?: (charId: string, text: string) => void;
   onBulletinClick?: () => void;
   onBossScreenClick?: () => void;
-  onWafflesZoom?: (anim: WafflesAnim) => void;
+  onWafflesZoom?: (anim: WafflesAnim, dir?: string) => void;
+  onConversationBar?: (data: ConvBarData | null) => void;
 }
 
 export class OfficeEngine {
@@ -45,6 +61,7 @@ export class OfficeEngine {
 
   // Waffles click animation state (random anim on click)
   private wafflesClickAnim: WafflesAnim | null = null;
+  private wafflesExcitedDir: string = "south"; // direction for v2 excited animation
   private wafflesClickFrame = 0;
   private wafflesClickTimer = 0;
   private wafflesClickHold = 0; // ticks to hold last frame before clearing
@@ -78,6 +95,9 @@ export class OfficeEngine {
       if (c) this.dlg.show(id, text, c.px, c.py, this.tick);
       opts.onDialogue?.(id, text);
     });
+
+    // Wire up collision dialogue
+    this.mgr.onCollision = (idA, idB) => this.handleCollision(idA, idB);
 
     this.canvas.addEventListener("click", this.onClick);
   }
@@ -138,9 +158,10 @@ export class OfficeEngine {
     const hit = this.mgr.findCharacterAt(px, py);
     if (hit) {
       if (hit.def.isWaffles) {
-        // Waffles 隨機動畫
-        const clickAnims: WafflesAnim[] = ["bark", "idle", "running", "sneaking", "walk"];
-        this.wafflesClickAnim = clickAnims[Math.floor(Math.random() * clickAnims.length)];
+        // Waffles excited v2 animation — use current facing direction
+        this.wafflesExcitedDir = hit.facing;
+        const wafflesAnims: WafflesAnim[] = ["bark", "idle", "running", "sneaking", "walk"];
+        this.wafflesClickAnim = wafflesAnims[Math.floor(Math.random() * wafflesAnims.length)];
         this.wafflesClickFrame = 0;
         this.wafflesClickTimer = 0;
         this.wafflesClickHold = 0;
@@ -161,7 +182,7 @@ export class OfficeEngine {
         }
 
         // Notify overlay for zoomed Waffles animation
-        this.opts.onWafflesZoom?.(this.wafflesClickAnim!);
+        this.opts.onWafflesZoom?.(this.wafflesClickAnim!, this.wafflesExcitedDir);
 
         const waffleReactMap: Record<WafflesAnim, string> = {
           bark: "汪汪汪！",
@@ -218,9 +239,18 @@ export class OfficeEngine {
           v2Loads.push({ key: `v2-${n}-walk-${d}-${f}`, src: `/sprites/v2/${n}/walk-${d}-${f}.png` });
         }
       }
-      // Celebrate: south only, 4 frames
-      for (let f = 0; f < 4; f++) {
+      // Celebrate: south only, frame count per character
+      const celFrames = CELEBRATE_FRAME_COUNTS[n] ?? 4;
+      for (let f = 0; f < celFrames; f++) {
         v2Loads.push({ key: `v2-${n}-celebrate-south-${f}`, src: `/sprites/v2/${n}/celebrate-south-${f}.png` });
+      }
+      // Waffles excited click animation: 4 directions x 4 frames
+      if (n === "waffles") {
+        for (const d of dirs) {
+          for (let f = 0; f < 4; f++) {
+            v2Loads.push({ key: `v2-waffles-excited-${d}-${f}`, src: `/sprites/v2/waffles/excited-${d}-${f}.png` });
+          }
+        }
       }
     }
 
@@ -336,6 +366,161 @@ export class OfficeEngine {
     this.mgr.setMeeting(active);
   }
 
+  // ── Collision dialogue handling ──────────────────────────────
+
+  private async handleCollision(idA: string, idB: string) {
+    this.mgr.setDialogueActive(true);
+
+    const charA = this.mgr.characters.find((c) => c.def.id === idA);
+    const charB = this.mgr.characters.find((c) => c.def.id === idB);
+    if (!charA || !charB) {
+      this.mgr.setDialogueActive(false);
+      return;
+    }
+
+    // Stop both characters and face each other
+    const prevStateA = charA.state;
+    const prevStateB = charB.state;
+    charA.state = "idle_away";
+    charB.state = "idle_away";
+    charA.path = [];
+    charB.path = [];
+    charA.pathIndex = 0;
+    charB.pathIndex = 0;
+    // Face each other
+    if (charA.px < charB.px) {
+      charA.facing = "east";
+      charB.facing = "west";
+    } else if (charA.px > charB.px) {
+      charA.facing = "west";
+      charB.facing = "east";
+    } else if (charA.py < charB.py) {
+      charA.facing = "south";
+      charB.facing = "north";
+    } else {
+      charA.facing = "north";
+      charB.facing = "south";
+    }
+
+    // Build character definitions (needed for thinking bubble + API request)
+    const defA = CHARACTERS.find((c) => c.id === idA);
+    const defB = CHARACTERS.find((c) => c.id === idB);
+
+    // Show thinking indicator in bottom bar
+    const nameA = defA?.nameCn || defA?.name || idA;
+    const colorA = defA?.color || "#222";
+    const roleA = defA?.role || "";
+    const nameB = defB?.nameCn || defB?.name || idB;
+    const colorB = defB?.color || "#222";
+    const roleB = defB?.role || "";
+    this.opts.onConversationBar?.({
+      charAId: idA, charBId: idB,
+      charAName: nameA, charBName: nameB,
+      charARole: roleA, charBRole: roleB,
+      charAColor: colorA, charBColor: colorB,
+      speaker: "A", text: "...",
+    });
+
+    type DialogueLine = { speaker: "A" | "B"; text: string };
+    let lines: DialogueLine[] | null = null;
+    let dialogueId: string | null = null;
+
+    // ── localStorage seen-dialogue tracking ──────────────────
+    const SEEN_KEY = "dialogue-seen";
+    const FORTY_EIGHT_H = 48 * 60 * 60 * 1000;
+    const pairKey = [idA, idB].sort().join("|");
+
+    let seenData: Record<string, { ids: string[]; lastSeen: number }> = {};
+    try {
+      const raw = localStorage.getItem(SEEN_KEY);
+      if (raw) seenData = JSON.parse(raw);
+    } catch { /* ignore parse errors */ }
+
+    // Clear stale pair data (> 48h)
+    const pairEntry = seenData[pairKey];
+    if (pairEntry && Date.now() - pairEntry.lastSeen > FORTY_EIGHT_H) {
+      delete seenData[pairKey];
+    }
+    const excludeIds = seenData[pairKey]?.ids || [];
+
+    try {
+      const res = await fetch("/api/dialogue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          charA: { id: idA },
+          charB: { id: idB },
+          excludeIds,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.dialogue) && data.dialogue.length >= 2) {
+          lines = data.dialogue;
+          dialogueId = data.id || null;
+        }
+      }
+    } catch {
+      // API failed — use fallback
+    }
+
+    // Save seen dialogue id to localStorage
+    if (dialogueId) {
+      if (!seenData[pairKey]) {
+        seenData[pairKey] = { ids: [], lastSeen: Date.now() };
+      }
+      seenData[pairKey].ids.push(dialogueId);
+      seenData[pairKey].lastSeen = Date.now();
+      try {
+        localStorage.setItem(SEEN_KEY, JSON.stringify(seenData));
+      } catch { /* storage full — ignore */ }
+    }
+
+    // No stored dialogue for this pair — skip conversation entirely
+    if (!lines) {
+      this.opts.onConversationBar?.(null);
+      charA.walkTimer = rand(5 * 30, 15 * 30);
+      charB.walkTimer = rand(5 * 30, 15 * 30);
+      this.mgr.setDialogueActive(false);
+      return;
+    }
+
+    // Display lines sequentially via bottom bar
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      this.opts.onConversationBar?.({
+        charAId: idA, charBId: idB,
+        charAName: nameA, charBName: nameB,
+        charARole: roleA, charBRole: roleB,
+        charAColor: colorA, charBColor: colorB,
+        speaker: line.speaker,
+        text: line.text,
+      });
+      await this.delay(5000);
+    }
+    this.opts.onConversationBar?.(null);
+
+    // Resume characters
+    charA.walkTimer = rand(5 * 30, 15 * 30);
+    charB.walkTimer = rand(5 * 30, 15 * 30);
+    // Keep idle_away so they'll naturally walk home
+    this.mgr.setDialogueActive(false);
+  }
+
+  private guessLocation(px: number, py: number): string {
+    const ty = Math.floor(py / TILE);
+    const tx = Math.floor(px / TILE);
+    if (ty >= 17 && tx < 6) return "茶水間";
+    if (ty >= 17 && tx >= 6) return "會議室旁";
+    if (ty <= 5) return "走廊";
+    return "辦公區走道";
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
   private loop = (now: number) => {
     const dt = now - this.lastT;
     if (dt >= this.interval) {
@@ -387,20 +572,19 @@ export class OfficeEngine {
     for (const c of sorted) {
       // Waffles click animation override
       if (c.def.isWaffles && this.wafflesClickAnim) {
-        const animImg = this.wafflesExtraImgs[this.wafflesClickAnim];
+        const frame = Math.min(this.wafflesClickFrame, 3);
+        const excitedKey = `v2-waffles-excited-${this.wafflesExcitedDir}-${frame}`;
+        const animImg = this.v2Imgs[excitedKey];
         if (animImg) {
-          const dw = 180, dh = 180;
+          const dw = 216, dh = 216;
           const footY = c.py + 51;
           // Draw shadow
           ctx.fillStyle = "rgba(0,0,0,0.15)";
           ctx.beginPath();
           ctx.ellipse(c.px, footY - 2, dw / 2 - 4, 5, 0, 0, Math.PI * 2);
           ctx.fill();
-          // Draw click animation frame (clamp to last frame during hold)
-          const clickTotalFrames = WAFFLES_ANIM_FRAMES[this.wafflesClickAnim] ?? 6;
-          const displayFrame = Math.min(this.wafflesClickFrame, clickTotalFrames - 1);
-          const f = getWafflesFrame(this.wafflesClickAnim, c.facing, displayFrame);
-          ctx.drawImage(animImg, f.sx, f.sy, f.sw, f.sh, c.px - dw / 2, footY - dh, dw, dh);
+          // Draw v2 excited animation frame
+          ctx.drawImage(animImg, 0, 0, 180, 180, c.px - dw / 2, footY - dh, dw, dh);
           // Draw status icon (don't skip during animation)
           if (c.statusIcon) {
             const floatY = Math.sin((this.tick / 60) * Math.PI * 2) * 6;

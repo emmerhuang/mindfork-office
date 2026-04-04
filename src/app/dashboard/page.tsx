@@ -45,6 +45,8 @@ const TEAM = [
   { id: "lens", name: "Lens", role: "測試工程師", color: "#2980B9", emoji: "🔬" },
   { id: "waffles", name: "Waffles", role: "柯基督察", color: "#F39C12", emoji: "🐕" },
   { id: "grant", name: "Grant", role: "GG審查專員", color: "#2C3E50", emoji: "📊" },
+  { id: "mika", name: "Mika", role: "貓耳女孩", color: "#C0C0C0", emoji: "🐱" },
+  { id: "yuki", name: "Yuki", role: "日本美少女", color: "#FFB7C5", emoji: "🌸" },
 ];
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
@@ -54,13 +56,15 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
   sleeping: { label: "休息中", color: "#a855f7" },
 };
 
+const CELEBRATE_COUNTS: Record<string, number> = { mika: 7, yuki: 7 };
+
 function CelebrateAvatar({ id, name, emoji }: { id: string; name: string; emoji: string }) {
   const [frame, setFrame] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     intervalRef.current = setInterval(() => {
-      setFrame(f => (f + 1) % 4);
+      setFrame(f => (f + 1) % (CELEBRATE_COUNTS[id] ?? 4));
     }, 200);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);

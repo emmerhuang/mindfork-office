@@ -33,6 +33,9 @@ export interface CharInstance {
   statusIcon: string; // emoji to show above head
   // Meeting state
   meetingSeatIndex: number; // assigned seat index in MEETING_SEATS (-1 = none)
+  // Random wander state
+  wanderMode: boolean;      // true = random wander, false = A* to destination
+  wanderBudget: number;     // remaining ticks allowed for current wander session
 }
 
 const SPEED = 2;                    // px/tick
@@ -49,8 +52,8 @@ const STAY_MAX = 10 * 30;           // 10s
 const rand = (lo: number, hi: number) => Math.floor(Math.random() * (hi - lo + 1)) + lo;
 
 // ── Meeting room seat assignments ────────────────────────────
-// 9 seats around the conference table (cols 8-10, rows 18-20)
-// Left side (col 7), right side (col 11), bottom (row 21)
+// 11 seats around the conference table (cols 8-10, rows 18-20)
+// Left side (col 7), right side (col 11), bottom (row 21), extra (col 6)
 const MEETING_SEATS: Array<{ tx: number; ty: number; facing: string }> = [
   // Left side of table — face east (toward table)
   { tx: 7, ty: 18, facing: "east" },
@@ -64,6 +67,9 @@ const MEETING_SEATS: Array<{ tx: number; ty: number; facing: string }> = [
   { tx: 8, ty: 21, facing: "north" },
   { tx: 9, ty: 21, facing: "north" },
   { tx: 10, ty: 21, facing: "north" },
+  // Extra seats for Mika & Yuki (behind left row)
+  { tx: 6, ty: 18, facing: "east" },
+  { tx: 6, ty: 20, facing: "east" },
 ];
 
 function homePos(d: CharacterDef) {
@@ -252,6 +258,20 @@ export class CharacterManager {
   private currentTick = 0;
   private _meetingMode = false; // true while setMeeting(true) is active
 
+  // ── Collision dialogue system ──────────────────────────────
+  onCollision?: (charA: string, charB: string) => void;
+  private _dialogueActive = false; // true while a collision dialogue is playing
+  private _collisionCooldowns = new Map<string, number>(); // "a|b" -> timestamp
+  private _collisionCountHour = 0; // total collision dialogues this hour
+  private _collisionHourStart = Date.now();
+  private static COLLISION_COOLDOWN = 120_000;   // 120s per pair
+  private static COLLISION_CHANCE = 0.3;          // 30% trigger chance
+  private static COLLISION_MAX_PER_HOUR = 10;
+
+  /** Set by OfficeEngine when collision dialogue starts/ends */
+  setDialogueActive(active: boolean) { this._dialogueActive = active; }
+  get dialogueActive() { return this._dialogueActive; }
+
   constructor(onDialogue: (id: string, text: string) => void) {
     this.onDialogue = onDialogue;
     this.characters = CHARACTERS.map((def) => {
@@ -262,7 +282,7 @@ export class CharacterManager {
         def, ...h, targetPx: h.px, targetPy: h.py,
         homePx: h.px, homePy: h.py,
         state: initState,
-        facing: "north",
+        facing: def.homeFacing ?? "north",
         animFrame: 0, animTimer: 0,
         dialogueTimer: rand(DLG_MIN, DLG_MAX),
         walkTimer: rand(60, 450), // 初始 2-15 秒就開始動（而非 20-60 秒）
@@ -277,6 +297,8 @@ export class CharacterManager {
         wafflesAnim: "walk" as WafflesAnim,
         statusIcon: "",
         meetingSeatIndex: -1,
+        wanderMode: false,
+        wanderBudget: 0,
       };
     });
   }
@@ -292,7 +314,7 @@ export class CharacterManager {
       c.homePx = h.px;
       c.homePy = h.py;
       c.state = "idle_home";
-      c.facing = "north";
+      c.facing = c.def.homeFacing ?? "north";
       c.path = [];
       c.pathIndex = 0;
       c.goingHome = false;
@@ -345,7 +367,7 @@ export class CharacterManager {
           } else {
             // All loops done, return to idle_home
             c.state = "idle_home";
-            c.facing = "north";
+            c.facing = c.def.homeFacing ?? "north";
             c.celebrateFrame = 0;
           }
         }
@@ -392,7 +414,7 @@ export class CharacterManager {
         this.moveAlongPath(c);
         break;
       case "idle_away":
-        if (--c.walkTimer <= 0) {
+        if (!this._dialogueActive && --c.walkTimer <= 0) {
           this.startWalkTo(c, c.homePx, c.homePy, true);
           c.walkTimer = rand(WALK_MIN, WALK_MAX);
         }
@@ -404,16 +426,65 @@ export class CharacterManager {
   }
 
   private startWalkTo(c: CharInstance, destPx: number, destPy: number, goingHome: boolean) {
-    c.targetPx = destPx;
-    c.targetPy = destPy;
     c.goingHome = goingHome;
     c.state = "walking";
-    c.path = findPath(c.px, c.py, destPx, destPy, this.buildDynamicBlocked(c));
-    c.pathIndex = 0;
+    if (!goingHome) {
+      // Random wander mode: ignore destination, pick a random direction step
+      c.wanderMode = true;
+      c.wanderBudget = rand(10 * 30, 40 * 30); // 10-40 seconds of wandering
+      this.pickWanderStep(c);
+    } else {
+      c.wanderMode = false;
+      c.targetPx = destPx;
+      c.targetPy = destPy;
+      c.path = findPath(c.px, c.py, destPx, destPy, this.buildDynamicBlocked(c));
+      c.pathIndex = 0;
+    }
     // Waffles picks a random walk animation
     if (c.def.isWaffles) {
       c.wafflesAnim = pickWafflesWalkAnim();
     }
+  }
+
+  /** Pick a random direction and walk 1–5 tiles that way */
+  private pickWanderStep(c: CharInstance) {
+    const DIRS = [
+      { dx: 0, dy: -1 }, // north
+      { dx: 0, dy: 1  }, // south
+      { dx: -1, dy: 0 }, // west
+      { dx: 1, dy: 0  }, // east
+    ];
+    // Shuffle directions and try each
+    const shuffled = [...DIRS].sort(() => Math.random() - 0.5);
+    const tx0 = Math.round((c.px - TILE / 2) / TILE);
+    const ty0 = Math.round((c.py - TILE / 2) / TILE);
+    const wm = activeWalkableMap;
+    for (const dir of shuffled) {
+      const steps = rand(1, 5);
+      let tx = tx0, ty = ty0;
+      let validSteps = 0;
+      for (let i = 0; i < steps; i++) {
+        const nx = tx + dir.dx;
+        const ny = ty + dir.dy;
+        if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) break;
+        if (!wm[ny]?.[nx]) break;
+        tx = nx; ty = ny;
+        validSteps++;
+      }
+      if (validSteps > 0) {
+        const destPx = tx * TILE + TILE / 2;
+        const destPy = ty * TILE + TILE / 2;
+        c.targetPx = destPx;
+        c.targetPy = destPy;
+        c.path = findPath(c.px, c.py, destPx, destPy, this.buildDynamicBlocked(c));
+        c.pathIndex = 0;
+        return;
+      }
+    }
+    // Fallback: can't move anywhere, end wander
+    c.wanderMode = false;
+    c.state = "idle_away";
+    c.walkTimer = rand(STAY_MIN, STAY_MAX);
   }
 
   /** Build a set of tile keys occupied by other walking characters */
@@ -470,6 +541,18 @@ export class CharacterManager {
       const od = Math.sqrt(odx * odx + ody * ody);
       const MIN_DIST = 50;
       if (od < MIN_DIST && od > 0) {
+        // ── Collision dialogue trigger ──────────────────────
+        const facingOpposite =
+          (c.facing === "south" && other.facing === "north") ||
+          (c.facing === "north" && other.facing === "south") ||
+          (c.facing === "east"  && other.facing === "west")  ||
+          (c.facing === "west"  && other.facing === "east");
+        if (this.onCollision && !this._dialogueActive && facingOpposite &&
+            (c.state === "walking" || c.state === "idle_away") &&
+            (other.state === "walking" || other.state === "idle_away")) {
+          this.tryCollisionDialogue(c.def.id, other.def.id);
+        }
+
         const prevPx = c.px;
         const prevPy = c.py;
         if (c.state === "walking" && other.state === "walking") {
@@ -510,9 +593,16 @@ export class CharacterManager {
       c.px = c.homePx;
       c.py = c.homePy;
       c.state = "idle_home";
-      c.facing = "north";
+      c.facing = c.def.homeFacing ?? "north";
       c.goingHome = false;
+      c.wanderMode = false;
+    } else if (c.wanderMode && c.wanderBudget > 0) {
+      // Continue wandering in a new random direction
+      c.wanderBudget -= 30; // approximate: subtract ~1 sec per step
+      this.pickWanderStep(c);
+      return; // path already set, don't reset below
     } else {
+      c.wanderMode = false;
       c.state = "idle_away";
       c.walkTimer = rand(STAY_MIN, STAY_MAX);
     }
@@ -520,6 +610,30 @@ export class CharacterManager {
     c.pathIndex = 0;
     // 立即更新 statusIcon，避免到達那一 tick 渲染空白
     this.updateStatusIcon(c, this.currentTick);
+  }
+
+  /** Try triggering a collision dialogue between two characters */
+  private tryCollisionDialogue(idA: string, idB: string) {
+    // Hourly counter reset
+    const now = Date.now();
+    if (now - this._collisionHourStart > 3_600_000) {
+      this._collisionCountHour = 0;
+      this._collisionHourStart = now;
+    }
+    if (this._collisionCountHour >= CharacterManager.COLLISION_MAX_PER_HOUR) return;
+
+    // Pair cooldown (sorted key so A|B == B|A)
+    const pairKey = [idA, idB].sort().join("|");
+    const lastTime = this._collisionCooldowns.get(pairKey) ?? 0;
+    if (now - lastTime < CharacterManager.COLLISION_COOLDOWN) return;
+
+    // Random chance
+    if (Math.random() > CharacterManager.COLLISION_CHANCE) return;
+
+    // All checks passed — trigger
+    this._collisionCooldowns.set(pairKey, now);
+    this._collisionCountHour++;
+    this.onCollision!(idA, idB);
   }
 
   /** Trigger celebrate animation for a character */
@@ -661,7 +775,7 @@ export class CharacterManager {
           c.targetPx = c.homePx;
           c.targetPy = c.homePy;
           c.state = "idle_home";
-          c.facing = "north";
+          c.facing = c.def.homeFacing ?? "north";
           c.path = [];
           c.pathIndex = 0;
           c.goingHome = false;
@@ -676,7 +790,7 @@ export class CharacterManager {
           c.targetPx = c.homePx;
           c.targetPy = c.homePy;
           c.state = "idle_home";
-          c.facing = "north";
+          c.facing = c.def.homeFacing ?? "north";
           c.path = [];
           c.pathIndex = 0;
           c.goingHome = false;
@@ -723,7 +837,7 @@ export class CharacterManager {
           c.targetPx = c.homePx;
           c.targetPy = c.homePy;
           c.state = "idle_home";
-          c.facing = "north";
+          c.facing = c.def.homeFacing ?? "north";
           c.path = [];
           c.pathIndex = 0;
           c.goingHome = false;

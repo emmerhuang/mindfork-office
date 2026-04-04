@@ -1375,9 +1375,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
             )}
             {/* Change sprite dropdown — only for objects with a sprite, not trigger/text */}
             {selectedObj.sprite && !selectedObj.special && (() => {
-              const sameCat = paletteSprites.filter(
-                (s) => s.category === selectedObj.category && !s.special
-              );
+              const sameCat = paletteSprites.filter((s) => !s.special);
               if (sameCat.length <= 1) return null;
               return (
                 <label className="flex flex-col mb-1">
