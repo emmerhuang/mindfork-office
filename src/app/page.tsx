@@ -4,6 +4,9 @@ import { useState, useEffect } from "react";
 import { MemberStatus } from "@/types";
 import OfficeCanvas from "@/components/office-v3/OfficeCanvas";
 import SleepScene from "@/components/SleepScene";
+import packageJson from "../../package.json";
+
+const BUILD_TIME = process.env.NEXT_PUBLIC_BUILD_TIME || new Date().toISOString();
 
 interface Metrics {
   rateLimitPercent: number;
@@ -81,7 +84,10 @@ export default function Home() {
         )}
       </main>
 
-      {/* Dashboard panel removed — access via Boss screen click */}
+      {/* Version info */}
+      <div className="fixed bottom-1 left-1 text-[9px] text-gray-400 opacity-50 pointer-events-none">
+        v{packageJson.version} | {new Date(BUILD_TIME).toLocaleString("zh-TW", { timeZone: "Asia/Taipei" })}
+      </div>
     </div>
   );
 }

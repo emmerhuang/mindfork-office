@@ -367,17 +367,18 @@ export class CharacterManager {
     // state machine
     switch (c.state) {
       case "working":
-        // Boss / Secretary 偶爾站起來走一圈
-        if (c.def.id === "boss" || c.def.id === "secretary") {
-          if (--c.walkTimer <= 0) {
-            // 30% 機率站起來走走
-            if (Math.random() < 0.3) {
-              const d = randomDest(c.def.id);
-              if (d) this.startWalkTo(c, d.px, d.py, false);
-              // 走到目的地 -> idle_away -> 回家 -> idle_home -> updateStatuses 恢復 working
-            }
-            c.walkTimer = rand(60 * 30, 120 * 30); // 60-120 秒 @ 30fps
+        // 工作中偶爾站起來走一圈（例如倒水、上廁所）
+        if (--c.walkTimer <= 0) {
+          const isBossOrSecretary = c.def.id === "boss" || c.def.id === "secretary";
+          const walkChance = isBossOrSecretary ? 0.15 : 0.2; // Boss/Secretary 15%, 其他 20%
+          if (Math.random() < walkChance) {
+            const d = randomDest(c.def.id);
+            if (d) this.startWalkTo(c, d.px, d.py, false);
           }
+          // Boss/Secretary 間隔長，其他人中等
+          c.walkTimer = isBossOrSecretary
+            ? rand(90 * 30, 180 * 30)   // 90-180 秒
+            : rand(60 * 30, 120 * 30);  // 60-120 秒
         }
         break;
       case "idle_home":
@@ -554,15 +555,18 @@ export class CharacterManager {
         c.statusIcon = "emote-7"; // CELEBRATING (stars)
         break;
       case "walking":
-        c.statusIcon = ""; // 走路有動畫，不需額外圖示
-        // 清除 idle icon 快取，下次 idle 重新選
-        delete this.idleIcons[c.def.id];
+        // 不改 statusIcon — 保持走動前的泡泡（working 出去走保持星星，idle 出去走保持心情）
         break;
       case "meeting":
         c.statusIcon = ""; // No emote during meetings
         break;
       case "idle_home":
       case "idle_away": {
+        // Boss/Secretary 永遠顯示工作中泡泡
+        if (c.def.id === "boss" || c.def.id === "secretary") {
+          c.statusIcon = "emote-7";
+          break;
+        }
         // 從所有可用 emote 中均勻隨機選一個（進入 idle 時選一次，站定期間不切換）
         // 排除 emote-0（已回收）和 emote-7（working/celebrating 專用）
         if (!this.idleIcons[c.def.id]) {
