@@ -38,9 +38,9 @@ interface MemberStatus {
 const TEAM = [
   { id: "boss", name: "老大", role: "總指揮", color: "#8B0000", emoji: "👔" },
   { id: "secretary", name: "秘書長", role: "協調與調度", color: "#1E3A5F", emoji: "📋" },
-  { id: "sherlock", name: "Sherlock", role: "需求分析師", color: "#C0392B", emoji: "🔍" },
-  { id: "lego", name: "Lego", role: "架構設計師", color: "#E87D20", emoji: "🏗️" },
-  { id: "vault", name: "Vault", role: "資料庫設計師", color: "#2D5A3D", emoji: "🔐" },
+  { id: "sherlock", name: "Sherlock", role: "需求分析 + UX 設計", color: "#C0392B", emoji: "🔍" },
+  { id: "lego", name: "Lego", role: "架構 + 資料庫設計", color: "#E87D20", emoji: "🏗️" },
+  { id: "vault", name: "Vault", role: "資安 + 效能工程師", color: "#2D5A3D", emoji: "🛡️" },
   { id: "forge", name: "Forge", role: "實作工程師", color: "#6C3483", emoji: "🔨" },
   { id: "lens", name: "Lens", role: "測試工程師", color: "#2980B9", emoji: "🔬" },
   { id: "waffles", name: "Waffles", role: "柯基督察", color: "#F39C12", emoji: "🐕" },
@@ -97,7 +97,16 @@ export default function Dashboard() {
         if (res.ok) {
           const data = await res.json();
           if (data.metrics) setMetrics(data.metrics);
-          if (data.members) setMembers(data.members);
+          if (data.members) {
+            const m: Record<string, MemberStatus> = data.members;
+            // When meeting is active, override all member statuses to "meeting"
+            if (data.meeting?.active) {
+              for (const key of Object.keys(m)) {
+                m[key] = { ...m[key], status: "meeting" };
+              }
+            }
+            setMembers(m);
+          }
           if (data.memberOs) setMemberOs(data.memberOs);
           setLastFetch(new Date().toLocaleTimeString("zh-TW", { timeZone: "Asia/Taipei" }));
         }

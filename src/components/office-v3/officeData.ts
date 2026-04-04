@@ -51,7 +51,7 @@ export const CHARACTERS: CharacterDef[] = [
     deskTile: { x: 9, y: 4 },
   },
   {
-    id: "sherlock", name: "Sherlock", nameCn: "Sherlock", role: "需求分析師",
+    id: "sherlock", name: "Sherlock", nameCn: "Sherlock", role: "需求分析 + UX 設計",
     color: "#C0392B",
     dialogues: [
       "等等，這個需求背後的需求是什麼？",
@@ -64,7 +64,7 @@ export const CHARACTERS: CharacterDef[] = [
     deskTile: { x: 1, y: 7 },
   },
   {
-    id: "lego", name: "Lego", nameCn: "Lego", role: "架構設計師",
+    id: "lego", name: "Lego", nameCn: "Lego", role: "架構 + 資料庫設計",
     color: "#E87D20",
     dialogues: [
       "這個設計三個月後還能擴展嗎？",
@@ -77,15 +77,15 @@ export const CHARACTERS: CharacterDef[] = [
     deskTile: { x: 5, y: 7 },
   },
   {
-    id: "vault", name: "Vault", nameCn: "Vault", role: "資料庫設計師",
+    id: "vault", name: "Vault", nameCn: "Vault", role: "資安 + 效能工程師",
     color: "#2D5A3D",
     dialogues: [
-      "Schema 改錯了，migration 是雙向道但現實只能單行。",
-      "NULL 是個哲學問題，我不喜歡哲學問題出現在欄位定義裡。",
-      "Index 加對了比什麼 cache 都有效。",
-      "外鍵約束存在是有原因的，不要關掉它。",
-      "這個查詢要跑多久？我需要 EXPLAIN ANALYZE。",
-      "資料是公司最貴的資產，我只是它的管理員。",
+      "這個 API 有做 rate limiting 嗎？沒有就是裸奔。",
+      "OWASP Top 10 不是清單，是必修課。",
+      "效能瓶頸在哪？讓我跑一輪壓測。",
+      "npm audit 又有新的 vulnerability 了。",
+      "安全不是 feature，是地基。",
+      "這個 endpoint 的 p95 延遲太高了，得查。",
     ],
     deskTile: { x: 9, y: 7 },
   },
