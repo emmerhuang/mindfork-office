@@ -529,7 +529,7 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
         return (
         <div style={{
           position: "absolute",
-          bottom: canvasRect ? canvasRect.bottomGap : 0,
+          bottom: (canvasRect ? canvasRect.bottomGap : 0) + 20,
           left: canvasRect ? canvasRect.left : 0,
           width: canvasRect ? canvasRect.width : "100%",
           height: containerH,
