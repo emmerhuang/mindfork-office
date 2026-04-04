@@ -647,8 +647,10 @@ export class CharacterManager {
           }
         }
       } else if (d.status === "working") {
-        if (c.state === "meeting") {
-          // Leave meeting: teleport home
+        // Only intervene when returning from meeting/celebrating.
+        // Characters in idle_home/walking/idle_away/working are in their
+        // autonomous behaviour loop — polling must not interrupt them.
+        if (c.state === "meeting" || c.state === "celebrating") {
           c.meetingSeatIndex = -1;
           c.px = c.homePx;
           c.py = c.homePy;
@@ -660,15 +662,10 @@ export class CharacterManager {
           c.pathIndex = 0;
           c.goingHome = false;
           this.updateStatusIcon(c, this.currentTick);
-        } else if (c.state !== "working") {
-          c.state = "working";
-          c.facing = "north";
-          c.px = c.homePx; c.py = c.homePy;
-          c.targetPx = c.homePx; c.targetPy = c.homePy;
         }
       } else if (d.status === "idle") {
-        if (c.state === "meeting") {
-          // Leave meeting: teleport home
+        // Same principle: only act when leaving meeting/celebrating.
+        if (c.state === "meeting" || c.state === "celebrating") {
           c.meetingSeatIndex = -1;
           c.px = c.homePx;
           c.py = c.homePy;
@@ -680,8 +677,6 @@ export class CharacterManager {
           c.pathIndex = 0;
           c.goingHome = false;
           this.updateStatusIcon(c, this.currentTick);
-        } else if (c.state === "working") {
-          c.state = "idle_home";
         }
       } else if (d.status === "celebrating") {
         if (c.state === "meeting") {
