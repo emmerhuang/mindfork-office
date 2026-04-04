@@ -250,6 +250,7 @@ export class CharacterManager {
   characters: CharInstance[];
   private onDialogue: (id: string, text: string) => void;
   private currentTick = 0;
+  private _meetingMode = false; // true while setMeeting(true) is active
 
   constructor(onDialogue: (id: string, text: string) => void) {
     this.onDialogue = onDialogue;
@@ -558,7 +559,7 @@ export class CharacterManager {
         delete this.idleIcons[c.def.id];
         break;
       case "meeting":
-        c.statusIcon = "emote-1"; // THINKING (lightbulb) — in meeting
+        c.statusIcon = ""; // No emote during meetings
         break;
       case "idle_home":
       case "idle_away": {
@@ -622,6 +623,11 @@ export class CharacterManager {
     for (const c of this.characters) {
       const d = data[c.def.id];
       if (!d) continue;
+
+      // While meetingMode is active, don't let polling override meeting characters
+      if (this._meetingMode && c.state === "meeting" && d.status !== "meeting") {
+        continue;
+      }
 
       if (d.status === "meeting") {
         // Enter meeting: teleport to assigned seat
@@ -688,6 +694,7 @@ export class CharacterManager {
 
   /** Set meeting mode: teleport all characters to meeting room seats, or back home */
   setMeeting(active: boolean) {
+    this._meetingMode = active;
     if (active) {
       this.assignMeetingSeats();
       for (const c of this.characters) {
