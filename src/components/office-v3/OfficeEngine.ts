@@ -331,6 +331,11 @@ export class OfficeEngine {
     this.mgr.triggerCelebrate(charId);
   }
 
+  /** Set meeting mode: all characters walk to meeting room (or return home) */
+  setMeeting(active: boolean) {
+    this.mgr.setMeeting(active);
+  }
+
   private loop = (now: number) => {
     const dt = now - this.lastT;
     if (dt >= this.interval) {

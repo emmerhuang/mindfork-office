@@ -71,7 +71,7 @@ const FALLBACK_METRICS = {
 export async function GET() {
   try {
     const result = await tursoExecute([
-      { sql: "SELECT key, value FROM mindfork_status WHERE key IN ('metrics', 'members', 'member_os', 'task_queue')" },
+      { sql: "SELECT key, value FROM mindfork_status WHERE key IN ('metrics', 'members', 'member_os', 'task_queue', 'meeting')" },
     ]);
 
     const map = rowsToMap(result);
@@ -82,6 +82,7 @@ export async function GET() {
     const members = map.members ? JSON.parse(map.members) : {};
     const rawOs = map.member_os ? JSON.parse(map.member_os) : {};
     const taskQueue = map.task_queue ? JSON.parse(map.task_queue) : [];
+    const meeting = map.meeting ? JSON.parse(map.meeting) : { active: false };
     // Normalize: support legacy string[], new {text,task,at}[], or plain string
     const memberOs: Record<string, Array<{text: string; task?: string; at?: string}>> = {};
     for (const [k, v] of Object.entries(rawOs)) {
@@ -97,7 +98,7 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({ members, metrics, memberOs, taskQueue });
+    return NextResponse.json({ members, metrics, memberOs, taskQueue, meeting });
   } catch (err) {
     console.error("GET /api/status error:", err);
     return NextResponse.json({
@@ -185,9 +186,19 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    // Upsert both keys into Turso
+    // Handle meeting action: set meeting status in Turso
+    let meetingPayload: { active: boolean; topic?: string; startedAt?: string } | undefined;
+    if (body.meeting !== undefined) {
+      if (body.meeting === true || body.meeting === "start") {
+        meetingPayload = { active: true, topic: body.meetingTopic || "", startedAt: new Date().toISOString() };
+      } else if (body.meeting === false || body.meeting === "end") {
+        meetingPayload = { active: false };
+      }
+    }
+
+    // Upsert keys into Turso
     const now = new Date().toISOString();
-    await tursoExecute([
+    const upserts: Array<{ sql: string; args: Array<{ type: string; value: string }> }> = [
       {
         sql: "INSERT INTO mindfork_status (key, value, updated_at) VALUES ('metrics', ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
         args: [
@@ -202,9 +213,21 @@ export async function POST(request: NextRequest) {
           { type: "text", value: now },
         ],
       },
-    ]);
+    ];
 
-    return NextResponse.json({ ok: true, members, metrics });
+    if (meetingPayload) {
+      upserts.push({
+        sql: "INSERT INTO mindfork_status (key, value, updated_at) VALUES ('meeting', ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+        args: [
+          { type: "text", value: JSON.stringify(meetingPayload) },
+          { type: "text", value: now },
+        ],
+      });
+    }
+
+    await tursoExecute(upserts);
+
+    return NextResponse.json({ ok: true, members, metrics, ...(meetingPayload ? { meeting: meetingPayload } : {}) });
   } catch (err) {
     console.error("POST /api/status error:", err);
     return NextResponse.json(

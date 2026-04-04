@@ -20,6 +20,7 @@ export default function Home() {
   const [memberStatuses, setMemberStatuses] = useState<Record<string, { status: MemberStatus; task: string }>>({});
   const [memberOs, setMemberOs] = useState<Record<string, Array<{text: string; task?: string; at?: string}>>>({});
   const [taskQueue, setTaskQueue] = useState<Array<{id: number; task: string; status: string; assigned_to?: string; received_at?: string; note?: string}>>([]);
+  const [meetingActive, setMeetingActive] = useState(false);
 
   useEffect(() => {
     async function fetchStatus() {
@@ -33,6 +34,7 @@ export default function Home() {
           }
           if (data.memberOs) setMemberOs(data.memberOs);
           if (data.taskQueue) setTaskQueue(data.taskQueue);
+          if (data.meeting) setMeetingActive(!!data.meeting.active);
         }
       } catch { /* ignore */ }
     }
@@ -58,6 +60,7 @@ export default function Home() {
             memberStatuses={memberStatuses}
             memberOs={memberOs}
             taskQueue={taskQueue}
+            meetingActive={meetingActive}
             metrics={metrics ? {
               rateLimitPercent: metrics.rateLimitPercent,
               pendingTasks: metrics.pendingTasks,

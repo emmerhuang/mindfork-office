@@ -28,6 +28,7 @@ interface Props {
   memberStatuses?: Record<string, { status: string; task: string }>;
   memberOs?: Record<string, OsEntry[]>;
   taskQueue?: TaskQueueItem[];
+  meetingActive?: boolean;
   onCharacterClick?: (charId: string) => void;
   className?: string;
   metrics?: {
@@ -55,7 +56,7 @@ const MEMBER_COLORS: Record<string, string> = {
 
 // ── Component ──────────────────────────────────────────────
 
-export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, onCharacterClick, className, metrics }: Props) {
+export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meetingActive, onCharacterClick, className, metrics }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<OfficeEngine | null>(null);
   const clickRef = useRef(onCharacterClick);
@@ -102,6 +103,12 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, onCh
   useEffect(() => {
     if (memberOs && engineRef.current) engineRef.current.updateMemberOs(memberOs);
   }, [memberOs]);
+
+  useEffect(() => {
+    if (engineRef.current) {
+      engineRef.current.setMeeting(!!meetingActive);
+    }
+  }, [meetingActive]);
 
   // Waffles zoom overlay animation
   useEffect(() => {
