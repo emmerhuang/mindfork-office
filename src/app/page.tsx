@@ -30,7 +30,14 @@ export default function Home() {
           const data = await res.json();
           if (data.metrics) setMetrics(data.metrics);
           if (data.members && Object.keys(data.members).length > 0) {
-            setMemberStatuses(data.members);
+            const members: Record<string, { status: MemberStatus; task: string }> = data.members;
+            // When meeting is active, override all member statuses to "meeting"
+            if (data.meeting?.active) {
+              for (const key of Object.keys(members)) {
+                members[key] = { ...members[key], status: "meeting" };
+              }
+            }
+            setMemberStatuses(members);
           }
           if (data.memberOs) setMemberOs(data.memberOs);
           if (data.taskQueue) setTaskQueue(data.taskQueue);
