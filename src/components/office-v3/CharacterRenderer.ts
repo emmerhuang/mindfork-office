@@ -71,7 +71,7 @@ export function drawCharacter(
   }
 
   // --- Walking animation ---
-  if ((opts.state === "walking" || opts.state === "walking_to_meeting") && isPixelLab) {
+  if (opts.state === "walking" && isPixelLab) {
     // All v2 characters (including Waffles): use v2 individual walk PNGs
     const walkKey = getWalkKey(char.id, opts.facing, opts.animFrame);
     const walkImg = v2Imgs[walkKey];

@@ -4,7 +4,7 @@
 import { CHARACTERS, CharacterDef, TILE, ROOMS, CANVAS_W, CANVAS_H, COLS, ROWS, activeWalkableMap } from "./officeData";
 import { CELEBRATE_FRAME_COUNTS, WafflesAnim } from "./spriteAtlas";
 
-export type CharState = "working" | "idle_home" | "walking" | "idle_away" | "celebrating" | "meeting" | "walking_to_meeting";
+export type CharState = "working" | "idle_home" | "walking" | "idle_away" | "celebrating" | "meeting";
 
 export interface CharInstance {
   def: CharacterDef;
@@ -353,7 +353,7 @@ export class CharacterManager {
     }
 
     // Anim frame tick
-    const animSpeed = (c.state === "walking" || c.state === "walking_to_meeting") ? ANIM_TICK_WALK : ANIM_TICK;
+    const animSpeed = c.state === "walking" ? ANIM_TICK_WALK : ANIM_TICK;
     if (++c.animTimer >= animSpeed) { c.animFrame = (c.animFrame + 1) % 4; c.animTimer = 0; }
 
     // dialogue countdown
@@ -387,9 +387,6 @@ export class CharacterManager {
         }
         break;
       case "walking":
-        this.moveAlongPath(c);
-        break;
-      case "walking_to_meeting":
         this.moveAlongPath(c);
         break;
       case "idle_away":
@@ -506,19 +503,6 @@ export class CharacterManager {
   }
 
   private arriveAtDest(c: CharInstance) {
-    if (c.state === "walking_to_meeting") {
-      // Arrived at meeting seat
-      c.state = "meeting";
-      if (c.meetingSeatIndex >= 0 && c.meetingSeatIndex < MEETING_SEATS.length) {
-        c.facing = MEETING_SEATS[c.meetingSeatIndex].facing;
-      } else {
-        c.facing = "north";
-      }
-      c.path = [];
-      c.pathIndex = 0;
-      this.updateStatusIcon(c, this.currentTick);
-      return;
-    }
     if (c.goingHome) {
       // Snap to exact home pixel position (not just tile center)
       c.px = c.homePx;
@@ -569,7 +553,6 @@ export class CharacterManager {
         c.statusIcon = "emote-7"; // CELEBRATING (stars)
         break;
       case "walking":
-      case "walking_to_meeting":
         c.statusIcon = ""; // 走路有動畫，不需額外圖示
         // 清除 idle icon 快取，下次 idle 重新選
         delete this.idleIcons[c.def.id];
@@ -641,28 +624,36 @@ export class CharacterManager {
       if (!d) continue;
 
       if (d.status === "meeting") {
-        // Enter meeting: walk to assigned seat (skip if already there or walking there)
-        if (c.state !== "meeting" && c.state !== "walking_to_meeting") {
+        // Enter meeting: teleport to assigned seat
+        if (c.state !== "meeting") {
           if (c.meetingSeatIndex >= 0 && c.meetingSeatIndex < MEETING_SEATS.length) {
             const seat = MEETING_SEATS[c.meetingSeatIndex];
-            const destPx = seat.tx * TILE + TILE / 2;
-            const destPy = seat.ty * TILE + TILE / 2;
-            c.targetPx = destPx;
-            c.targetPy = destPy;
-            c.goingHome = false;
-            c.state = "walking_to_meeting";
-            c.path = findPath(c.px, c.py, destPx, destPy, this.buildDynamicBlocked(c));
+            c.px = seat.tx * TILE + TILE / 2;
+            c.py = seat.ty * TILE + TILE / 2;
+            c.targetPx = c.px;
+            c.targetPy = c.py;
+            c.state = "meeting";
+            c.facing = seat.facing;
+            c.path = [];
             c.pathIndex = 0;
-            if (c.def.isWaffles) {
-              c.wafflesAnim = pickWafflesWalkAnim();
-            }
+            c.goingHome = false;
+            this.updateStatusIcon(c, this.currentTick);
           }
         }
       } else if (d.status === "working") {
-        if (c.state === "meeting" || c.state === "walking_to_meeting") {
-          // Leave meeting: walk home then become working
+        if (c.state === "meeting") {
+          // Leave meeting: teleport home
           c.meetingSeatIndex = -1;
-          this.startWalkTo(c, c.homePx, c.homePy, true);
+          c.px = c.homePx;
+          c.py = c.homePy;
+          c.targetPx = c.homePx;
+          c.targetPy = c.homePy;
+          c.state = "idle_home";
+          c.facing = "north";
+          c.path = [];
+          c.pathIndex = 0;
+          c.goingHome = false;
+          this.updateStatusIcon(c, this.currentTick);
         } else if (c.state !== "working") {
           c.state = "working";
           c.facing = "north";
@@ -670,15 +661,24 @@ export class CharacterManager {
           c.targetPx = c.homePx; c.targetPy = c.homePy;
         }
       } else if (d.status === "idle") {
-        if (c.state === "meeting" || c.state === "walking_to_meeting") {
-          // Leave meeting: walk home then idle
+        if (c.state === "meeting") {
+          // Leave meeting: teleport home
           c.meetingSeatIndex = -1;
-          this.startWalkTo(c, c.homePx, c.homePy, true);
+          c.px = c.homePx;
+          c.py = c.homePy;
+          c.targetPx = c.homePx;
+          c.targetPy = c.homePy;
+          c.state = "idle_home";
+          c.facing = "north";
+          c.path = [];
+          c.pathIndex = 0;
+          c.goingHome = false;
+          this.updateStatusIcon(c, this.currentTick);
         } else if (c.state === "working") {
           c.state = "idle_home";
         }
       } else if (d.status === "celebrating") {
-        if (c.state === "meeting" || c.state === "walking_to_meeting") {
+        if (c.state === "meeting") {
           c.meetingSeatIndex = -1;
         }
         this.triggerCelebrate(c.def.id);
@@ -686,34 +686,42 @@ export class CharacterManager {
     }
   }
 
-  /** Set meeting mode: all characters walk to meeting room, or return home */
+  /** Set meeting mode: teleport all characters to meeting room seats, or back home */
   setMeeting(active: boolean) {
     if (active) {
       this.assignMeetingSeats();
       for (const c of this.characters) {
-        if (c.state === "meeting" || c.state === "walking_to_meeting") continue;
+        if (c.state === "meeting") continue;
         if (c.state === "celebrating") continue; // don't interrupt celebrations
         if (c.meetingSeatIndex >= 0 && c.meetingSeatIndex < MEETING_SEATS.length) {
           const seat = MEETING_SEATS[c.meetingSeatIndex];
-          const destPx = seat.tx * TILE + TILE / 2;
-          const destPy = seat.ty * TILE + TILE / 2;
-          c.targetPx = destPx;
-          c.targetPy = destPy;
-          c.goingHome = false;
-          c.state = "walking_to_meeting";
-          c.path = findPath(c.px, c.py, destPx, destPy, this.buildDynamicBlocked(c));
+          c.px = seat.tx * TILE + TILE / 2;
+          c.py = seat.ty * TILE + TILE / 2;
+          c.targetPx = c.px;
+          c.targetPy = c.py;
+          c.state = "meeting";
+          c.facing = seat.facing;
+          c.path = [];
           c.pathIndex = 0;
-          if (c.def.isWaffles) {
-            c.wafflesAnim = pickWafflesWalkAnim();
-          }
+          c.goingHome = false;
+          this.updateStatusIcon(c, this.currentTick);
         }
       }
     } else {
-      // End meeting: send everyone home
+      // End meeting: teleport everyone home
       for (const c of this.characters) {
-        if (c.state === "meeting" || c.state === "walking_to_meeting") {
+        if (c.state === "meeting") {
           c.meetingSeatIndex = -1;
-          this.startWalkTo(c, c.homePx, c.homePy, true);
+          c.px = c.homePx;
+          c.py = c.homePy;
+          c.targetPx = c.homePx;
+          c.targetPy = c.homePy;
+          c.state = "idle_home";
+          c.facing = "north";
+          c.path = [];
+          c.pathIndex = 0;
+          c.goingHome = false;
+          this.updateStatusIcon(c, this.currentTick);
         }
       }
     }
