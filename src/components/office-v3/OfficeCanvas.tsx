@@ -106,7 +106,7 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
     return () => { cancelled = true; };
   }, []);
   // Track canvas rendered area (object-fit: contain leaves gaps on wide screens)
-  const [canvasRect, setCanvasRect] = useState<{ left: number; width: number } | null>(null);
+  const [canvasRect, setCanvasRect] = useState<{ left: number; width: number; bottomGap: number } | null>(null);
   const [editorMode, setEditorMode] = useState(false);
   const editorRef = useRef<LayoutEditorHandle>(null);
   const preEditLayoutRef = useRef<OfficeLayout | null>(null);
@@ -126,18 +126,22 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
       if (!parent) return;
       const canvasAspect = CANVAS_W / CANVAS_H;
       const boxAspect = r.width / r.height;
-      let renderW: number, offsetX: number;
+      let renderW: number, renderH: number, offsetX: number;
       if (boxAspect > canvasAspect) {
         // pillarboxed: canvas image narrower than element
+        renderH = r.height;
         renderW = r.height * canvasAspect;
         offsetX = (r.width - renderW) / 2;
       } else {
         renderW = r.width;
+        renderH = r.width / canvasAspect;
         offsetX = 0;
       }
+      // objectPosition: top → image starts at top, gap is at bottom
+      const bottomGap = r.height - renderH;
       // Convert to parent-relative coordinates
       const left = r.left - parent.left + offsetX;
-      setCanvasRect({ left, width: renderW });
+      setCanvasRect({ left, width: renderW, bottomGap });
     };
     compute();
     const ro = new ResizeObserver(compute);
@@ -524,7 +528,8 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
         };
         return (
         <div style={{
-          position: "absolute", bottom: 0,
+          position: "absolute",
+          bottom: canvasRect ? canvasRect.bottomGap : 0,
           left: canvasRect ? canvasRect.left : 0,
           width: canvasRect ? canvasRect.width : "100%",
           height: containerH,
