@@ -28,7 +28,7 @@ export function getAtlasFrame(atlasMap: AtlasMap, key: string, charId: string): 
 
 // ────────────────────────────────────────────────────────────
 // V2 character sprites (180x180 each frame, packed into atlas)
-// Fallback: individual PNGs at /sprites/v2/{char}/{dir}.png
+// All frames packed into /sprites/atlas/{char}.png + {char}.json
 // ────────────────────────────────────────────────────────────
 
 export const PIXELLAB_CHARACTERS = new Set(["boss", "secretary", "sherlock", "lego", "vault", "forge", "lens", "waffles", "grant", "mika", "yuki"]);

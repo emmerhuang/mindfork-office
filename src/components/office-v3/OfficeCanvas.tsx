@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { OfficeEngine } from "./OfficeEngine";
 import type { ConvBarData } from "./OfficeEngine";
 import { CANVAS_W, CANVAS_H } from "./officeData";
-// spriteAtlas helpers no longer needed for zoom overlay (uses v2 individual PNGs)
+import type { AtlasFrame } from "./spriteAtlas";
 const WAFFLES_ZOOM_TEXT: Record<WafflesAnim, string> = {
   bark: "汪汪汪！",
   idle: "（發呆中...）",
@@ -199,7 +199,7 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
     }
   }, [meetingActive]);
 
-  // Waffles zoom overlay animation — v2 excited PNGs
+  // Waffles zoom overlay animation — atlas-based excited frames
   useEffect(() => {
     if (!wafflesZoom) return;
     const zoomCanvas = zoomCanvasRef.current;
@@ -211,22 +211,21 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
     const dir = wafflesZoom.dir;
 
     const SCALE = 4;
-    const FRAME_SIZE = 180; // v2 sprites are 180×180
+    const FRAME_SIZE = 180; // v2 sprites are 180x180
     const DISPLAY_SIZE = FRAME_SIZE * SCALE; // 720px
     zoomCanvas.width = DISPLAY_SIZE;
     zoomCanvas.height = DISPLAY_SIZE;
 
-    // Preload all frames
-    const imgs: HTMLImageElement[] = [];
-    let loaded = 0;
-    let started = false;
-
+    let stopped = false;
     let frame = 0;
     let tickCount = 0;
     const TICKS_PER_FRAME = 6;
     let loops = 0;
     const MAX_LOOPS = 3;
-    let stopped = false;
+
+    // Load atlas image + JSON metadata
+    const atlasImg = new Image();
+    let atlasFrames: Record<string, AtlasFrame> = {};
 
     const draw = () => {
       if (stopped) return;
@@ -245,31 +244,34 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
       }
       ctx.imageSmoothingEnabled = false;
       ctx.clearRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE);
-      const img = imgs[frame];
-      if (img && img.complete) {
-        ctx.drawImage(img, 0, 0, FRAME_SIZE, FRAME_SIZE, 0, 0, DISPLAY_SIZE, DISPLAY_SIZE);
+      const frameKey = `v2-waffles-excited-${dir}-${frame}`;
+      const af = atlasFrames[frameKey];
+      if (atlasImg.complete && af) {
+        ctx.drawImage(atlasImg, af.x, af.y, af.w, af.h, 0, 0, DISPLAY_SIZE, DISPLAY_SIZE);
       }
       zoomRafRef.current = requestAnimationFrame(draw);
     };
 
-    const onLoad = () => {
-      loaded++;
-      if (loaded === TOTAL_FRAMES && !started) {
-        started = true;
+    let ready = 0;
+    const tryStart = () => {
+      ready++;
+      if (ready === 2 && !stopped) {
         zoomRafRef.current = requestAnimationFrame(draw);
       }
     };
 
-    for (let f = 0; f < TOTAL_FRAMES; f++) {
-      const img = new Image();
-      img.src = `/sprites/v2/waffles/excited-${dir}-${f}.png`;
-      img.onload = onLoad;
-      imgs[f] = img;
-      // Already cached
-      if (img.complete && !started) { loaded++; }
-    }
-    if (loaded === TOTAL_FRAMES && !started) {
-      started = true;
+    atlasImg.src = "/sprites/atlas/waffles.png";
+    atlasImg.onload = tryStart;
+    if (atlasImg.complete) { ready++; }
+
+    fetch("/sprites/atlas/waffles.json")
+      .then((r) => r.json())
+      .then((meta: { frames: Record<string, AtlasFrame> }) => {
+        atlasFrames = meta.frames;
+        tryStart();
+      });
+
+    if (ready === 2) {
       zoomRafRef.current = requestAnimationFrame(draw);
     }
 
@@ -558,14 +560,18 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
                 overflow: "hidden",
                 ...(showDebug ? { outline: "1px dashed cyan" } : {}),
               }}>
-                <img
-                  src={`/sprites/v2/${bar.charAId}/south.png`}
-                  alt={bar.charAName}
+                <div
+                  role="img"
+                  aria-label={bar.charAName}
                   style={{
                     width: imgSize,
                     height: imgSize,
                     maxWidth: "none",
                     marginLeft: -portraitCrop,
+                    backgroundImage: `url(/sprites/atlas/${bar.charAId}.png)`,
+                    backgroundSize: `auto ${imgSize}px`,
+                    backgroundPosition: "0px 0px",
+                    backgroundRepeat: "no-repeat",
                     imageRendering: "pixelated",
                     opacity: bar.speaker === "A" ? 1 : 0.4,
                     filter: bar.speaker === "A" ? `drop-shadow(0 0 10px ${bar.charAColor})` : "none",
@@ -602,14 +608,18 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
                 overflow: "hidden",
                 ...(showDebug ? { outline: "1px dashed cyan" } : {}),
               }}>
-                <img
-                  src={`/sprites/v2/${bar.charBId}/south.png`}
-                  alt={bar.charBName}
+                <div
+                  role="img"
+                  aria-label={bar.charBName}
                   style={{
                     width: imgSize,
                     height: imgSize,
                     maxWidth: "none",
                     marginLeft: -portraitCrop,
+                    backgroundImage: `url(/sprites/atlas/${bar.charBId}.png)`,
+                    backgroundSize: `auto ${imgSize}px`,
+                    backgroundPosition: "0px 0px",
+                    backgroundRepeat: "no-repeat",
                     imageRendering: "pixelated",
                     opacity: bar.speaker === "B" ? 1 : 0.4,
                     filter: bar.speaker === "B" ? `drop-shadow(0 0 10px ${bar.charBColor})` : "none",
