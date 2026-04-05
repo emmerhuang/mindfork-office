@@ -392,9 +392,9 @@ export class CharacterManager {
         // 工作中不走動，專心坐在座位上
         break;
       case "idle_home":
-        // 大部分時間留在座位，只有 20% 機率觸發走動
+        // 50% 留座位，50% 走動
         if (--c.walkTimer <= 0) {
-          if (Math.random() < 0.2) {
+          if (Math.random() < 0.5) {
             const d = randomDest(c.def.id);
             if (d) this.startWalkTo(c, d.px, d.py, false);
           }
