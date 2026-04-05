@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MemberStatus } from "@/types";
+import { MemberStatus, MemberProfile } from "@/types";
 
 interface Metrics {
   rateLimitPercent: number;
@@ -29,6 +29,7 @@ interface StatusData {
     note?: string;
   }>;
   meetingActive: boolean;
+  memberProfiles: MemberProfile[];
 }
 
 /** Retry delay: exponential backoff capped at 30s */
@@ -59,6 +60,7 @@ export function useStatusStream(): StatusData {
     }>
   >([]);
   const [meetingActive, setMeetingActive] = useState(false);
+  const [memberProfiles, setMemberProfiles] = useState<MemberProfile[]>([]);
 
   const retryCount = useRef(0);
   const esRef = useRef<EventSource | null>(null);
@@ -81,6 +83,7 @@ export function useStatusStream(): StatusData {
         note?: string;
       }>;
       meeting?: { active: boolean };
+      memberProfiles?: MemberProfile[];
     }) => {
       if (data.metrics) setMetrics(data.metrics);
       if (data.members && Object.keys(data.members).length > 0) {
@@ -95,6 +98,7 @@ export function useStatusStream(): StatusData {
       if (data.memberOs) setMemberOs(data.memberOs);
       if (data.taskQueue) setTaskQueue(data.taskQueue);
       if (data.meeting) setMeetingActive(!!data.meeting.active);
+      if (data.memberProfiles && data.memberProfiles.length > 0) setMemberProfiles(data.memberProfiles);
     },
     []
   );
@@ -181,5 +185,5 @@ export function useStatusStream(): StatusData {
     };
   }, [applyData, startFallbackPolling, stopFallbackPolling]);
 
-  return { metrics, memberStatuses, memberOs, taskQueue, meetingActive };
+  return { metrics, memberStatuses, memberOs, taskQueue, meetingActive, memberProfiles };
 }

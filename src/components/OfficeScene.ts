@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { members } from "@/data/members";
+import { CHARACTERS as OFFICE_CHARS } from "./office-v3/officeData";
 
 // ============================================================
 // Sprite sheet config (Premade_Character_48x48_XX.png)
@@ -405,7 +405,7 @@ export class OfficeScene extends Phaser.Scene {
   // Spawn characters
   // ============================================================
   private spawnCharacters() {
-    const humanMembers = members.filter(m => m.id !== "waffles" && SPRITE_MAP[m.id]);
+    const humanMembers = OFFICE_CHARS.filter(m => m.id !== "waffles" && SPRITE_MAP[m.id]);
 
     for (const m of humanMembers) {
       const home = HOME_POSITIONS[m.id];
@@ -422,7 +422,7 @@ export class OfficeScene extends Phaser.Scene {
       sprite.play(`${m.id}-idle-down`);
 
       // Colored dot above head for identification
-      const dotColor = parseInt(m.primaryColor.replace("#", ""), 16);
+      const dotColor = parseInt(m.color.replace("#", ""), 16);
       const colorDot = this.add.circle(home.x, home.y - 52, 5, dotColor, 1);
       colorDot.setStrokeStyle(1, 0x000000, 0.4);
       colorDot.setDepth(1001);
@@ -431,7 +431,7 @@ export class OfficeScene extends Phaser.Scene {
         fontSize: "12px",
         fontFamily: "Courier New",
         color: "#ffffff",
-        backgroundColor: m.primaryColor + "cc",
+        backgroundColor: m.color + "cc",
         padding: { left: 3, right: 3, top: 1, bottom: 1 },
         stroke: "#000000",
         strokeThickness: 1,
@@ -443,7 +443,7 @@ export class OfficeScene extends Phaser.Scene {
         nameText,
         colorDot,
         emoteSprite: null,
-        status: m.status,
+        status: "idle",
         facing: "down",
         moveTarget: null,
         idleTimer: null,
@@ -824,7 +824,7 @@ export class OfficeScene extends Phaser.Scene {
     const ch = this.chars.find(c => c.id === charId) ?? (this.waffles?.id === charId ? this.waffles : null);
     if (!ch) return;
 
-    const member = members.find(m => m.id === charId);
+    const member = OFFICE_CHARS.find(m => m.id === charId);
     if (!member) return;
 
     // Conversational speech based on current activity

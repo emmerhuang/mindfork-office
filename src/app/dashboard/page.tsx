@@ -36,18 +36,19 @@ interface MemberStatusEntry {
   task: string;
 }
 
-const TEAM = [
-  { id: "boss", name: "老大", role: "總指揮", color: "#8B0000", emoji: "👔" },
-  { id: "secretary", name: "秘書長", role: "協調與調度", color: "#1E3A5F", emoji: "📋" },
-  { id: "sherlock", name: "Sherlock", role: "需求分析 + UX 設計", color: "#C0392B", emoji: "🔍" },
-  { id: "lego", name: "Lego", role: "架構 + 資料庫設計", color: "#E87D20", emoji: "🏗️" },
-  { id: "vault", name: "Vault", role: "資安 + 效能工程師", color: "#2D5A3D", emoji: "🛡️" },
-  { id: "forge", name: "Forge", role: "實作工程師", color: "#6C3483", emoji: "🔨" },
-  { id: "lens", name: "Lens", role: "測試工程師", color: "#2980B9", emoji: "🔬" },
-  { id: "waffles", name: "Waffles", role: "柯基督察", color: "#F39C12", emoji: "🐕" },
-  { id: "grant", name: "Grant", role: "GG審查專員", color: "#2C3E50", emoji: "📊" },
-  { id: "mika", name: "Mika", role: "貓耳女孩", color: "#C0C0C0", emoji: "🐱" },
-  { id: "yuki", name: "Yuki", role: "日本美少女", color: "#FFB7C5", emoji: "🌸" },
+/** Fallback TEAM list used when memberProfiles haven't loaded from Turso yet */
+const FALLBACK_TEAM = [
+  { id: "boss", name: "老大", nameCn: "老大", role: "總指揮", primaryColor: "#8B0000" },
+  { id: "secretary", name: "秘書長", nameCn: "秘書長", role: "協調與調度", primaryColor: "#1E3A5F" },
+  { id: "sherlock", name: "Sherlock", nameCn: "Sherlock", role: "需求分析 + UX 設計", primaryColor: "#C0392B" },
+  { id: "lego", name: "Lego", nameCn: "Lego", role: "架構 + 資料庫設計", primaryColor: "#E87D20" },
+  { id: "vault", name: "Vault", nameCn: "Vault", role: "資安 + 效能工程師", primaryColor: "#2D5A3D" },
+  { id: "forge", name: "Forge", nameCn: "Forge", role: "實作工程師", primaryColor: "#6C3483" },
+  { id: "lens", name: "Lens", nameCn: "Lens", role: "測試工程師", primaryColor: "#2980B9" },
+  { id: "waffles", name: "Waffles", nameCn: "Waffles", role: "柯基督察", primaryColor: "#F39C12" },
+  { id: "grant", name: "Grant", nameCn: "Grant", role: "GG審查專員", primaryColor: "#2C3E50" },
+  { id: "mika", name: "Mika", nameCn: "Mika", role: "貓耳女孩", primaryColor: "#C0C0C0" },
+  { id: "yuki", name: "Yuki", nameCn: "Yuki", role: "日本美少女", primaryColor: "#FFB7C5" },
 ];
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
@@ -107,7 +108,13 @@ export default function Dashboard() {
     metrics,
     memberStatuses: members,
     memberOs,
+    memberProfiles,
   } = useStatusStream();
+
+  // Use Turso profiles if available, otherwise fallback
+  const team = memberProfiles.length > 0
+    ? memberProfiles.map(p => ({ id: p.id, name: p.nameCn || p.name, nameCn: p.nameCn, role: p.role, primaryColor: p.primaryColor }))
+    : FALLBACK_TEAM;
   const [showAssetLib, setShowAssetLib] = useState(false);
   const lastFetch = metrics?.updatedAt
     ? new Date(metrics.updatedAt).toLocaleTimeString("zh-TW", { timeZone: "Asia/Taipei" })
@@ -213,7 +220,7 @@ export default function Dashboard() {
           <div className="flex-1 p-2 sm:p-4 overflow-visible lg:overflow-y-auto">
             <div className="text-gray-500 text-xs sm:text-sm uppercase tracking-wider mb-3">Team Members</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-              {TEAM.map(m => {
+              {team.map(m => {
                 const ms = members[m.id];
                 const st = ms ? STATUS_MAP[ms.status] ?? { label: ms.status, color: "#6b7280" } : null;
                 const os = memberOs[m.id];
@@ -221,7 +228,7 @@ export default function Dashboard() {
                   <div key={m.id} className="bg-gray-700 border border-gray-600 rounded-lg p-2.5 overflow-hidden">
                     {/* Header: Avatar left + Name right */}
                     <div className="flex items-center gap-2 mb-1.5">
-                      <CelebrateAvatar id={m.id} name={m.name} emoji={m.emoji} />
+                      <CelebrateAvatar id={m.id} name={m.name} emoji="" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs sm:text-sm text-gray-400">{m.role}</p>
                         <p className="text-base sm:text-lg font-bold">{m.name}</p>

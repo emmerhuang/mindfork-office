@@ -1,6 +1,6 @@
 "use client";
 
-import { members } from "@/data/members";
+import { MemberProfile } from "@/types";
 import CharacterSprite, { DESK_COORDS } from "./CharacterSprite";
 import Bookshelf from "./Bookshelf";
 import TeamPowerBar from "./TeamPowerBar";
@@ -12,18 +12,18 @@ interface OfficeProps {
   rateLimit: number;
   pendingTasks: number;
   memberStatuses?: Record<string, { status: MemberStatus; task: string }>;
+  memberProfiles?: MemberProfile[];
 }
 
-export default function Office({ rateLimit, pendingTasks, memberStatuses = {} }: OfficeProps) {
-  const applyStatus = (m: (typeof members)[0]) => {
-    const override = memberStatuses[m.id];
-    if (override) {
-      return { ...m, status: override.status, currentTask: override.task || m.currentTask };
-    }
-    return m;
-  };
-
-  const allMembers = members.map(applyStatus);
+export default function Office({ rateLimit, pendingTasks, memberStatuses = {}, memberProfiles = [] }: OfficeProps) {
+  const allMembers = memberProfiles.map(p => {
+    const override = memberStatuses[p.id];
+    return {
+      ...p,
+      status: override?.status ?? ("idle" as MemberStatus),
+      currentTask: override?.task || "",
+    };
+  });
   const humanMembers = allMembers.filter((m) => m.id !== "waffles");
 
   return (
