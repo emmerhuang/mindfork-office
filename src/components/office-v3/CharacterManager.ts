@@ -389,24 +389,15 @@ export class CharacterManager {
     // state machine
     switch (c.state) {
       case "working":
-        // 工作中偶爾站起來走一圈（例如倒水、上廁所）
+        // 工作中不走動，專心坐在座位上
+        break;
+      case "idle_home":
+        // 大部分時間留在座位，只有 20% 機率觸發走動
         if (--c.walkTimer <= 0) {
-          const isBossOrSecretary = c.def.id === "boss" || c.def.id === "secretary";
-          const walkChance = isBossOrSecretary ? 0.15 : 0.2; // Boss/Secretary 15%, 其他 20%
-          if (Math.random() < walkChance) {
+          if (Math.random() < 0.2) {
             const d = randomDest(c.def.id);
             if (d) this.startWalkTo(c, d.px, d.py, false);
           }
-          // Boss/Secretary 間隔長，其他人中等
-          c.walkTimer = isBossOrSecretary
-            ? rand(90 * 30, 180 * 30)   // 90-180 秒
-            : rand(60 * 30, 120 * 30);  // 60-120 秒
-        }
-        break;
-      case "idle_home":
-        if (--c.walkTimer <= 0) {
-          const d = randomDest(c.def.id);
-          if (d) this.startWalkTo(c, d.px, d.py, false);
           c.walkTimer = rand(WALK_MIN, WALK_MAX);
         }
         break;
@@ -765,20 +756,24 @@ export class CharacterManager {
           }
         }
       } else if (d.status === "working") {
-        // Only intervene when returning from meeting/celebrating.
-        // Characters in idle_home/walking/idle_away/working are in their
-        // autonomous behaviour loop — polling must not interrupt them.
+        // Transition to working state from any non-autonomous state,
+        // or from idle states (so the working emote/icon shows correctly).
         if (c.state === "meeting" || c.state === "celebrating") {
           c.meetingSeatIndex = -1;
           c.px = c.homePx;
           c.py = c.homePy;
           c.targetPx = c.homePx;
           c.targetPy = c.homePy;
-          c.state = "idle_home";
+          c.state = "working";
           c.facing = c.def.homeFacing ?? "north";
           c.path = [];
           c.pathIndex = 0;
           c.goingHome = false;
+          this.updateStatusIcon(c, this.currentTick);
+        } else if (c.state === "idle_home") {
+          // Idle at desk -> start working (shows working emote)
+          c.state = "working";
+          c.walkTimer = rand(60 * 30, 120 * 30);
           this.updateStatusIcon(c, this.currentTick);
         }
       } else if (d.status === "idle") {
