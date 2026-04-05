@@ -74,7 +74,7 @@ function CelebrateAvatar({ id, name, emoji }: { id: string; name: string; emoji:
 
   return (
     <img
-      src={`/sprites/v2/${id}/celebrate-south-${frame}.png`}
+      src={`/sprites/atlas/${id}.png`}
       alt={name}
       title={emoji}
       className="shrink-0"
