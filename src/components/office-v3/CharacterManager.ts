@@ -36,6 +36,11 @@ export interface CharInstance {
   // Random wander state
   wanderMode: boolean;      // true = random wander, false = A* to destination
   wanderBudget: number;     // remaining ticks allowed for current wander session
+  // Stuck detection
+  stuckPx: number;          // last recorded position for stuck check
+  stuckPy: number;
+  stuckTicks: number;       // ticks since position last changed significantly
+  stuckRetries: number;     // how many repath attempts since last successful movement
 }
 
 const SPEED = 2;                    // px/tick
@@ -48,6 +53,9 @@ const WALK_MIN = 20 * 30;           // 20s
 const WALK_MAX = 60 * 30;           // 60s
 const STAY_MIN = 5 * 30;            // 5s
 const STAY_MAX = 10 * 30;           // 10s
+const STUCK_THRESHOLD = 30;          // 30 ticks (~1s @30fps) without movement = stuck
+const STUCK_MOVE_EPSILON = 2;        // px — movement less than this counts as "not moved"
+const STUCK_MAX_RETRIES = 3;         // max repath attempts before giving up
 
 const rand = (lo: number, hi: number) => Math.floor(Math.random() * (hi - lo + 1)) + lo;
 
@@ -299,6 +307,10 @@ export class CharacterManager {
         meetingSeatIndex: -1,
         wanderMode: false,
         wanderBudget: 0,
+        stuckPx: h.px,
+        stuckPy: h.py,
+        stuckTicks: 0,
+        stuckRetries: 0,
       };
     });
   }
@@ -419,6 +431,11 @@ export class CharacterManager {
   private startWalkTo(c: CharInstance, destPx: number, destPy: number, goingHome: boolean) {
     c.goingHome = goingHome;
     c.state = "walking";
+    // Reset stuck detection for new walk
+    c.stuckPx = c.px;
+    c.stuckPy = c.py;
+    c.stuckTicks = 0;
+    c.stuckRetries = 0;
     if (!goingHome) {
       // Random wander mode: ignore destination, pick a random direction step
       c.wanderMode = true;
@@ -492,6 +509,64 @@ export class CharacterManager {
   }
 
   private moveAlongPath(c: CharInstance) {
+    // ── Stuck detection ──────────────────────────────────────
+    const movedDx = c.px - c.stuckPx;
+    const movedDy = c.py - c.stuckPy;
+    const movedDist = Math.sqrt(movedDx * movedDx + movedDy * movedDy);
+    if (movedDist > STUCK_MOVE_EPSILON) {
+      // Meaningful movement — reset stuck counter
+      c.stuckPx = c.px;
+      c.stuckPy = c.py;
+      c.stuckTicks = 0;
+      c.stuckRetries = 0;
+    } else {
+      c.stuckTicks++;
+      if (c.stuckTicks >= STUCK_THRESHOLD) {
+        c.stuckTicks = 0;
+        c.stuckRetries++;
+        if (c.stuckRetries > STUCK_MAX_RETRIES) {
+          // Give up: go home or idle in place
+          c.stuckRetries = 0;
+          if (c.goingHome) {
+            // Already trying to go home but stuck — just snap home
+            c.px = c.homePx;
+            c.py = c.homePy;
+            c.state = "idle_home";
+            c.facing = c.def.homeFacing ?? "north";
+            c.path = [];
+            c.pathIndex = 0;
+          } else {
+            // Try going home instead
+            c.wanderMode = false;
+            c.targetPx = c.homePx;
+            c.targetPy = c.homePy;
+            c.goingHome = true;
+            c.path = findPath(c.px, c.py, c.homePx, c.homePy, this.buildDynamicBlocked(c));
+            c.pathIndex = 0;
+            if (c.path.length === 0) {
+              // Can't even path home — snap
+              c.px = c.homePx;
+              c.py = c.homePy;
+              c.state = "idle_home";
+              c.facing = c.def.homeFacing ?? "north";
+            }
+            // else: path found, will walk home on next ticks
+          }
+          this.updateStatusIcon(c, this.currentTick);
+          return;
+        }
+        // Retry: recalculate path with current dynamic obstacles
+        if (c.wanderMode) {
+          this.pickWanderStep(c);
+        } else {
+          c.path = findPath(c.px, c.py, c.targetPx, c.targetPy, this.buildDynamicBlocked(c));
+          c.pathIndex = 0;
+          // If new path is also empty, will be caught next stuck cycle
+        }
+        return;
+      }
+    }
+
     if (c.path.length > 0 && c.pathIndex < c.path.length) {
       // Move toward next tile center
       const nextTile = c.path[c.pathIndex];
@@ -776,8 +851,8 @@ export class CharacterManager {
           c.walkTimer = rand(60 * 30, 120 * 30);
           this.updateStatusIcon(c, this.currentTick);
         }
-      } else if (d.status === "idle") {
-        // Same principle: only act when leaving meeting/celebrating.
+      } else if (d.status === "idle" || d.status === "") {
+        // Transition from any non-idle state back to idle_home.
         if (c.state === "meeting" || c.state === "celebrating") {
           c.meetingSeatIndex = -1;
           c.px = c.homePx;
@@ -789,6 +864,13 @@ export class CharacterManager {
           c.path = [];
           c.pathIndex = 0;
           c.goingHome = false;
+          delete this.idleIcons[c.def.id]; // reset idle icon on transition
+          this.updateStatusIcon(c, this.currentTick);
+        } else if (c.state === "working") {
+          // Working -> idle: stay at desk, update state and icon
+          c.state = "idle_home";
+          c.walkTimer = rand(WALK_MIN, WALK_MAX);
+          delete this.idleIcons[c.def.id]; // reset idle icon on transition
           this.updateStatusIcon(c, this.currentTick);
         }
       } else if (d.status === "celebrating") {
