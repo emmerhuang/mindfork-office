@@ -75,9 +75,13 @@ function CelebrateAvatar({ id, name, emoji }: { id: string; name: string; emoji:
 
   // Atlas layout: static(4) + walk(16) + celebrate(4+) = celebrate starts at index 20
   // Each frame is 180x180, laid out horizontally in a single row
-  // Use background-image to avoid Tailwind Preflight's `img { max-width: 100% }` breaking the crop
+  // Scale atlas so each frame becomes 120x120, container 100x120 crops 10px each side
   const celebrateStartIdx = 20;
-  const offsetX = (celebrateStartIdx + frame) * 180;
+  const scale = 120 / 180;
+  const scaledFrameSize = 180 * scale; // 120
+  const offsetX = (celebrateStartIdx + frame) * scaledFrameSize;
+  // Center horizontally: crop (120-100)/2 = 10px from left
+  const cropX = (scaledFrameSize - 100) / 2;
 
   return (
     <div
@@ -87,9 +91,10 @@ function CelebrateAvatar({ id, name, emoji }: { id: string; name: string; emoji:
       title={emoji}
       style={{
         width: 100,
-        height: 100,
+        height: 120,
         backgroundImage: `url(/sprites/atlas/${id}.png)`,
-        backgroundPosition: `${-(offsetX + 40)}px -40px`,
+        backgroundSize: `auto ${scaledFrameSize}px`,
+        backgroundPosition: `${-(offsetX + cropX)}px 0px`,
         backgroundRepeat: "no-repeat",
         imageRendering: "pixelated" as const,
       }}
