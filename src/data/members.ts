@@ -125,7 +125,7 @@ export const members: MemberData[] = [
     id: "mika",
     name: "Mika",
     nameCn: "Mika",
-    role: "首席撰述",
+    role: "御用筆手",
     description: "老大的文膽，負責粉專「你不知道的扶輪事」的撰稿。讀完 578 篇貼文學會老大的文風，用數據、反問、和有分量的觀察寫出有溫度的文章。",
     currentTask: "研讀老大的文風中",
     status: "idle",
