@@ -3,9 +3,10 @@
 import { CharacterDef } from "./officeData";
 import {
   CHAR_SPRITES, PIXELLAB_CHARACTERS, V2_FRAME_SIZE,
-  getIdleKey, getWalkKey, getCelebrateKey, getWafflesFrame,
+  getIdleKey, getWalkKey, getCelebrateKey, getWafflesFrame, getAtlasFrame,
   WafflesAnim,
 } from "./spriteAtlas";
+import type { AtlasMap } from "./spriteAtlas";
 import { getMapObj } from "./TileRenderer";
 import type { CharState } from "./CharacterManager";
 
@@ -38,7 +39,7 @@ export function drawCharacter(
   char: CharacterDef,
   opts: DrawCharOpts,
   geminiAtlasImg: HTMLImageElement | null,
-  v2Imgs: Record<string, HTMLImageElement>,
+  atlasMap: AtlasMap,
   wafflesExtraImgs: Record<string, HTMLImageElement>,
 ) {
   const isWaff = !!char.isWaffles;
@@ -62,9 +63,9 @@ export function drawCharacter(
   // --- Celebrate animation ---
   if (opts.state === "celebrating" && isPixelLab) {
     const celKey = getCelebrateKey(char.id, opts.celebrateFrame);
-    const celImg = v2Imgs[celKey];
-    if (celImg) {
-      ctx.drawImage(celImg, 0, 0, sz, sz, cx - dw / 2, footY - dh, dw, dh);
+    const hit = getAtlasFrame(atlasMap, celKey, char.id);
+    if (hit) {
+      ctx.drawImage(hit.img, hit.frame.x, hit.frame.y, hit.frame.w, hit.frame.h, cx - dw / 2, footY - dh, dw, dh);
       drawStatusIcon(ctx, cx, footY - dh, opts.statusIcon, opts.tick);
       return;
     }
@@ -72,11 +73,10 @@ export function drawCharacter(
 
   // --- Walking animation ---
   if (opts.state === "walking" && isPixelLab) {
-    // All v2 characters (including Waffles): use v2 individual walk PNGs
     const walkKey = getWalkKey(char.id, opts.facing, opts.animFrame);
-    const walkImg = v2Imgs[walkKey];
-    if (walkImg) {
-      ctx.drawImage(walkImg, 0, 0, sz, sz, cx - dw / 2, footY - dh, dw, dh);
+    const hit = getAtlasFrame(atlasMap, walkKey, char.id);
+    if (hit) {
+      ctx.drawImage(hit.img, hit.frame.x, hit.frame.y, hit.frame.w, hit.frame.h, cx - dw / 2, footY - dh, dw, dh);
       drawStatusIcon(ctx, cx, footY - dh, opts.statusIcon, opts.tick);
       return;
     }
@@ -84,11 +84,10 @@ export function drawCharacter(
 
   // --- Idle / Working: static direction sprite ---
   if (isPixelLab) {
-    // V2 idle: individual PNG per direction (all characters including Waffles)
     const idleKey = getIdleKey(char.id, opts.facing);
-    const img = v2Imgs[idleKey];
-    if (img) {
-      ctx.drawImage(img, 0, 0, sz, sz, cx - dw / 2, footY - dh, dw, dh);
+    const hit = getAtlasFrame(atlasMap, idleKey, char.id);
+    if (hit) {
+      ctx.drawImage(hit.img, hit.frame.x, hit.frame.y, hit.frame.w, hit.frame.h, cx - dw / 2, footY - dh, dw, dh);
       drawStatusIcon(ctx, cx, footY - dh, opts.statusIcon, opts.tick);
       return;
     }

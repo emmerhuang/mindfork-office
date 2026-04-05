@@ -1,8 +1,34 @@
 export interface SpriteFrame { sx: number; sy: number; sw: number; sh: number; }
 
 // ────────────────────────────────────────────────────────────
-// V2 individual PNG sprites (180x180 each)
-// Structure: /sprites/v2/{char}/{dir}.png, walk-{dir}-{frame}.png, celebrate-south-{frame}.png
+// Sprite Atlas: per-character packed PNG + JSON metadata
+// Structure: /sprites/atlas/{char}.png + /sprites/atlas/{char}.json
+// ────────────────────────────────────────────────────────────
+
+/** Atlas frame rectangle (from JSON metadata) */
+export interface AtlasFrame { x: number; y: number; w: number; h: number; }
+
+/** Per-character atlas: one HTMLImageElement + frame lookup */
+export interface CharacterAtlas {
+  image: HTMLImageElement;
+  frames: Record<string, AtlasFrame>;
+}
+
+/** Map of charId -> CharacterAtlas */
+export type AtlasMap = Record<string, CharacterAtlas>;
+
+/** Look up an atlas frame; returns null if not found */
+export function getAtlasFrame(atlasMap: AtlasMap, key: string, charId: string): { img: HTMLImageElement; frame: AtlasFrame } | null {
+  const atlas = atlasMap[charId];
+  if (!atlas) return null;
+  const frame = atlas.frames[key];
+  if (!frame) return null;
+  return { img: atlas.image, frame };
+}
+
+// ────────────────────────────────────────────────────────────
+// V2 character sprites (180x180 each frame, packed into atlas)
+// Fallback: individual PNGs at /sprites/v2/{char}/{dir}.png
 // ────────────────────────────────────────────────────────────
 
 export const PIXELLAB_CHARACTERS = new Set(["boss", "secretary", "sherlock", "lego", "vault", "forge", "lens", "waffles", "grant", "mika", "yuki"]);

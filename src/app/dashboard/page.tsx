@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { useStatusStream } from "@/hooks/useStatusStream";
 
 const AssetLibraryModal = lazy(() => import("@/components/AssetLibraryModal"));
 
@@ -30,7 +31,7 @@ function shortModelName(name?: string): string {
   return match ? match[0] : name.replace(/\s*\(.*?\)\s*/g, "");
 }
 
-interface MemberStatus {
+interface MemberStatusEntry {
   status: string;
   task: string;
 }
@@ -88,38 +89,15 @@ function CelebrateAvatar({ id, name, emoji }: { id: string; name: string; emoji:
 }
 
 export default function Dashboard() {
-  const [metrics, setMetrics] = useState<Metrics | null>(null);
-  const [members, setMembers] = useState<Record<string, MemberStatus>>({});
-  const [memberOs, setMemberOs] = useState<Record<string, Array<{text: string; task?: string; at?: string}>>>({});
-  const [lastFetch, setLastFetch] = useState("");
+  const {
+    metrics,
+    memberStatuses: members,
+    memberOs,
+  } = useStatusStream();
   const [showAssetLib, setShowAssetLib] = useState(false);
-
-  useEffect(() => {
-    async function fetchStatus() {
-      try {
-        const res = await fetch("/api/status");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.metrics) setMetrics(data.metrics);
-          if (data.members) {
-            const m: Record<string, MemberStatus> = data.members;
-            // When meeting is active, override all member statuses to "meeting"
-            if (data.meeting?.active) {
-              for (const key of Object.keys(m)) {
-                m[key] = { ...m[key], status: "meeting" };
-              }
-            }
-            setMembers(m);
-          }
-          if (data.memberOs) setMemberOs(data.memberOs);
-          setLastFetch(new Date().toLocaleTimeString("zh-TW", { timeZone: "Asia/Taipei" }));
-        }
-      } catch { /* ignore */ }
-    }
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 15_000);
-    return () => clearInterval(interval);
-  }, []);
+  const lastFetch = metrics?.updatedAt
+    ? new Date(metrics.updatedAt).toLocaleTimeString("zh-TW", { timeZone: "Asia/Taipei" })
+    : "";
 
 
   const power = metrics && metrics.rateLimitPercent >= 0 ? 100 - metrics.rateLimitPercent : null;
@@ -226,7 +204,7 @@ export default function Dashboard() {
                 const st = ms ? STATUS_MAP[ms.status] ?? { label: ms.status, color: "#6b7280" } : null;
                 const os = memberOs[m.id];
                 return (
-                  <div key={m.id} className="bg-gray-700 border border-gray-600 rounded-lg p-2.5">
+                  <div key={m.id} className="bg-gray-700 border border-gray-600 rounded-lg p-2.5 overflow-hidden">
                     {/* Header: Avatar left + Name right */}
                     <div className="flex items-center gap-2 mb-1.5">
                       <CelebrateAvatar id={m.id} name={m.name} emoji={m.emoji} />
@@ -250,12 +228,12 @@ export default function Dashboard() {
                     )}
                     {/* Inner OS — 列表顯示 */}
                     {os && os.length > 0 && (
-                      <div className="mt-2 flex flex-col gap-1">
+                      <div className="mt-2 flex flex-col gap-1 overflow-hidden">
                         {os.slice(0, 3).map((entry, i) => {
                           const timeStr = entry.at ? entry.at.replace(/^\d{4}-\d{2}-\d{2}\s*/, "") : "";
                           const taskStr = entry.task || "";
                           return (
-                            <div key={i} className="text-xs sm:text-sm leading-snug">
+                            <div key={i} className="text-xs sm:text-sm leading-snug break-words">
                               <span className="text-amber-400/80 italic">&ldquo;{entry.text}&rdquo;</span>
                               {(timeStr || taskStr) && (
                                 <span className="text-gray-500 ml-1">

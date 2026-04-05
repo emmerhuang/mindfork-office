@@ -9,6 +9,7 @@ import { drawCharacter } from "./CharacterRenderer";
 import { DialogueSystem } from "./DialogueSystem";
 import { CharacterManager } from "./CharacterManager";
 import { PIXELLAB_CHARACTERS, WAFFLES_ANIM_FRAMES, CELEBRATE_FRAME_COUNTS, getWafflesFrame, V2_DIRS } from "./spriteAtlas";
+import type { AtlasMap, AtlasFrame } from "./spriteAtlas";
 import type { OsEntry } from "./OfficeCanvas";
 import type { WafflesAnim } from "./spriteAtlas";
 
@@ -46,8 +47,8 @@ export class OfficeEngine {
   private opts: EngineOptions;
   private charImg: HTMLImageElement | null = null;
   private tileImg: HTMLImageElement | null = null;
-  /** Unified image map for all v2 individual PNGs (key: "v2-{char}-{dir}", "v2-{char}-walk-{dir}-{frame}", etc.) */
-  private v2Imgs: Record<string, HTMLImageElement> = {};
+  /** Atlas map: per-character atlas image + frame lookup (replaces individual PNGs) */
+  private atlasMap: AtlasMap = {};
   private wafflesExtraImgs: Record<string, HTMLImageElement> = {};
   private tick = 0;
   private rafId: number | null = null;
@@ -223,43 +224,26 @@ export class OfficeEngine {
       ]);
     } catch { /* fallback to programmatic rendering */ }
 
-    // Load v2 individual PNG sprites for all characters
+    // Load sprite atlases (per-character packed PNGs + JSON metadata)
     const plNames = Array.from(PIXELLAB_CHARACTERS);
-    const dirs = Array.from(V2_DIRS);
-    const v2Loads: Array<{ key: string; src: string }> = [];
-
-    for (const n of plNames) {
-      // Idle: 4 directions
-      for (const d of dirs) {
-        v2Loads.push({ key: `v2-${n}-${d}`, src: `/sprites/v2/${n}/${d}.png` });
-      }
-      // Walk: 4 directions x 4 frames
-      for (const d of dirs) {
-        for (let f = 0; f < 4; f++) {
-          v2Loads.push({ key: `v2-${n}-walk-${d}-${f}`, src: `/sprites/v2/${n}/walk-${d}-${f}.png` });
-        }
-      }
-      // Celebrate: south only, frame count per character
-      const celFrames = CELEBRATE_FRAME_COUNTS[n] ?? 4;
-      for (let f = 0; f < celFrames; f++) {
-        v2Loads.push({ key: `v2-${n}-celebrate-south-${f}`, src: `/sprites/v2/${n}/celebrate-south-${f}.png` });
-      }
-      // Waffles excited click animation: 4 directions x 4 frames
-      if (n === "waffles") {
-        for (const d of dirs) {
-          for (let f = 0; f < 4; f++) {
-            v2Loads.push({ key: `v2-waffles-excited-${d}-${f}`, src: `/sprites/v2/waffles/excited-${d}-${f}.png` });
-          }
-        }
-      }
-    }
-
-    const v2Results = await Promise.allSettled(
-      v2Loads.map((item) => load(item.src))
+    const atlasResults = await Promise.allSettled(
+      plNames.map(async (charId) => {
+        const [img, res] = await Promise.all([
+          load(`/sprites/atlas/${charId}.png`),
+          fetch(`/sprites/atlas/${charId}.json`),
+        ]);
+        if (!res.ok) throw new Error(`Failed to load atlas JSON for ${charId}`);
+        const meta = await res.json() as { frames: Record<string, AtlasFrame> };
+        this.atlasMap[charId] = { image: img, frames: meta.frames };
+      })
     );
-    for (let i = 0; i < v2Loads.length; i++) {
-      const r = v2Results[i];
-      if (r.status === "fulfilled") this.v2Imgs[v2Loads[i].key] = r.value;
+
+    // Log any atlas load failures (will fall through to fallback rendering)
+    for (let i = 0; i < plNames.length; i++) {
+      const r = atlasResults[i];
+      if (r.status === "rejected") {
+        console.warn(`[SpriteAtlas] Failed to load atlas for ${plNames[i]}:`, r.reason);
+      }
     }
 
     // Load Waffles extra animations
@@ -574,8 +558,10 @@ export class OfficeEngine {
       if (c.def.isWaffles && this.wafflesClickAnim) {
         const frame = Math.min(this.wafflesClickFrame, 3);
         const excitedKey = `v2-waffles-excited-${this.wafflesExcitedDir}-${frame}`;
-        const animImg = this.v2Imgs[excitedKey];
-        if (animImg) {
+        const atlasEntry = this.atlasMap["waffles"];
+        const atlasFrame = atlasEntry?.frames[excitedKey];
+        const animImg = atlasEntry?.image;
+        if (animImg && atlasFrame) {
           const dw = 216, dh = 216;
           const footY = c.py + 51;
           // Draw shadow
@@ -583,8 +569,8 @@ export class OfficeEngine {
           ctx.beginPath();
           ctx.ellipse(c.px, footY - 2, dw / 2 - 4, 5, 0, 0, Math.PI * 2);
           ctx.fill();
-          // Draw v2 excited animation frame
-          ctx.drawImage(animImg, 0, 0, 180, 180, c.px - dw / 2, footY - dh, dw, dh);
+          // Draw v2 excited animation frame from atlas
+          ctx.drawImage(animImg, atlasFrame.x, atlasFrame.y, atlasFrame.w, atlasFrame.h, c.px - dw / 2, footY - dh, dw, dh);
           // Draw status icon (don't skip during animation)
           if (c.statusIcon) {
             const floatY = Math.sin((this.tick / 60) * Math.PI * 2) * 6;
@@ -619,7 +605,7 @@ export class OfficeEngine {
           tick: this.tick,
         },
         this.charImg,
-        this.v2Imgs,
+        this.atlasMap,
         this.wafflesExtraImgs,
       );
     }
