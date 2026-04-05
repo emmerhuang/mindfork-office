@@ -62,29 +62,47 @@ const CELEBRATE_COUNTS: Record<string, number> = { mika: 7, yuki: 7 };
 function CelebrateAvatar({ id, name, emoji }: { id: string; name: string; emoji: string }) {
   const [frame, setFrame] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const frameCount = CELEBRATE_COUNTS[id] ?? 4;
 
   useEffect(() => {
     intervalRef.current = setInterval(() => {
-      setFrame(f => (f + 1) % (CELEBRATE_COUNTS[id] ?? 4));
+      setFrame(f => (f + 1) % frameCount);
     }, 200);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, []);
+  }, [frameCount]);
+
+  // Atlas: south frame is at x=0, celebrate frames follow static frames
+  // Each frame is 180x180, laid out horizontally
+  // Static: south(0), east(1), north(2), west(3)
+  // Walk: south 4 frames, east 4, north 4, west 4 = positions 4-19
+  // Celebrate: south frames start at position 20
+  const celebrateStartIdx = 20;
+  const offsetX = (celebrateStartIdx + frame) * 180;
 
   return (
-    <img
-      src={`/sprites/atlas/${id}.png`}
-      alt={name}
-      title={emoji}
+    <div
       className="shrink-0"
+      title={emoji}
       style={{
-        imageRendering: "pixelated",
-        clipPath: "inset(0 40px 0 40px)",
-        marginLeft: -40,
-        marginRight: -40,
+        width: 100,
+        height: 180,
+        overflow: "hidden",
+        imageRendering: "pixelated" as const,
       }}
-    />
+    >
+      <img
+        src={`/sprites/atlas/${id}.png`}
+        alt={name}
+        style={{
+          imageRendering: "pixelated",
+          marginLeft: -(offsetX + 40),
+          width: "auto",
+          height: 180,
+        }}
+      />
+    </div>
   );
 }
 
