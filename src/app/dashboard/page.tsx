@@ -73,36 +73,27 @@ function CelebrateAvatar({ id, name, emoji }: { id: string; name: string; emoji:
     };
   }, [frameCount]);
 
-  // Atlas: south frame is at x=0, celebrate frames follow static frames
-  // Each frame is 180x180, laid out horizontally
-  // Static: south(0), east(1), north(2), west(3)
-  // Walk: south 4 frames, east 4, north 4, west 4 = positions 4-19
-  // Celebrate: south frames start at position 20
+  // Atlas layout: static(4) + walk(16) + celebrate(4+) = celebrate starts at index 20
+  // Each frame is 180x180, laid out horizontally in a single row
+  // Use background-image to avoid Tailwind Preflight's `img { max-width: 100% }` breaking the crop
   const celebrateStartIdx = 20;
   const offsetX = (celebrateStartIdx + frame) * 180;
 
   return (
     <div
       className="shrink-0"
+      role="img"
+      aria-label={name}
       title={emoji}
       style={{
         width: 100,
-        height: 180,
-        overflow: "hidden",
+        height: 100,
+        backgroundImage: `url(/sprites/atlas/${id}.png)`,
+        backgroundPosition: `${-(offsetX + 40)}px -40px`,
+        backgroundRepeat: "no-repeat",
         imageRendering: "pixelated" as const,
       }}
-    >
-      <img
-        src={`/sprites/atlas/${id}.png`}
-        alt={name}
-        style={{
-          imageRendering: "pixelated",
-          marginLeft: -(offsetX + 40),
-          width: "auto",
-          height: 180,
-        }}
-      />
-    </div>
+    />
   );
 }
 
