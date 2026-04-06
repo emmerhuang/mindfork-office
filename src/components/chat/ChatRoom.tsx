@@ -10,6 +10,8 @@ export interface MemberProfile {
   nameCn: string;
   role: string;
   primaryColor: string;
+  description?: string;
+  selfIntro?: string;
 }
 
 const MEMBER_NAMES: Record<string, string> = {

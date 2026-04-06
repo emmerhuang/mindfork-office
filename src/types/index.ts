@@ -15,6 +15,7 @@ export interface MemberProfile {
   traits: string;
   personality: string;
   recentTasks: string[];
+  selfIntro?: string;
 }
 
 /** Dynamic status from Turso members key */

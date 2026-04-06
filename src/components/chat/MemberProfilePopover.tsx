@@ -80,6 +80,13 @@ export function MemberProfilePopover({ memberId, memberProfiles, onClose }: Prop
         {profile.role}
       </p>
 
+      {/* Self Introduction or Description */}
+      <div className="mb-4 px-2">
+        <p className="text-sm text-gray-300 text-center leading-relaxed">
+          {profile.selfIntro || profile.description}
+        </p>
+      </div>
+
       {/* Close hint */}
       <div className="text-center">
         <p className="text-xs text-gray-600">點擊外部關閉</p>
