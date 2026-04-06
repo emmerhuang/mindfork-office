@@ -73,20 +73,6 @@ function rowsToMap(result: TursoResponse): Record<string, string> {
 
 // ── Types ────────────────────────────────────────────────────
 
-interface DialogueLine {
-  speaker: "A" | "B" | string; // "A"/"B" or character id (legacy/new pool format)
-  text: string;
-}
-
-interface PoolEntry {
-  id: string;
-  charA: string;
-  charB: string;
-  lines: DialogueLine[];
-  used?: boolean; // legacy, no longer checked
-  createdAt?: string; // ISO timestamp
-}
-
 interface RequestBody {
   charA: { id: string };
   charB: { id: string };
@@ -124,9 +110,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Read chat_summaries, dialogue_pool (fallback), and metrics from Turso (read-only)
+    // Read chat_summaries and metrics from Turso (read-only)
     const result = await tursoExecute([
-      { sql: "SELECT key, value FROM mindfork_status WHERE key IN ('chat_summaries', 'dialogue_pool', 'metrics')" },
+      { sql: "SELECT key, value FROM mindfork_status WHERE key IN ('chat_summaries', 'metrics')" },
     ]);
     const map = rowsToMap(result);
 
@@ -173,46 +159,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // --- Fallback: legacy dialogue_pool ---
-    const allPool: PoolEntry[] = map.dialogue_pool
-      ? JSON.parse(map.dialogue_pool)
-      : [];
-
-    // Filter: only dialogues created within the last 48 hours
-    const cutoff = Date.now() - 48 * 60 * 60 * 1000;
-    const pool = allPool.filter((d) => {
-      const ts = d.createdAt ? new Date(d.createdAt).getTime() : 0;
-      if (ts < cutoff) return false;
-      if (excludeSet.has(d.id)) return false;
-      return true;
-    });
-
-    // Find matching dialogue (bidirectional match)
-    const found: PoolEntry | undefined = pool.find(
-      (d) =>
-        (d.charA === charA.id && d.charB === charB.id) ||
-        (d.charA === charB.id && d.charB === charA.id)
-    );
-
-    if (found) {
-      const swapped = found.charA !== charA.id && found.charA === charB.id;
-      const lines = found.lines.map((l) => {
-        let speaker: "A" | "B";
-        if (l.speaker === "A" || l.speaker === "B") {
-          speaker = swapped
-            ? l.speaker === "A" ? "B" : "A"
-            : l.speaker as "A" | "B";
-        } else {
-          const isCharA = l.speaker === charA.id || (swapped && l.speaker === charB.id);
-          speaker = isCharA ? "A" : "B";
-        }
-        return { speaker, text: l.text };
-      });
-
-      return NextResponse.json({ id: found.id, dialogue: lines });
-    }
-
-    // No pool entries available — return null so client falls back
+    // No matching chat summary — return null so client falls back
     return NextResponse.json({ id: null, dialogue: null });
   } catch (err) {
     console.error("[dialogue] Turso error:", err);
