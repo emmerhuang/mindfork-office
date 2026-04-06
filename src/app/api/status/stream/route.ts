@@ -31,7 +31,7 @@ async function tursoQuery(): Promise<Record<string, string>> {
         {
           type: "execute",
           stmt: {
-            sql: "SELECT key, value, updated_at FROM mindfork_status WHERE key IN ('metrics', 'members', 'member_os', 'task_queue', 'meeting', 'member_profiles')",
+            sql: "SELECT key, value, updated_at FROM mindfork_status WHERE key IN ('metrics', 'members', 'member_os', 'task_queue', 'meeting', 'member_profiles', 'chat_summaries')",
           },
         },
       ],
@@ -78,6 +78,7 @@ function buildPayload(map: Record<string, string>): string {
   const taskQueue = map.task_queue ? JSON.parse(map.task_queue) : [];
   const meeting = map.meeting ? JSON.parse(map.meeting) : { active: false };
   const memberProfiles = map.member_profiles ? JSON.parse(map.member_profiles) : [];
+  const chatSummaries = map.chat_summaries ? JSON.parse(map.chat_summaries) : [];
 
   // Normalize memberOs (same logic as GET /api/status)
   const memberOs: Record<
@@ -97,7 +98,7 @@ function buildPayload(map: Record<string, string>): string {
     }
   }
 
-  return JSON.stringify({ members, metrics, memberOs, taskQueue, meeting, memberProfiles });
+  return JSON.stringify({ members, metrics, memberOs, taskQueue, meeting, memberProfiles, chatSummaries });
 }
 
 export async function GET(request: NextRequest) {

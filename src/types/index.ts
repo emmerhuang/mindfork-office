@@ -29,3 +29,19 @@ export interface MemberData extends MemberProfile {
   currentTask: string;
   status: MemberStatus;
 }
+
+/** Chat message in a channel summary */
+export interface ChatMessage {
+  sender: string;
+  content: string;
+  created_at: string;
+}
+
+/** Chat channel summary (synced from SQLite via Turso) */
+export interface ChatChannelSummary {
+  channel_id: string;
+  participant_a: string;
+  participant_b: string;
+  last_at: string;
+  messages: ChatMessage[];
+}

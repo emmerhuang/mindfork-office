@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useStatusStream } from "@/hooks/useStatusStream";
 
 const AssetLibraryModal = lazy(() => import("@/components/AssetLibraryModal"));
+const ChatLogPanel = lazy(() => import("@/components/ChatLogPanel"));
 
 function formatTW(iso: string): string {
   const d = new Date(iso);
@@ -109,6 +110,7 @@ export default function Dashboard() {
     memberStatuses: members,
     memberOs,
     memberProfiles,
+    chatSummaries,
   } = useStatusStream();
 
   // Use Turso profiles if available, otherwise fallback
@@ -214,6 +216,11 @@ export default function Dashboard() {
             <p className="text-gray-700 text-sm text-center mt-1">
               DB: {metrics.updatedAt ? formatTW(metrics.updatedAt) : "--"}
             </p>
+
+            {/* Chat Log */}
+            <Suspense fallback={null}>
+              <ChatLogPanel summaries={chatSummaries} />
+            </Suspense>
           </div>
 
           {/* RIGHT: Team */}

@@ -124,9 +124,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Read dialogue_pool and metrics from Turso (read-only)
+    // Read chat_summaries, dialogue_pool (fallback), and metrics from Turso (read-only)
     const result = await tursoExecute([
-      { sql: "SELECT key, value FROM mindfork_status WHERE key IN ('dialogue_pool', 'metrics')" },
+      { sql: "SELECT key, value FROM mindfork_status WHERE key IN ('chat_summaries', 'dialogue_pool', 'metrics')" },
     ]);
     const map = rowsToMap(result);
 
@@ -145,43 +145,64 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Parse dialogue pool
+    // --- New path: try chat_summaries first ---
+    interface ChatSummaryEntry {
+      channel_id: string;
+      participant_a: string;
+      participant_b: string;
+      last_at: string;
+      messages: Array<{ sender: string; content: string; created_at: string }>;
+    }
+    const chatSummaries: ChatSummaryEntry[] = map.chat_summaries
+      ? JSON.parse(map.chat_summaries)
+      : [];
+
+    const excludeSet = new Set(excludeIds);
+    const pairKey = [charA.id, charB.id].sort().join("|");
+    const chatMatch = chatSummaries.find((ch) => ch.channel_id === pairKey);
+
+    if (chatMatch && chatMatch.messages.length > 0) {
+      // Convert chat_summaries format to dialogue format
+      const dialogueId = `chat_${pairKey}_${Date.now()}`;
+      if (!excludeSet.has(dialogueId)) {
+        const lines = chatMatch.messages.slice(-6).map((m) => ({
+          speaker: m.sender === charA.id ? ("A" as const) : ("B" as const),
+          text: m.content,
+        }));
+        return NextResponse.json({ id: dialogueId, dialogue: lines });
+      }
+    }
+
+    // --- Fallback: legacy dialogue_pool ---
     const allPool: PoolEntry[] = map.dialogue_pool
       ? JSON.parse(map.dialogue_pool)
       : [];
 
     // Filter: only dialogues created within the last 48 hours
     const cutoff = Date.now() - 48 * 60 * 60 * 1000;
-    const excludeSet = new Set(excludeIds);
     const pool = allPool.filter((d) => {
-      // Entries without createdAt are treated as epoch 0 (expired)
       const ts = d.createdAt ? new Date(d.createdAt).getTime() : 0;
       if (ts < cutoff) return false;
       if (excludeSet.has(d.id)) return false;
       return true;
     });
 
-    // 1. Find matching dialogue (bidirectional match)
-    let found: PoolEntry | undefined = pool.find(
+    // Find matching dialogue (bidirectional match)
+    const found: PoolEntry | undefined = pool.find(
       (d) =>
         (d.charA === charA.id && d.charB === charB.id) ||
         (d.charA === charB.id && d.charB === charA.id)
     );
 
-    // 3. Return dialogue (read-only, no write-back to Turso)
     if (found) {
-      // Normalize speakers to "A"/"B" format
-      // Pool entries may use character IDs (new format) or "A"/"B" (legacy)
       const swapped = found.charA !== charA.id && found.charA === charB.id;
       const lines = found.lines.map((l) => {
         let speaker: "A" | "B";
         if (l.speaker === "A" || l.speaker === "B") {
-          // Legacy format — flip if swapped
           speaker = swapped
             ? l.speaker === "A" ? "B" : "A"
             : l.speaker as "A" | "B";
         } else {
-          // Character ID format — map to A/B based on charA.id/charB.id
           const isCharA = l.speaker === charA.id || (swapped && l.speaker === charB.id);
           speaker = isCharA ? "A" : "B";
         }
@@ -191,7 +212,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ id: found.id, dialogue: lines });
     }
 
-    // 4. No pool entries available — return null so client falls back
+    // No pool entries available — return null so client falls back
     return NextResponse.json({ id: null, dialogue: null });
   } catch (err) {
     console.error("[dialogue] Turso error:", err);
