@@ -35,6 +35,7 @@ export interface EngineOptions {
   onBossScreenClick?: () => void;
   onWafflesZoom?: (anim: WafflesAnim, dir?: string) => void;
   onConversationBar?: (data: ConvBarData | null) => void;
+  onChatroomClick?: () => void;
 }
 
 export class OfficeEngine {
@@ -152,6 +153,15 @@ export class OfficeEngine {
       if (px >= bs.x * TILE && px <= (bs.x + bs.w) * TILE &&
           py >= bs.y * TILE && py <= (bs.y + bs.h) * TILE) {
         this.opts.onBossScreenClick?.();
+        return;
+      }
+    }
+
+    const chatTrigger = this.layout?.objects.find((o) => o.special === "trigger-chatroom");
+    if (chatTrigger) {
+      if (px >= chatTrigger.x && px <= chatTrigger.x + chatTrigger.width &&
+          py >= chatTrigger.y && py <= chatTrigger.y + chatTrigger.height) {
+        this.opts.onChatroomClick?.();
         return;
       }
     }

@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useStatusStream } from "@/hooks/useStatusStream";
+import { DashboardChatCard } from "@/components/chat/DashboardChatCard";
+import { ChatRoomModal } from "@/components/chat/ChatRoomModal";
 
 const AssetLibraryModal = lazy(() => import("@/components/AssetLibraryModal"));
-const ChatLogPanel = lazy(() => import("@/components/ChatLogPanel"));
 
 function formatTW(iso: string): string {
   const d = new Date(iso);
@@ -118,6 +119,8 @@ export default function Dashboard() {
     ? memberProfiles.map(p => ({ id: p.id, name: p.nameCn || p.name, nameCn: p.nameCn, role: p.role, primaryColor: p.primaryColor }))
     : FALLBACK_TEAM;
   const [showAssetLib, setShowAssetLib] = useState(false);
+  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
+  const selectedChannel = chatSummaries.find((c) => c.channel_id === selectedChannelId);
   const lastFetch = metrics?.updatedAt
     ? new Date(metrics.updatedAt).toLocaleTimeString("zh-TW", { timeZone: "Asia/Taipei" })
     : "";
@@ -217,14 +220,16 @@ export default function Dashboard() {
               DB: {metrics.updatedAt ? formatTW(metrics.updatedAt) : "--"}
             </p>
 
-            {/* Chat Log */}
-            <Suspense fallback={null}>
-              <ChatLogPanel summaries={chatSummaries} />
-            </Suspense>
           </div>
 
           {/* RIGHT: Team */}
           <div className="flex-1 p-2 sm:p-4 overflow-visible lg:overflow-y-auto">
+            {/* Chat Card */}
+            <DashboardChatCard
+              summaries={chatSummaries}
+              onSelectChannel={(id) => setSelectedChannelId(id)}
+            />
+
             <div className="text-gray-500 text-xs sm:text-sm uppercase tracking-wider mb-3">Team Members</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
               {team.map(m => {
@@ -279,6 +284,14 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Chat Room Modal */}
+      {selectedChannel && (
+        <ChatRoomModal
+          channel={selectedChannel}
+          onClose={() => setSelectedChannelId(null)}
+        />
       )}
 
       {/* Asset Library Modal */}

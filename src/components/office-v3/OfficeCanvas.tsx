@@ -13,6 +13,8 @@ const WAFFLES_ZOOM_TEXT: Record<WafflesAnim, string> = {
   walk: "（散步中～）",
 };
 import type { WafflesAnim } from "./spriteAtlas";
+import { ChatOverlay } from "@/components/chat/ChatOverlay";
+import type { ChatChannelSummary } from "@/types";
 import LayoutEditorOverlay from "./LayoutEditorOverlay";
 import type { LayoutEditorHandle } from "./LayoutEditorOverlay";
 import type { OfficeLayout } from "./LayoutManager";
@@ -37,6 +39,7 @@ interface Props {
   memberOs?: Record<string, OsEntry[]>;
   taskQueue?: TaskQueueItem[];
   meetingActive?: boolean;
+  chatSummaries?: ChatChannelSummary[];
   onCharacterClick?: (charId: string) => void;
   className?: string;
   metrics?: {
@@ -70,12 +73,13 @@ function loadConvSettings() {
 
 // ── Component ──────────────────────────────────────────────
 
-export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meetingActive, onCharacterClick, className, metrics }: Props) {
+export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meetingActive, chatSummaries, onCharacterClick, className, metrics }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<OfficeEngine | null>(null);
   const clickRef = useRef(onCharacterClick);
   const [showBulletin, setShowBulletin] = useState(false);
   const [showBossScreen, setShowBossScreen] = useState(false);
+  const [showChatroom, setShowChatroom] = useState(false);
   const [showTaskList, setShowTaskList] = useState(false);
   const [wafflesZoom, setWafflesZoom] = useState<{ dir: string; anim: WafflesAnim } | null>(null);
   const [convBar, setConvBar] = useState<ConvBarData | null>(null);
@@ -157,6 +161,7 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
 
   const handleBulletinClick = useCallback(() => setShowBulletin(true), []);
   const handleBossScreenClick = useCallback(() => setShowBossScreen(true), []);
+  const handleChatroomClick = useCallback(() => setShowChatroom(true), []);
   const handleWafflesZoom = useCallback((anim: WafflesAnim, dir?: string) => setWafflesZoom({ anim, dir: dir ?? "south" }), []);
 
   useEffect(() => {
@@ -167,6 +172,7 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
       onCharacterClick: (id) => clickRef.current?.(id),
       onBulletinClick: handleBulletinClick,
       onBossScreenClick: handleBossScreenClick,
+      onChatroomClick: handleChatroomClick,
       onWafflesZoom: handleWafflesZoom,
       onConversationBar: (data) => setConvBar(data),
     });
@@ -183,7 +189,7 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
     });
 
     return () => { stopped = true; engine.stop(); engineRef.current = null; };
-  }, [handleBulletinClick, handleBossScreenClick, handleWafflesZoom]);
+  }, [handleBulletinClick, handleBossScreenClick, handleChatroomClick, handleWafflesZoom]);
 
   useEffect(() => {
     if (memberStatuses && engineRef.current) engineRef.current.updateStatuses(memberStatuses);
@@ -692,6 +698,14 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
         </div>
         );
       })()}
+
+      {/* Chatroom Overlay */}
+      {showChatroom && (
+        <ChatOverlay
+          summaries={chatSummaries ?? []}
+          onClose={() => setShowChatroom(false)}
+        />
+      )}
 
       {/* Waffles Zoom Overlay */}
       {wafflesZoom && (

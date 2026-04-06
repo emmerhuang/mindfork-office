@@ -24,6 +24,7 @@ const SPECIAL_PALETTE_SPRITES: SpriteInfo[] = [
   { name: "text-block", category: "text", defaultW: 400, defaultH: 60, special: "text" },
   { name: "trigger-dashboard", category: "trigger", defaultW: 192, defaultH: 192, special: "trigger-dashboard" },
   { name: "trigger-bulletin", category: "trigger", defaultW: 384, defaultH: 192, special: "trigger-bulletin" },
+  { name: "trigger-chatroom", category: "trigger", defaultW: 192, defaultH: 192, special: "trigger-chatroom" },
 ];
 
 const CATEGORIES = [
@@ -1010,9 +1011,10 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
 
         if (isTrigger) {
           const isDash = obj.special === "trigger-dashboard";
-          const bgColor = isDash ? "rgba(59,130,246,0.25)" : "rgba(34,197,94,0.25)";
-          const borderColor = isDash ? "rgba(59,130,246,0.6)" : "rgba(34,197,94,0.6)";
-          const label = isDash ? "Dashboard" : "Hall of Fame";
+          const isChat = obj.special === "trigger-chatroom";
+          const bgColor = isDash ? "rgba(59,130,246,0.25)" : isChat ? "rgba(236,72,153,0.25)" : "rgba(34,197,94,0.25)";
+          const borderColor = isDash ? "rgba(59,130,246,0.6)" : isChat ? "rgba(236,72,153,0.6)" : "rgba(34,197,94,0.6)";
+          const label = isDash ? "Dashboard" : isChat ? "Chat" : "Hall of Fame";
           return (
             <div
               key={obj.id}
@@ -1278,13 +1280,15 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
                           className="w-14 h-14 flex items-center justify-center rounded"
                           style={{
                             background: info.special === "trigger-dashboard"
-                              ? "rgba(59,130,246,0.35)" : "rgba(34,197,94,0.35)",
+                              ? "rgba(59,130,246,0.35)" : info.special === "trigger-chatroom"
+                              ? "rgba(236,72,153,0.35)" : "rgba(34,197,94,0.35)",
                             border: `2px dashed ${info.special === "trigger-dashboard"
-                              ? "rgba(59,130,246,0.7)" : "rgba(34,197,94,0.7)"}`,
+                              ? "rgba(59,130,246,0.7)" : info.special === "trigger-chatroom"
+                              ? "rgba(236,72,153,0.7)" : "rgba(34,197,94,0.7)"}`,
                           }}
                         >
                           <span className="text-white text-[7px] font-bold text-center leading-tight">
-                            {info.special === "trigger-dashboard" ? "Dash\nboard" : "Hall of\nFame"}
+                            {info.special === "trigger-dashboard" ? "Dash\nboard" : info.special === "trigger-chatroom" ? "Team\nChat" : "Hall of\nFame"}
                           </span>
                         </div>
                         )

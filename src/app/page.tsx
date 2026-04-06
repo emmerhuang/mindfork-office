@@ -8,7 +8,7 @@ import packageJson from "../../package.json";
 const BUILD_TIME = process.env.NEXT_PUBLIC_BUILD_TIME || "dev";
 
 export default function Home() {
-  const { metrics, memberStatuses, memberOs, taskQueue, meetingActive } =
+  const { metrics, memberStatuses, memberOs, taskQueue, meetingActive, chatSummaries } =
     useStatusStream();
 
   const power = metrics && metrics.rateLimitPercent >= 0 ? 100 - metrics.rateLimitPercent : null;
@@ -29,6 +29,7 @@ export default function Home() {
             memberOs={memberOs}
             taskQueue={taskQueue}
             meetingActive={meetingActive}
+            chatSummaries={chatSummaries}
             metrics={metrics ? {
               rateLimitPercent: metrics.rateLimitPercent,
               pendingTasks: metrics.pendingTasks,
