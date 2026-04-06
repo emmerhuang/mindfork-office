@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { useStatusStream } from "@/hooks/useStatusStream";
 import { DashboardChatCard } from "@/components/chat/DashboardChatCard";
 import { ChatRoomModal } from "@/components/chat/ChatRoomModal";
@@ -121,6 +121,29 @@ export default function Dashboard() {
   const [showAssetLib, setShowAssetLib] = useState(false);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const selectedChannel = chatSummaries.find((c) => c.channel_id === selectedChannelId);
+
+  // --- Bug fix: browser back should close chat modal, not leave page ---
+  const openChatRoom = useCallback((id: string) => {
+    setSelectedChannelId(id);
+    window.history.pushState({ chatRoom: id }, "");
+  }, []);
+
+  const closeChatRoom = useCallback(() => {
+    setSelectedChannelId(null);
+  }, []);
+
+  useEffect(() => {
+    const onPopState = (e: PopStateEvent) => {
+      // If we had a chat room open and user pressed back, close it
+      if (selectedChannelId) {
+        setSelectedChannelId(null);
+        // Don't let browser navigate away — the popstate already consumed the history entry
+      }
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [selectedChannelId]);
+
   const lastFetch = metrics?.updatedAt
     ? new Date(metrics.updatedAt).toLocaleTimeString("zh-TW", { timeZone: "Asia/Taipei" })
     : "";
@@ -156,7 +179,7 @@ export default function Dashboard() {
       ) : (
         <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-auto lg:overflow-hidden">
           {/* LEFT: System */}
-          <div className="w-full lg:w-[300px] shrink-0 border-b lg:border-b-0 lg:border-r border-gray-800 p-2 sm:p-4 flex flex-col gap-3 overflow-visible lg:overflow-y-auto">
+          <div className="w-full lg:w-[300px] shrink-0 border-b lg:border-b-0 lg:border-r border-gray-800 p-2 sm:p-4 flex flex-col gap-3 overflow-y-auto">
             <div className="text-gray-500 text-xs sm:text-sm uppercase tracking-wider">System</div>
 
             {/* Power */}
@@ -223,11 +246,11 @@ export default function Dashboard() {
           </div>
 
           {/* RIGHT: Team */}
-          <div className="flex-1 p-2 sm:p-4 overflow-visible lg:overflow-y-auto">
+          <div className="flex-1 p-2 sm:p-4 overflow-y-auto">
             {/* Chat Card */}
             <DashboardChatCard
               summaries={chatSummaries}
-              onSelectChannel={(id) => setSelectedChannelId(id)}
+              onSelectChannel={openChatRoom}
             />
 
             <div className="text-gray-500 text-xs sm:text-sm uppercase tracking-wider mb-3">Team Members</div>
@@ -291,7 +314,14 @@ export default function Dashboard() {
         <ChatRoomModal
           channel={selectedChannel}
           memberProfiles={memberProfiles}
-          onClose={() => setSelectedChannelId(null)}
+          onClose={() => {
+            // Pop the history entry we pushed when opening
+            if (window.history.state?.chatRoom) {
+              window.history.back();
+            } else {
+              closeChatRoom();
+            }
+          }}
         />
       )}
 
