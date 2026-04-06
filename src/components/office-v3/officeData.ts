@@ -157,7 +157,7 @@ export const CHARACTERS: CharacterDef[] = [
     deskTile: { x: 9, y: 2 },
   },
   {
-    id: "yuki", name: "Yuki", nameCn: "Yuki", role: "日本美少女",
+    id: "yuki", name: "Yuki", nameCn: "Yuki", role: "實習程式設計師",
     color: "#FFB7C5", homeFacing: "south",
     dialogues: [
       "おはよう～今天天氣好好。",

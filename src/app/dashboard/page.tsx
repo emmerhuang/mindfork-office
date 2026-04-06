@@ -49,7 +49,7 @@ const FALLBACK_TEAM = [
   { id: "waffles", name: "Waffles", nameCn: "Waffles", role: "柯基督察", primaryColor: "#F39C12" },
   { id: "grant", name: "Grant", nameCn: "Grant", role: "GG審查專員", primaryColor: "#2C3E50" },
   { id: "mika", name: "Mika", nameCn: "Mika", role: "貓耳女孩", primaryColor: "#C0C0C0" },
-  { id: "yuki", name: "Yuki", nameCn: "Yuki", role: "日本美少女", primaryColor: "#FFB7C5" },
+  { id: "yuki", name: "Yuki", nameCn: "Yuki", role: "實習程式設計師", primaryColor: "#FFB7C5" },
 ];
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
