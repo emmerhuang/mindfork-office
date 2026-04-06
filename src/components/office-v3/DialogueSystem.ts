@@ -52,6 +52,7 @@ export class DialogueSystem {
     tick: number,
     duration?: number,
   ) {
+    if (text.length > 100) text = text.slice(0, 100) + "...";
     const midX = (ax + bx) / 2;
     const midY = Math.min(ay, by);
     const arrowX = speaker === "A" ? ax : bx;
@@ -64,7 +65,7 @@ export class DialogueSystem {
       arrowX,
       startTick: tick,
       duration: duration ?? 75,
-      scale: 1.5,
+      scale: 1.05,
     };
   }
 
@@ -223,7 +224,7 @@ export class DialogueSystem {
     const tailH = 16;
     const tailCurve = 7;
 
-    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
     ctx.beginPath();
     ctx.moveTo(bx + r, by);
     ctx.lineTo(bx + bw - r, by);
