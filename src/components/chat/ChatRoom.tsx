@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "@/types";
 import { MemberProfilePopover } from "./MemberProfilePopover";
 
@@ -51,6 +51,24 @@ function shortTime(iso: string): string {
   return match ? match[1] : "";
 }
 
+// --- localStorage helpers (shared key with ChatChannelList) ---
+const LS_PINNED_KEY = "dashboard_chat_pinned";
+
+function getPinnedChannels(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(LS_PINNED_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function setPinnedChannels(ids: string[]): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(LS_PINNED_KEY, JSON.stringify(ids));
+}
+
 export interface ChatRoomProps {
   channelId: string;
   participantA: string;
@@ -60,9 +78,22 @@ export interface ChatRoomProps {
   onBack: () => void;
 }
 
-export function ChatRoom({ participantA, participantB, messages, memberProfiles = [], onBack }: ChatRoomProps) {
+export function ChatRoom({ channelId, participantA, participantB, messages, memberProfiles = [], onBack }: ChatRoomProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [pinnedRev, setPinnedRev] = useState(0);
+  const isPinned = getPinnedChannels().includes(channelId);
+  // suppress lint for pinnedRev dependency
+  void pinnedRev;
+
+  const togglePin = useCallback(() => {
+    const current = getPinnedChannels();
+    const next = current.includes(channelId)
+      ? current.filter((id) => id !== channelId)
+      : [...current, channelId];
+    setPinnedChannels(next);
+    setPinnedRev((r) => r + 1);
+  }, [channelId]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -113,6 +144,15 @@ export function ChatRoom({ participantA, participantB, messages, memberProfiles 
         <span className="text-gray-200 text-sm font-medium">
           {displayName(participantA)} & {displayName(participantB)}
         </span>
+        <button
+          className={`ml-auto text-sm cursor-pointer select-none transition-opacity ${
+            isPinned ? "text-red-400 opacity-80 hover:opacity-100" : "text-gray-600 opacity-40 hover:opacity-80"
+          }`}
+          title={isPinned ? "取消收藏" : "收藏"}
+          onClick={togglePin}
+        >
+          {isPinned ? "\u2764" : "\u2661"}
+        </button>
       </div>
 
       {/* Messages */}

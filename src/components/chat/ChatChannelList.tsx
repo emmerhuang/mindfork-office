@@ -36,7 +36,6 @@ function senderInitial(id: string): string {
 // --- localStorage helpers (dashboard_chat_ prefix) ---
 
 const LS_PINNED_KEY = "dashboard_chat_pinned";
-const LS_LIKED_KEY = "mindfork-liked-channels";
 
 function getReadTimestamp(channelId: string): number {
   if (typeof window === "undefined") return 0;
@@ -64,21 +63,6 @@ function setPinnedChannels(ids: string[]): void {
   localStorage.setItem(LS_PINNED_KEY, JSON.stringify(ids));
 }
 
-function getLikedChannels(): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(LS_LIKED_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function setLikedChannels(ids: string[]): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(LS_LIKED_KEY, JSON.stringify(ids));
-}
-
 function getUnreadCount(ch: ChatChannelSummary): number {
   if (ch.messages.length === 0) return 0;
   const readTs = getReadTimestamp(ch.channel_id);
@@ -96,15 +80,12 @@ export interface ChatChannelListProps {
 }
 
 export function ChatChannelList({ summaries, onSelectChannel, compact }: ChatChannelListProps) {
-  // Force re-render when pinned state changes
+  // Force re-render when pinned (heart) state changes
   const [pinnedRev, setPinnedRev] = useState(0);
-  // Force re-render when liked state changes
-  const [likedRev, setLikedRev] = useState(0);
   // Force re-render when read state changes
   const [readRev, setReadRev] = useState(0);
 
   const pinned = useMemo(() => getPinnedChannels(), [pinnedRev]);
-  const liked = useMemo(() => getLikedChannels(), [likedRev]);
 
   const togglePin = useCallback((channelId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -114,16 +95,6 @@ export function ChatChannelList({ summaries, onSelectChannel, compact }: ChatCha
       : [...current, channelId];
     setPinnedChannels(next);
     setPinnedRev((r) => r + 1);
-  }, []);
-
-  const toggleLike = useCallback((channelId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const current = getLikedChannels();
-    const next = current.includes(channelId)
-      ? current.filter((id) => id !== channelId)
-      : [...current, channelId];
-    setLikedChannels(next);
-    setLikedRev((r) => r + 1);
   }, []);
 
   const handleSelect = useCallback((channelId: string) => {
@@ -168,7 +139,6 @@ export function ChatChannelList({ summaries, onSelectChannel, compact }: ChatCha
         const unreadCount = getUnreadCount(ch);
         const unread = unreadCount > 0;
         const isPinned = pinned.includes(ch.channel_id);
-        const isLiked = liked.includes(ch.channel_id);
 
         return (
           <button
@@ -217,37 +187,24 @@ export function ChatChannelList({ summaries, onSelectChannel, compact }: ChatCha
               <div className="flex items-center justify-between gap-1">
                 <span className={`text-gray-200 font-medium truncate ${compact ? "text-xs" : "text-sm"}`}>
                   {isPinned && (
-                    <span className="text-cyan-400 mr-1" title="已置頂">&#x1F4CC;</span>
+                    <span className="text-red-400 mr-1" title="已收藏">{"\u2764"}</span>
                   )}
                   {displayName(ch.participant_a)} & {displayName(ch.participant_b)}
                 </span>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {/* Pin toggle — visible on hover */}
+                  {/* Heart toggle — visible on hover */}
                   <span
                     role="button"
                     tabIndex={-1}
                     className={`text-xs cursor-pointer select-none transition-opacity ${
                       isPinned
-                        ? "text-cyan-400 opacity-80 hover:opacity-100"
-                        : "text-gray-600 opacity-0 group-hover:opacity-60 hover:!opacity-100"
-                    }`}
-                    title={isPinned ? "取消置頂" : "置頂"}
-                    onClick={(e) => togglePin(ch.channel_id, e)}
-                  >
-                    &#x1F4CC;
-                  </span>
-                  <span
-                    role="button"
-                    tabIndex={-1}
-                    className={`text-xs cursor-pointer select-none transition-opacity ${
-                      isLiked
                         ? "text-red-400 opacity-80 hover:opacity-100"
                         : "text-gray-600 opacity-0 group-hover:opacity-60 hover:!opacity-100"
                     }`}
-                    title={isLiked ? "取消愛心" : "愛心"}
-                    onClick={(e) => toggleLike(ch.channel_id, e)}
+                    title={isPinned ? "取消收藏" : "收藏"}
+                    onClick={(e) => togglePin(ch.channel_id, e)}
                   >
-                    {isLiked ? "\u2764" : "\u2661"}
+                    {isPinned ? "\u2764" : "\u2661"}
                   </span>
                   {/* Unread badge with count */}
                   {unreadCount > 0 && (
