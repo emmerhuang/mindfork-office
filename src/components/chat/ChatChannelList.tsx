@@ -63,12 +63,14 @@ function setPinnedChannels(ids: string[]): void {
   localStorage.setItem(LS_PINNED_KEY, JSON.stringify(ids));
 }
 
-function isUnread(ch: ChatChannelSummary): boolean {
-  if (ch.messages.length === 0) return false;
-  const lastMsg = ch.messages[ch.messages.length - 1];
-  const lastMsgTime = new Date(lastMsg.created_at).getTime();
+function getUnreadCount(ch: ChatChannelSummary): number {
+  if (ch.messages.length === 0) return 0;
   const readTs = getReadTimestamp(ch.channel_id);
-  return lastMsgTime > readTs;
+  return ch.messages.filter((msg) => new Date(msg.created_at).getTime() > readTs).length;
+}
+
+function isUnread(ch: ChatChannelSummary): boolean {
+  return getUnreadCount(ch) > 0;
 }
 
 export interface ChatChannelListProps {
@@ -134,7 +136,8 @@ export function ChatChannelList({ summaries, onSelectChannel, compact }: ChatCha
         const lastPreview = lastMsg
           ? `${senderInitial(lastMsg.sender)}: ${lastMsg.content.replace(/\n/g, " ")}`
           : "尚無對話";
-        const unread = isUnread(ch);
+        const unreadCount = getUnreadCount(ch);
+        const unread = unreadCount > 0;
         const isPinned = pinned.includes(ch.channel_id);
 
         return (
@@ -203,9 +206,11 @@ export function ChatChannelList({ summaries, onSelectChannel, compact }: ChatCha
                   >
                     &#x1F4CC;
                   </span>
-                  {/* Unread dot */}
-                  {unread && (
-                    <span className="w-2 h-2 rounded-full bg-cyan-400 shrink-0" />
+                  {/* Unread badge with count */}
+                  {unreadCount > 0 && (
+                    <span className="flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-semibold shrink-0">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
                   )}
                   <span className="text-gray-600 text-xs">
                     {shortTime(ch.last_at)}
