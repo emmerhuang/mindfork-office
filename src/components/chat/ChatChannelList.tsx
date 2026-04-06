@@ -148,6 +148,21 @@ export function ChatChannelList({ summaries, onSelectChannel, compact }: ChatCha
             }`}
             onClick={() => handleSelect(ch.channel_id)}
           >
+            {/* Heart toggle — leading position */}
+            <span
+              role="button"
+              tabIndex={-1}
+              className={`text-sm cursor-pointer select-none transition-opacity shrink-0 ${
+                isPinned
+                  ? "text-red-400 opacity-80 hover:opacity-100"
+                  : "text-gray-600 opacity-0 group-hover:opacity-60 hover:!opacity-100"
+              }`}
+              title={isPinned ? "取消收藏" : "收藏"}
+              onClick={(e) => togglePin(ch.channel_id, e)}
+            >
+              {isPinned ? "\u2764\uFE0F" : "\uD83E\uDD0D"}
+            </span>
+
             {/* Avatars */}
             <div className="flex -space-x-2 shrink-0">
               <div
@@ -186,26 +201,9 @@ export function ChatChannelList({ summaries, onSelectChannel, compact }: ChatCha
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-1">
                 <span className={`text-gray-200 font-medium truncate ${compact ? "text-xs" : "text-sm"}`}>
-                  {isPinned && (
-                    <span className="text-red-400 mr-1" title="已收藏">{"\u2764"}</span>
-                  )}
                   {displayName(ch.participant_a)} & {displayName(ch.participant_b)}
                 </span>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {/* Heart toggle — visible on hover */}
-                  <span
-                    role="button"
-                    tabIndex={-1}
-                    className={`text-xs cursor-pointer select-none transition-opacity ${
-                      isPinned
-                        ? "text-red-400 opacity-80 hover:opacity-100"
-                        : "text-gray-600 opacity-0 group-hover:opacity-60 hover:!opacity-100"
-                    }`}
-                    title={isPinned ? "取消收藏" : "收藏"}
-                    onClick={(e) => togglePin(ch.channel_id, e)}
-                  >
-                    {isPinned ? "\u2764" : "\u2661"}
-                  </span>
                   {/* Unread badge with count */}
                   {unreadCount > 0 && (
                     <span className="flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-semibold shrink-0">
