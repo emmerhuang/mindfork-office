@@ -3,14 +3,15 @@
 import { useState } from "react";
 import type { ChatChannelSummary } from "@/types";
 import { ChatChannelList } from "./ChatChannelList";
-import { ChatRoom } from "./ChatRoom";
+import { ChatRoom, type MemberProfile } from "./ChatRoom";
 
 interface Props {
   summaries: ChatChannelSummary[];
+  memberProfiles?: MemberProfile[];
   onClose: () => void;
 }
 
-export function ChatOverlay({ summaries, onClose }: Props) {
+export function ChatOverlay({ summaries, memberProfiles = [], onClose }: Props) {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const selectedChannel = summaries.find((c) => c.channel_id === selectedChannelId);
 
@@ -30,6 +31,7 @@ export function ChatOverlay({ summaries, onClose }: Props) {
             participantA={selectedChannel.participant_a}
             participantB={selectedChannel.participant_b}
             messages={selectedChannel.messages}
+            memberProfiles={memberProfiles}
             onBack={() => setSelectedChannelId(null)}
           />
         ) : (

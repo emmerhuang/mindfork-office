@@ -18,6 +18,7 @@ import type { ChatChannelSummary } from "@/types";
 import LayoutEditorOverlay from "./LayoutEditorOverlay";
 import type { LayoutEditorHandle } from "./LayoutEditorOverlay";
 import type { OfficeLayout } from "./LayoutManager";
+import type { MemberProfile } from "@/components/chat/ChatRoom";
 
 export interface OsEntry {
   text: string;
@@ -40,6 +41,7 @@ interface Props {
   taskQueue?: TaskQueueItem[];
   meetingActive?: boolean;
   chatSummaries?: ChatChannelSummary[];
+  memberProfiles?: MemberProfile[];
   onCharacterClick?: (charId: string) => void;
   className?: string;
   metrics?: {
@@ -73,7 +75,7 @@ function loadConvSettings() {
 
 // ── Component ──────────────────────────────────────────────
 
-export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meetingActive, chatSummaries, onCharacterClick, className, metrics }: Props) {
+export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meetingActive, chatSummaries, memberProfiles, onCharacterClick, className, metrics }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<OfficeEngine | null>(null);
   const clickRef = useRef(onCharacterClick);
@@ -703,6 +705,7 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
       {showChatroom && (
         <ChatOverlay
           summaries={chatSummaries ?? []}
+          memberProfiles={memberProfiles ?? []}
           onClose={() => setShowChatroom(false)}
         />
       )}

@@ -1,7 +1,16 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "@/types";
+import { MemberProfilePopover } from "./MemberProfilePopover";
+
+export interface MemberProfile {
+  id: string;
+  name: string;
+  nameCn: string;
+  role: string;
+  primaryColor: string;
+}
 
 const MEMBER_NAMES: Record<string, string> = {
   boss: "老大",
@@ -45,11 +54,13 @@ export interface ChatRoomProps {
   participantA: string;
   participantB: string;
   messages: ChatMessage[];
+  memberProfiles?: MemberProfile[];
   onBack: () => void;
 }
 
-export function ChatRoom({ participantA, participantB, messages, onBack }: ChatRoomProps) {
+export function ChatRoom({ participantA, participantB, messages, memberProfiles = [], onBack }: ChatRoomProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -68,9 +79,11 @@ export function ChatRoom({ participantA, participantB, messages, onBack }: ChatR
           &lt;
         </button>
         <div className="flex -space-x-1.5">
-          <div
-            className="w-6 h-6 rounded-full overflow-hidden border border-gray-700"
+          <button
+            className="w-6 h-6 rounded-full overflow-hidden border border-gray-700 hover:border-gray-500 transition-colors cursor-pointer"
             style={{ imageRendering: "pixelated" as const }}
+            onClick={() => setSelectedMemberId(participantA)}
+            title={displayName(participantA)}
           >
             <div style={{
               width: 24, height: 24,
@@ -79,10 +92,12 @@ export function ChatRoom({ participantA, participantB, messages, onBack }: ChatR
               backgroundPosition: "0px 0px",
               backgroundRepeat: "no-repeat",
             }} />
-          </div>
-          <div
-            className="w-6 h-6 rounded-full overflow-hidden border border-gray-700"
+          </button>
+          <button
+            className="w-6 h-6 rounded-full overflow-hidden border border-gray-700 hover:border-gray-500 transition-colors cursor-pointer"
             style={{ imageRendering: "pixelated" as const }}
+            onClick={() => setSelectedMemberId(participantB)}
+            title={displayName(participantB)}
           >
             <div style={{
               width: 24, height: 24,
@@ -91,7 +106,7 @@ export function ChatRoom({ participantA, participantB, messages, onBack }: ChatR
               backgroundPosition: "0px 0px",
               backgroundRepeat: "no-repeat",
             }} />
-          </div>
+          </button>
         </div>
         <span className="text-gray-200 text-sm font-medium">
           {displayName(participantA)} & {displayName(participantB)}
@@ -116,9 +131,11 @@ export function ChatRoom({ participantA, participantB, messages, onBack }: ChatR
               >
                 <div className={`flex items-end gap-1.5 max-w-[80%] ${isA ? "flex-row" : "flex-row-reverse"}`}>
                   {/* Avatar */}
-                  <div
-                    className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-gray-700"
+                  <button
+                    className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-gray-700 hover:border-gray-500 transition-colors cursor-pointer"
                     style={{ imageRendering: "pixelated" as const }}
+                    onClick={() => setSelectedMemberId(msg.sender)}
+                    title={displayName(msg.sender)}
                   >
                     <div style={{
                       width: 24, height: 24,
@@ -127,7 +144,7 @@ export function ChatRoom({ participantA, participantB, messages, onBack }: ChatR
                       backgroundPosition: "0px 0px",
                       backgroundRepeat: "no-repeat",
                     }} />
-                  </div>
+                  </button>
 
                   {/* Bubble */}
                   <div
@@ -160,6 +177,15 @@ export function ChatRoom({ participantA, participantB, messages, onBack }: ChatR
       <div className="px-3 py-2 border-t border-gray-700 shrink-0">
         <p className="text-gray-600 text-xs text-center">唯讀模式</p>
       </div>
+
+      {/* Profile Popover */}
+      {selectedMemberId && (
+        <MemberProfilePopover
+          memberId={selectedMemberId}
+          memberProfiles={memberProfiles}
+          onClose={() => setSelectedMemberId(null)}
+        />
+      )}
     </div>
   );
 }

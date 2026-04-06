@@ -1,14 +1,15 @@
 "use client";
 
 import type { ChatChannelSummary } from "@/types";
-import { ChatRoom } from "./ChatRoom";
+import { ChatRoom, type MemberProfile } from "./ChatRoom";
 
 interface Props {
   channel: ChatChannelSummary;
+  memberProfiles?: MemberProfile[];
   onClose: () => void;
 }
 
-export function ChatRoomModal({ channel, onClose }: Props) {
+export function ChatRoomModal({ channel, memberProfiles = [], onClose }: Props) {
   return (
     <div
       className="fixed inset-0 bg-black/60 flex items-center justify-center z-30"
@@ -24,6 +25,7 @@ export function ChatRoomModal({ channel, onClose }: Props) {
           participantA={channel.participant_a}
           participantB={channel.participant_b}
           messages={channel.messages}
+          memberProfiles={memberProfiles}
           onBack={onClose}
         />
       </div>

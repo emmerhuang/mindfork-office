@@ -290,6 +290,7 @@ export default function Dashboard() {
       {selectedChannel && (
         <ChatRoomModal
           channel={selectedChannel}
+          memberProfiles={memberProfiles}
           onClose={() => setSelectedChannelId(null)}
         />
       )}
