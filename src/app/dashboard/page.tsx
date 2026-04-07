@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { useStatusStream } from "@/hooks/useStatusStream";
 import { DashboardChatCard } from "@/components/chat/DashboardChatCard";
-import { ChatRoomModal } from "@/components/chat/ChatRoomModal";
+import { ChatFullscreen } from "@/components/chat/ChatFullscreen";
 
 const AssetLibraryModal = lazy(() => import("@/components/AssetLibraryModal"));
 
@@ -119,30 +119,18 @@ export default function Dashboard() {
     ? memberProfiles.map(p => ({ id: p.id, name: p.nameCn || p.name, nameCn: p.nameCn, role: p.role, primaryColor: p.primaryColor }))
     : FALLBACK_TEAM;
   const [showAssetLib, setShowAssetLib] = useState(false);
-  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
-  const selectedChannel = chatSummaries.find((c) => c.channel_id === selectedChannelId);
+  const [showChatFullscreen, setShowChatFullscreen] = useState(false);
+  const [chatInitialChannelId, setChatInitialChannelId] = useState<string | null>(null);
 
-  // --- Bug fix: browser back should close chat modal, not leave page ---
-  const openChatRoom = useCallback((id: string) => {
-    setSelectedChannelId(id);
-    window.history.pushState({ chatRoom: id }, "");
+  const openChatFullscreen = useCallback((channelId?: string) => {
+    setChatInitialChannelId(channelId ?? null);
+    setShowChatFullscreen(true);
   }, []);
 
-  const closeChatRoom = useCallback(() => {
-    setSelectedChannelId(null);
+  const closeChatFullscreen = useCallback(() => {
+    setShowChatFullscreen(false);
+    setChatInitialChannelId(null);
   }, []);
-
-  useEffect(() => {
-    const onPopState = (e: PopStateEvent) => {
-      // If we had a chat room open and user pressed back, close it
-      if (selectedChannelId) {
-        setSelectedChannelId(null);
-        // Don't let browser navigate away — the popstate already consumed the history entry
-      }
-    };
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
-  }, [selectedChannelId]);
 
   const lastFetch = metrics?.updatedAt
     ? new Date(metrics.updatedAt).toLocaleTimeString("zh-TW", { timeZone: "Asia/Taipei" })
@@ -250,7 +238,8 @@ export default function Dashboard() {
             {/* Chat Card */}
             <DashboardChatCard
               summaries={chatSummaries}
-              onSelectChannel={openChatRoom}
+              onSelectChannel={(id) => openChatFullscreen(id)}
+              onExpandFullscreen={() => openChatFullscreen()}
             />
 
             <div className="text-gray-500 text-xs sm:text-sm uppercase tracking-wider mb-3">Team Members</div>
@@ -309,19 +298,13 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Chat Room Modal */}
-      {selectedChannel && (
-        <ChatRoomModal
-          channel={selectedChannel}
+      {/* Chat Fullscreen */}
+      {showChatFullscreen && (
+        <ChatFullscreen
+          summaries={chatSummaries}
           memberProfiles={memberProfiles}
-          onClose={() => {
-            // Pop the history entry we pushed when opening
-            if (window.history.state?.chatRoom) {
-              window.history.back();
-            } else {
-              closeChatRoom();
-            }
-          }}
+          initialChannelId={chatInitialChannelId}
+          onClose={closeChatFullscreen}
         />
       )}
 

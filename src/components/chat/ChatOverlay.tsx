@@ -9,9 +9,10 @@ interface Props {
   summaries: ChatChannelSummary[];
   memberProfiles?: MemberProfile[];
   onClose: () => void;
+  onExpandFullscreen?: () => void;
 }
 
-export function ChatOverlay({ summaries, memberProfiles = [], onClose }: Props) {
+export function ChatOverlay({ summaries, memberProfiles = [], onClose, onExpandFullscreen }: Props) {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const selectedChannel = summaries.find((c) => c.channel_id === selectedChannelId);
 
@@ -77,10 +78,19 @@ export function ChatOverlay({ summaries, memberProfiles = [], onClose }: Props) 
           />
         ) : (
           <>
-            <div className="px-4 pt-4 pb-2 border-b border-gray-700">
+            <div className="px-4 pt-4 pb-2 border-b border-gray-700 flex items-center justify-between">
               <h2 className="text-sm font-bold text-cyan-400 font-mono tracking-wider">
                 TEAM CHAT
               </h2>
+              {onExpandFullscreen && (
+                <button
+                  className="text-gray-500 hover:text-cyan-400 text-sm font-mono"
+                  onClick={onExpandFullscreen}
+                  title="全螢幕"
+                >
+                  [+]
+                </button>
+              )}
             </div>
             <div className="flex-1 overflow-y-auto px-2 py-2">
               <ChatChannelList

@@ -14,6 +14,7 @@ const WAFFLES_ZOOM_TEXT: Record<WafflesAnim, string> = {
 };
 import type { WafflesAnim } from "./spriteAtlas";
 import { ChatOverlay } from "@/components/chat/ChatOverlay";
+import { ChatFullscreen } from "@/components/chat/ChatFullscreen";
 import type { ChatChannelSummary } from "@/types";
 import LayoutEditorOverlay from "./LayoutEditorOverlay";
 import type { LayoutEditorHandle } from "./LayoutEditorOverlay";
@@ -82,6 +83,7 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
   const [showBulletin, setShowBulletin] = useState(false);
   const [showBossScreen, setShowBossScreen] = useState(false);
   const [showChatroom, setShowChatroom] = useState(false);
+  const [showChatFullscreen, setShowChatFullscreen] = useState(false);
   const [showTaskList, setShowTaskList] = useState(false);
   const [wafflesZoom, setWafflesZoom] = useState<{ dir: string; anim: WafflesAnim } | null>(null);
   const [convBar, setConvBar] = useState<ConvBarData | null>(null);
@@ -702,11 +704,24 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
       })()}
 
       {/* Chatroom Overlay */}
-      {showChatroom && (
+      {showChatroom && !showChatFullscreen && (
         <ChatOverlay
           summaries={chatSummaries ?? []}
           memberProfiles={memberProfiles ?? []}
           onClose={() => setShowChatroom(false)}
+          onExpandFullscreen={() => {
+            setShowChatroom(false);
+            setShowChatFullscreen(true);
+          }}
+        />
+      )}
+
+      {/* Chat Fullscreen */}
+      {showChatFullscreen && (
+        <ChatFullscreen
+          summaries={chatSummaries ?? []}
+          memberProfiles={memberProfiles ?? []}
+          onClose={() => setShowChatFullscreen(false)}
         />
       )}
 
