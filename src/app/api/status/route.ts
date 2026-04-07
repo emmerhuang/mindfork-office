@@ -57,6 +57,72 @@ function rowsToMap(result: TursoResponse): Record<string, string> {
   return map;
 }
 
+interface ChatRow {
+  id: number;
+  channel_id: string;
+  sender: string;
+  recipient: string;
+  content: string;
+  created_at: string;
+}
+
+function buildChatSummaries(result: TursoResponse): Array<{
+  channel_id: string;
+  participant_a: string;
+  participant_b: string;
+  last_at: string;
+  messages: Array<{ sender: string; content: string; created_at: string }>;
+}> {
+  // result.results[1] contains chat_messages rows
+  const chatResult = result.results[1];
+  if (!chatResult || chatResult.type !== "ok" || !chatResult.response?.result?.rows) {
+    return [];
+  }
+
+  const rows: ChatRow[] = chatResult.response.result.rows.map((row) => ({
+    id: parseInt(row[0]?.value || "0", 10),
+    channel_id: row[1]?.value || "",
+    sender: row[2]?.value || "",
+    recipient: row[3]?.value || "",
+    content: row[4]?.value || "",
+    created_at: row[5]?.value || "",
+  }));
+
+  // Group by channel_id
+  const channelMap = new Map<string, ChatRow[]>();
+  for (const row of rows) {
+    if (!channelMap.has(row.channel_id)) {
+      channelMap.set(row.channel_id, []);
+    }
+    channelMap.get(row.channel_id)!.push(row);
+  }
+
+  const summaries = [];
+  for (const [channelId, channelRows] of channelMap) {
+    // Sort by id ASC (rows came DESC from query)
+    channelRows.sort((a, b) => a.id - b.id);
+    const parts = channelId.split("|");
+    const participantA = parts[0] || "";
+    const participantB = parts[1] || "";
+    const lastRow = channelRows[channelRows.length - 1];
+    summaries.push({
+      channel_id: channelId,
+      participant_a: participantA,
+      participant_b: participantB,
+      last_at: lastRow.created_at,
+      messages: channelRows.map((r) => ({
+        sender: r.sender,
+        content: r.content,
+        created_at: r.created_at,
+      })),
+    });
+  }
+
+  // Sort by last_at DESC
+  summaries.sort((a, b) => b.last_at.localeCompare(a.last_at));
+  return summaries;
+}
+
 const FALLBACK_METRICS = {
   rateLimitPercent: -1,
   pendingTasks: -1,
@@ -70,8 +136,10 @@ const FALLBACK_METRICS = {
 // GET /api/status - read metrics and members from Turso
 export async function GET() {
   try {
+    // Query mindfork_status keys + chat_messages table in parallel
     const result = await tursoExecute([
-      { sql: "SELECT key, value FROM mindfork_status WHERE key IN ('metrics', 'members', 'member_os', 'task_queue', 'meeting', 'member_profiles', 'chat_summaries')" },
+      { sql: "SELECT key, value FROM mindfork_status WHERE key IN ('metrics', 'members', 'member_os', 'task_queue', 'meeting', 'member_profiles')" },
+      { sql: "SELECT id, channel_id, sender, recipient, content, created_at FROM chat_messages ORDER BY id DESC LIMIT 500" },
     ]);
 
     const map = rowsToMap(result);
@@ -99,7 +167,9 @@ export async function GET() {
     }
 
     const memberProfiles = map.member_profiles ? JSON.parse(map.member_profiles) : [];
-    const chatSummaries = map.chat_summaries ? JSON.parse(map.chat_summaries) : [];
+
+    // Build chatSummaries from chat_messages rows (result[1])
+    const chatSummaries = buildChatSummaries(result);
 
     return NextResponse.json({ members, metrics, memberOs, taskQueue, meeting, memberProfiles, chatSummaries });
   } catch (err) {

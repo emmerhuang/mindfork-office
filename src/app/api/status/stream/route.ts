@@ -19,7 +19,12 @@ interface TursoResponse {
   }>;
 }
 
-async function tursoQuery(): Promise<Record<string, string>> {
+interface TursoQueryResult {
+  map: Record<string, string>;
+  rawData: TursoResponse;
+}
+
+async function tursoQuery(): Promise<TursoQueryResult> {
   const res = await fetch(`${TURSO_URL}/v2/pipeline`, {
     method: "POST",
     headers: {
@@ -31,7 +36,19 @@ async function tursoQuery(): Promise<Record<string, string>> {
         {
           type: "execute",
           stmt: {
-            sql: "SELECT key, value, updated_at FROM mindfork_status WHERE key IN ('metrics', 'members', 'member_os', 'task_queue', 'meeting', 'member_profiles', 'chat_summaries')",
+            sql: "SELECT key, value, updated_at FROM mindfork_status WHERE key IN ('metrics', 'members', 'member_os', 'task_queue', 'meeting', 'member_profiles')",
+          },
+        },
+        {
+          type: "execute",
+          stmt: {
+            sql: "SELECT id, channel_id, sender, recipient, content, created_at FROM chat_messages ORDER BY id DESC LIMIT 500",
+          },
+        },
+        {
+          type: "execute",
+          stmt: {
+            sql: "SELECT MAX(id) FROM chat_messages",
           },
         },
       ],
@@ -62,23 +79,92 @@ async function tursoQuery(): Promise<Record<string, string>> {
   }
 
   // Build a fingerprint from updated_at values to detect changes
+  // Also include chat_messages max id (result[2]) for change detection
+  let chatMaxId = "0";
+  const chatMaxResult = data.results[2];
+  if (chatMaxResult?.type === "ok" && chatMaxResult.response?.result?.rows?.[0]) {
+    chatMaxId = chatMaxResult.response.result.rows[0][0]?.value || "0";
+  }
+
   const fingerprint = Object.keys(updatedAtMap)
     .sort()
     .map((k) => `${k}:${updatedAtMap[k]}`)
-    .join("|");
+    .join("|") + `|chat_max:${chatMaxId}`;
   map.__fingerprint = fingerprint;
 
-  return map;
+  return { map, rawData: data };
 }
 
-function buildPayload(map: Record<string, string>): string {
+interface ChatRow {
+  id: number;
+  channel_id: string;
+  sender: string;
+  recipient: string;
+  content: string;
+  created_at: string;
+}
+
+function buildChatSummaries(data: TursoResponse): Array<{
+  channel_id: string;
+  participant_a: string;
+  participant_b: string;
+  last_at: string;
+  messages: Array<{ sender: string; content: string; created_at: string }>;
+}> {
+  const chatResult = data.results[1];
+  if (!chatResult || chatResult.type !== "ok" || !chatResult.response?.result?.rows) {
+    return [];
+  }
+
+  const rows: ChatRow[] = chatResult.response.result.rows.map((row) => ({
+    id: parseInt(row[0]?.value || "0", 10),
+    channel_id: row[1]?.value || "",
+    sender: row[2]?.value || "",
+    recipient: row[3]?.value || "",
+    content: row[4]?.value || "",
+    created_at: row[5]?.value || "",
+  }));
+
+  const channelMap = new Map<string, ChatRow[]>();
+  for (const row of rows) {
+    if (!channelMap.has(row.channel_id)) {
+      channelMap.set(row.channel_id, []);
+    }
+    channelMap.get(row.channel_id)!.push(row);
+  }
+
+  const summaries = [];
+  for (const [channelId, channelRows] of channelMap) {
+    channelRows.sort((a, b) => a.id - b.id);
+    const parts = channelId.split("|");
+    const participantA = parts[0] || "";
+    const participantB = parts[1] || "";
+    const lastRow = channelRows[channelRows.length - 1];
+    summaries.push({
+      channel_id: channelId,
+      participant_a: participantA,
+      participant_b: participantB,
+      last_at: lastRow.created_at,
+      messages: channelRows.map((r) => ({
+        sender: r.sender,
+        content: r.content,
+        created_at: r.created_at,
+      })),
+    });
+  }
+
+  summaries.sort((a, b) => b.last_at.localeCompare(a.last_at));
+  return summaries;
+}
+
+function buildPayload(map: Record<string, string>, rawData: TursoResponse): string {
   const metrics = map.metrics ? JSON.parse(map.metrics) : null;
   const members = map.members ? JSON.parse(map.members) : {};
   const rawOs = map.member_os ? JSON.parse(map.member_os) : {};
   const taskQueue = map.task_queue ? JSON.parse(map.task_queue) : [];
   const meeting = map.meeting ? JSON.parse(map.meeting) : { active: false };
   const memberProfiles = map.member_profiles ? JSON.parse(map.member_profiles) : [];
-  const chatSummaries = map.chat_summaries ? JSON.parse(map.chat_summaries) : [];
+  const chatSummaries = buildChatSummaries(rawData);
 
   // Normalize memberOs (same logic as GET /api/status)
   const memberOs: Record<
@@ -116,9 +202,9 @@ export async function GET(request: NextRequest) {
 
       // Send initial data immediately
       try {
-        const map = await tursoQuery();
+        const { map, rawData } = await tursoQuery();
         lastFingerprint = map.__fingerprint || "";
-        const payload = buildPayload(map);
+        const payload = buildPayload(map, rawData);
         controller.enqueue(
           encoder.encode(`event: status\ndata: ${payload}\n\n`)
         );
@@ -137,12 +223,12 @@ export async function GET(request: NextRequest) {
           if (!alive) break;
 
           try {
-            const map = await tursoQuery();
+            const { map, rawData } = await tursoQuery();
             const fingerprint = map.__fingerprint || "";
 
             if (fingerprint !== lastFingerprint) {
               lastFingerprint = fingerprint;
-              const payload = buildPayload(map);
+              const payload = buildPayload(map, rawData);
               controller.enqueue(
                 encoder.encode(`event: status\ndata: ${payload}\n\n`)
               );
