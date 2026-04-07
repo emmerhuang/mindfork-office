@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { ChatChannelSummary } from "@/types";
 import { ChatChannelList } from "./ChatChannelList";
 import { ChatRoom, type MemberProfile } from "./ChatRoom";
@@ -57,6 +57,22 @@ export function ChatOverlay({ summaries, memberProfiles = [], onClose, onExpandF
     }
   }, [onClose]);
 
+  // Swipe-up on title bar to expand fullscreen
+  const touchStartY = useRef<number | null>(null);
+
+  const handleTitleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTitleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (touchStartY.current === null) return;
+    const deltaY = touchStartY.current - e.changedTouches[0].clientY;
+    touchStartY.current = null;
+    if (deltaY > 50 && onExpandFullscreen) {
+      onExpandFullscreen();
+    }
+  }, [onExpandFullscreen]);
+
   return (
     <div
       className="absolute inset-0 bg-black/60 flex items-center justify-center z-10"
@@ -78,7 +94,11 @@ export function ChatOverlay({ summaries, memberProfiles = [], onClose, onExpandF
           />
         ) : (
           <>
-            <div className="px-4 pt-4 pb-2 border-b border-gray-700 flex items-center justify-between">
+            <div
+              className="px-4 pt-4 pb-2 border-b border-gray-700 flex items-center justify-between"
+              onTouchStart={handleTitleTouchStart}
+              onTouchEnd={handleTitleTouchEnd}
+            >
               <h2 className="text-sm font-bold text-cyan-400 font-mono tracking-wider">
                 TEAM CHAT
               </h2>
