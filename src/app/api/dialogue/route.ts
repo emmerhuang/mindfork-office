@@ -151,7 +151,7 @@ export async function POST(req: NextRequest) {
       // Convert chat_summaries format to dialogue format
       const dialogueId = `chat_${pairKey}_${Date.now()}`;
       if (!excludeSet.has(dialogueId)) {
-        const lines = chatMatch.messages.slice(-6).map((m) => ({
+        const lines = chatMatch.messages.slice(-4).map((m) => ({
           speaker: m.sender === charA.id ? ("A" as const) : ("B" as const),
           text: m.content,
         }));
