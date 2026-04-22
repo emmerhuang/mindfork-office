@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { ChatChannelSummary } from "@/types";
-import { ChatChannelList } from "./ChatChannelList";
+import { ChatChannelList, getFavOnly, setFavOnly } from "./ChatChannelList";
 import { ChatRoom, type MemberProfile } from "./ChatRoom";
 
 export interface ChatFullscreenProps {
@@ -27,6 +27,19 @@ export function ChatFullscreen({
   const [mobileView, setMobileView] = useState<"list" | "room">(
     initialChannelId ? "room" : "list"
   );
+  const [favOnly, setFavOnlyState] = useState(false);
+
+  useEffect(() => {
+    setFavOnlyState(getFavOnly());
+  }, []);
+
+  const toggleFavOnly = useCallback(() => {
+    setFavOnlyState((prev) => {
+      const next = !prev;
+      setFavOnly(next);
+      return next;
+    });
+  }, []);
 
   // Refs to track latest values for popstate handler (avoids stale closures)
   const selectedChannelIdRef = useRef(selectedChannelId);
@@ -102,7 +115,17 @@ export function ChatFullscreen({
           TEAM CHAT
         </h2>
         <button
-          className="ml-auto text-gray-400 hover:text-white text-lg leading-none px-2 py-1"
+          className={`ml-auto text-xs select-none transition-colors ${
+            favOnly ? "text-red-400" : "text-gray-500 hover:text-red-400"
+          }`}
+          onClick={toggleFavOnly}
+          title={favOnly ? "顯示全部" : "只看愛心"}
+          aria-pressed={favOnly}
+        >
+          {favOnly ? "\u2764\uFE0F 只看愛心" : "\uD83E\uDD0D 只看愛心"}
+        </button>
+        <button
+          className="ml-2 text-gray-400 hover:text-white text-lg leading-none px-2 py-1"
           onClick={() => {
             if (window.history.state?.chatFullscreen) {
               window.history.back();
@@ -130,6 +153,7 @@ export function ChatFullscreen({
             <ChatChannelList
               summaries={summaries}
               onSelectChannel={handleSelectChannel}
+              favOnly={favOnly}
             />
           </div>
         </div>

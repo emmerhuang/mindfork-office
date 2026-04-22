@@ -36,6 +36,19 @@ function senderInitial(id: string): string {
 // --- localStorage helpers (dashboard_chat_ prefix) ---
 
 const LS_PINNED_KEY = "dashboard_chat_pinned";
+const LS_FAV_ONLY_KEY = "dashboard_chat_fav_only";
+
+/** Read the "only show favorites" toggle from localStorage. SSR-safe. */
+export function getFavOnly(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(LS_FAV_ONLY_KEY) === "1";
+}
+
+/** Persist the "only show favorites" toggle to localStorage. */
+export function setFavOnly(on: boolean): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(LS_FAV_ONLY_KEY, on ? "1" : "0");
+}
 
 function getReadTimestamp(channelId: string): number {
   if (typeof window === "undefined") return 0;
@@ -77,9 +90,11 @@ export interface ChatChannelListProps {
   summaries: ChatChannelSummary[];
   onSelectChannel: (channelId: string) => void;
   compact?: boolean;
+  /** When true, only show channels the user has pinned (hearted). */
+  favOnly?: boolean;
 }
 
-export function ChatChannelList({ summaries, onSelectChannel, compact }: ChatChannelListProps) {
+export function ChatChannelList({ summaries, onSelectChannel, compact, favOnly }: ChatChannelListProps) {
   // Force re-render when pinned (heart) state changes
   const [pinnedRev, setPinnedRev] = useState(0);
   // Force re-render when read state changes
@@ -104,11 +119,15 @@ export function ChatChannelList({ summaries, onSelectChannel, compact }: ChatCha
   }, [onSelectChannel]);
 
   // Sort: pinned first, then unread, then read. Within each group, newest first.
+  // If favOnly is set, filter to only pinned channels.
   const sorted = useMemo(() => {
     // Suppress lint: readRev is used to trigger recalculation
     void readRev;
     const pinnedSet = new Set(pinned);
-    return [...summaries].sort((a, b) => {
+    const filtered = favOnly
+      ? summaries.filter((s) => pinnedSet.has(s.channel_id))
+      : summaries;
+    return [...filtered].sort((a, b) => {
       const aPinned = pinnedSet.has(a.channel_id) ? 1 : 0;
       const bPinned = pinnedSet.has(b.channel_id) ? 1 : 0;
       if (aPinned !== bPinned) return bPinned - aPinned;
@@ -119,12 +138,20 @@ export function ChatChannelList({ summaries, onSelectChannel, compact }: ChatCha
 
       return new Date(b.last_at).getTime() - new Date(a.last_at).getTime();
     });
-  }, [summaries, pinned, readRev]);
+  }, [summaries, pinned, readRev, favOnly]);
 
   if (summaries.length === 0) {
     return (
       <p className="text-gray-500 text-xs italic py-2">
         團隊還沒開始聊天，等碰撞對話開始就會出現在這裡
+      </p>
+    );
+  }
+
+  if (favOnly && sorted.length === 0) {
+    return (
+      <p className="text-gray-500 text-xs italic py-2">
+        還沒有收藏的頻道，點任一頻道前的愛心來收藏
       </p>
     );
   }
