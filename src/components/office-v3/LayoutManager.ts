@@ -23,6 +23,15 @@ export interface LayoutObject {
   fontSize?: number;     // font size in px (for text blocks)
   fontColor?: string;    // color hex or rgba (for text blocks)
   fontFamily?: string;   // CSS font-family (for text blocks)
+  /** Phase B P2-3 (2026-04-22): human-readable label shown in the editor
+   *  for trigger zones (overrides the default "Dashboard" / "Chat" /
+   *  "Hall of Fame" strings). Not used by the runtime. */
+  label?: string;
+  /** Phase B P2-3 (2026-04-22): when a character steps into this trigger
+   *  zone, play a dialogue from the given chat channel id (e.g.
+   *  "forge|mika"). null/undefined = no zone-step dialogue. Runtime only
+   *  reads this off trigger-* zones; ignored on other objects. */
+  dialogueChannel?: string | null;
 }
 
 export interface RoomFloor {

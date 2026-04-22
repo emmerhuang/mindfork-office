@@ -84,6 +84,22 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
   const [showBossScreen, setShowBossScreen] = useState(false);
   const [showChatroom, setShowChatroom] = useState(false);
   const [showChatFullscreen, setShowChatFullscreen] = useState(false);
+  // Phase B P2-2 (2026-04-22): chat overlay minimise state. Persisted in
+  // localStorage so a reload restores the bubble (and ChatOverlay hydrates
+  // last channel from its own key).
+  const [chatroomMinimized, setChatroomMinimized] = useState(false);
+  useEffect(() => {
+    try {
+      const v = window.localStorage.getItem("chat_overlay_minimized");
+      if (v === "1") setChatroomMinimized(true);
+    } catch { /* ignore */ }
+  }, []);
+  const setChatroomMinimizedPersisted = useCallback((next: boolean) => {
+    setChatroomMinimized(next);
+    try {
+      window.localStorage.setItem("chat_overlay_minimized", next ? "1" : "0");
+    } catch { /* ignore */ }
+  }, []);
   const [showTaskList, setShowTaskList] = useState(false);
   const [wafflesZoom, setWafflesZoom] = useState<{ dir: string; anim: WafflesAnim } | null>(null);
   const [convBar, setConvBar] = useState<ConvBarData | null>(null);
@@ -165,7 +181,11 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
 
   const handleBulletinClick = useCallback(() => setShowBulletin(true), []);
   const handleBossScreenClick = useCallback(() => setShowBossScreen(true), []);
-  const handleChatroomClick = useCallback(() => setShowChatroom(true), []);
+  const handleChatroomClick = useCallback(() => {
+    // Clicking the trigger zone restores from minimised state too.
+    setChatroomMinimizedPersisted(false);
+    setShowChatroom(true);
+  }, [setChatroomMinimizedPersisted]);
   const handleWafflesZoom = useCallback((anim: WafflesAnim, dir?: string) => setWafflesZoom({ anim, dir: dir ?? "south" }), []);
 
   useEffect(() => {
@@ -202,6 +222,12 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
   useEffect(() => {
     if (memberOs && engineRef.current) engineRef.current.updateMemberOs(memberOs);
   }, [memberOs]);
+
+  // Phase B P2-3 (2026-04-22): push chat summaries into the engine so
+  // zone-step dialogue can play from the right channel.
+  useEffect(() => {
+    if (chatSummaries && engineRef.current) engineRef.current.updateChatSummaries(chatSummaries);
+  }, [chatSummaries]);
 
   useEffect(() => {
     if (engineRef.current) {
@@ -704,7 +730,7 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
       })()}
 
       {/* Chatroom Overlay */}
-      {showChatroom && !showChatFullscreen && (
+      {showChatroom && !showChatFullscreen && !chatroomMinimized && (
         <ChatOverlay
           summaries={chatSummaries ?? []}
           memberProfiles={memberProfiles ?? []}
@@ -713,7 +739,23 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
             setShowChatroom(false);
             setShowChatFullscreen(true);
           }}
+          onMinimize={() => setChatroomMinimizedPersisted(true)}
         />
+      )}
+
+      {/* Chat minimised bubble — corner button to restore the overlay (Phase B P2-2) */}
+      {showChatroom && !showChatFullscreen && chatroomMinimized && (
+        <button
+          className="absolute bottom-4 right-4 z-20 w-14 h-14 rounded-full bg-cyan-600 hover:bg-cyan-500 text-white shadow-lg flex items-center justify-center"
+          onClick={() => setChatroomMinimizedPersisted(false)}
+          title="開啟聊天"
+          aria-label="開啟聊天"
+          style={{ imageRendering: "auto" }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+        </button>
       )}
 
       {/* Chat Fullscreen */}

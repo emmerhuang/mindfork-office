@@ -38,6 +38,32 @@ export interface EngineOptions {
   onChatroomClick?: () => void;
 }
 
+// ── Interaction Zones (2026-04-22 Phase B P2-1) ──────────────
+// Layout objects whose `special` starts with "trigger-" are treated as
+// clickable interaction zones. This table centralises the mapping from
+// the `special` string (kept for layout-JSON back-compat) to a typed
+// handler, so the click dispatcher is a single loop instead of a
+// cascade of string comparisons.
+//
+// To add a new zone type:
+//   1. Extend `InteractionZoneType` with the new literal.
+//   2. Add a `{ special, type }` row to INTERACTION_ZONE_SPECS.
+//   3. Add an EngineOptions callback + route it in `dispatchZoneClick`.
+//   4. (optional) Add a legacy bbox fallback in onClick.
+export type InteractionZoneType = "chatroom" | "bulletin" | "dashboard";
+
+interface InteractionZoneSpec {
+  /** Layout object `special` string — stays as-is for back-compat. */
+  special: string;
+  type: InteractionZoneType;
+}
+
+const INTERACTION_ZONE_SPECS: InteractionZoneSpec[] = [
+  { special: "trigger-bulletin", type: "bulletin" },
+  { special: "trigger-dashboard", type: "dashboard" },
+  { special: "trigger-chatroom", type: "chatroom" },
+];
+
 export class OfficeEngine {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
@@ -74,6 +100,19 @@ export class OfficeEngine {
     life: number; maxLife: number; emoji: string;
   }> = [];
 
+  // ── Phase B P2-3 (2026-04-22): zone-step dialogue ─────────────
+  // Chat channel summaries (channel_id -> messages), fed from React.
+  private chatSummariesByChannel: Record<string, {
+    participant_a: string;
+    participant_b: string;
+    messages: Array<{ sender: string; content: string; created_at: string }>;
+  }> = {};
+  // Cooldown for zone-step dialogue triggers (zone object id -> last tick).
+  // 5-minute cooldown prevents spam when a character loiters in the zone.
+  private zoneStepCooldown: Record<string, number> = {};
+  private zoneScanTick = 0; // throttle scans to once per ~30 ticks (~1s)
+  private zoneStepActive = false; // true while a zone dialogue is playing
+
   constructor(canvas: HTMLCanvasElement, opts: EngineOptions = {}) {
     this.canvas = canvas;
     this.opts = opts;
@@ -104,6 +143,14 @@ export class OfficeEngine {
     this.canvas.addEventListener("click", this.onClick);
   }
 
+  private dispatchZoneClick(type: InteractionZoneType) {
+    switch (type) {
+      case "bulletin":   this.opts.onBulletinClick?.(); return;
+      case "dashboard":  this.opts.onBossScreenClick?.(); return;
+      case "chatroom":   this.opts.onChatroomClick?.(); return;
+    }
+  }
+
   private onClick = (e: MouseEvent) => {
     const r = this.canvas.getBoundingClientRect();
     // object-fit: contain 座標轉換
@@ -124,46 +171,39 @@ export class OfficeEngine {
     const px = ((e.clientX - r.left - offsetX) / renderW) * CANVAS_W;
     const py = ((e.clientY - r.top - offsetY) / renderH) * CANVAS_H;
 
-    // Trigger zones from layout (fallback to hardcoded constants)
-    const bulletinTrigger = this.layout?.objects.find((o) => o.special === "trigger-bulletin");
-    if (bulletinTrigger) {
-      if (px >= bulletinTrigger.x && px <= bulletinTrigger.x + bulletinTrigger.width &&
-          py >= bulletinTrigger.y && py <= bulletinTrigger.y + bulletinTrigger.height) {
-        this.opts.onBulletinClick?.();
-        return;
+    // Interaction zones (Phase B P2-1: 2026-04-22)
+    // Walk the typed spec table; if a layout object with matching `special`
+    // exists, hit-test it. Otherwise fall back to the legacy bbox constants
+    // (chatroom has no legacy bbox — layout object is required).
+    for (const spec of INTERACTION_ZONE_SPECS) {
+      const obj = this.layout?.objects.find((o) => o.special === spec.special);
+      if (obj) {
+        if (px >= obj.x && px <= obj.x + obj.width &&
+            py >= obj.y && py <= obj.y + obj.height) {
+          this.dispatchZoneClick(spec.type);
+          return;
+        }
+        // When an explicit layout object is defined we do NOT consult the
+        // legacy bbox — the layout wins.
+        continue;
       }
-    } else {
-      const bb = BULLETIN_BOARD;
-      if (px >= bb.x * TILE && px <= (bb.x + bb.w) * TILE &&
-          py >= bb.y * TILE && py <= (bb.y + bb.h) * TILE) {
-        this.opts.onBulletinClick?.();
-        return;
+      // Legacy bbox fallback for zones that existed before layout JSON.
+      if (spec.type === "bulletin") {
+        const bb = BULLETIN_BOARD;
+        if (px >= bb.x * TILE && px <= (bb.x + bb.w) * TILE &&
+            py >= bb.y * TILE && py <= (bb.y + bb.h) * TILE) {
+          this.dispatchZoneClick("bulletin");
+          return;
+        }
+      } else if (spec.type === "dashboard") {
+        const bs = BOSS_SCREEN;
+        if (px >= bs.x * TILE && px <= (bs.x + bs.w) * TILE &&
+            py >= bs.y * TILE && py <= (bs.y + bs.h) * TILE) {
+          this.dispatchZoneClick("dashboard");
+          return;
+        }
       }
-    }
-
-    const dashTrigger = this.layout?.objects.find((o) => o.special === "trigger-dashboard");
-    if (dashTrigger) {
-      if (px >= dashTrigger.x && px <= dashTrigger.x + dashTrigger.width &&
-          py >= dashTrigger.y && py <= dashTrigger.y + dashTrigger.height) {
-        this.opts.onBossScreenClick?.();
-        return;
-      }
-    } else {
-      const bs = BOSS_SCREEN;
-      if (px >= bs.x * TILE && px <= (bs.x + bs.w) * TILE &&
-          py >= bs.y * TILE && py <= (bs.y + bs.h) * TILE) {
-        this.opts.onBossScreenClick?.();
-        return;
-      }
-    }
-
-    const chatTrigger = this.layout?.objects.find((o) => o.special === "trigger-chatroom");
-    if (chatTrigger) {
-      if (px >= chatTrigger.x && px <= chatTrigger.x + chatTrigger.width &&
-          py >= chatTrigger.y && py <= chatTrigger.y + chatTrigger.height) {
-        this.opts.onChatroomClick?.();
-        return;
-      }
+      // chatroom has no legacy fallback by design
     }
 
     const hit = this.mgr.findCharacterAt(px, py);
@@ -341,6 +381,25 @@ export class OfficeEngine {
     }
   }
 
+  /** Phase B P2-3 (2026-04-22): push chat summaries so zone-step dialogue
+   *  can play from the correct channel without extra API calls. */
+  updateChatSummaries(summaries: Array<{
+    channel_id: string;
+    participant_a: string;
+    participant_b: string;
+    messages: Array<{ sender: string; content: string; created_at: string }>;
+  }>) {
+    const map: typeof this.chatSummariesByChannel = {};
+    for (const s of summaries) {
+      map[s.channel_id] = {
+        participant_a: s.participant_a,
+        participant_b: s.participant_b,
+        messages: s.messages || [],
+      };
+    }
+    this.chatSummariesByChannel = map;
+  }
+
   updateMemberOs(osData: Record<string, OsEntry[]>) {
     this.memberOsData = osData;
     const textOnly: Record<string, string[]> = {};
@@ -515,6 +574,80 @@ export class OfficeEngine {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  // ── Phase B P2-3 (2026-04-22): zone-step dialogue ────────────
+  // Scan trigger zones carrying a dialogueChannel. If any character's
+  // current tile falls inside the zone and cooldown has elapsed, play
+  // the latest exchange from that channel via the conversation bar.
+  private ZONE_STEP_COOLDOWN_TICKS = 300 * 5; // ~5 min at 30 tps
+  private checkZoneSteps() {
+    if (this.zoneStepActive) return;
+    if (!this.layout) return;
+    const zones = this.layout.objects.filter(
+      (o) => o.special && o.special.startsWith("trigger-") && o.dialogueChannel,
+    );
+    if (zones.length === 0) return;
+
+    for (const zone of zones) {
+      const last = this.zoneStepCooldown[zone.id] ?? -Infinity;
+      if (this.tick - last < this.ZONE_STEP_COOLDOWN_TICKS) continue;
+
+      const anyoneStandingInZone = this.mgr.characters.some((c) =>
+        c.px >= zone.x && c.px <= zone.x + zone.width &&
+        c.py >= zone.y && c.py <= zone.y + zone.height,
+      );
+      if (!anyoneStandingInZone) continue;
+
+      const channelId = zone.dialogueChannel!;
+      const summary = this.chatSummariesByChannel[channelId];
+      if (!summary || summary.messages.length === 0) continue;
+
+      this.zoneStepCooldown[zone.id] = this.tick;
+      // Fire and forget — async play does not block the loop
+      void this.playZoneDialogue(summary);
+    }
+  }
+
+  private async playZoneDialogue(summary: {
+    participant_a: string;
+    participant_b: string;
+    messages: Array<{ sender: string; content: string; created_at: string }>;
+  }) {
+    this.zoneStepActive = true;
+    try {
+      const idA = summary.participant_a;
+      const idB = summary.participant_b;
+      const defA = CHARACTERS.find((c) => c.id === idA);
+      const defB = CHARACTERS.find((c) => c.id === idB);
+      const nameA = defA?.nameCn || defA?.name || idA;
+      const nameB = defB?.nameCn || defB?.name || idB;
+      const colorA = defA?.color || "#222";
+      const colorB = defB?.color || "#222";
+      const roleA = defA?.role || "";
+      const roleB = defB?.role || "";
+
+      // Last 4 messages, speaker mapped to A/B based on sender id.
+      const lines = summary.messages.slice(-4).map((m) => ({
+        speaker: m.sender === idA ? ("A" as const) : ("B" as const),
+        text: m.content,
+      }));
+
+      for (const line of lines) {
+        this.opts.onConversationBar?.({
+          charAId: idA, charBId: idB,
+          charAName: nameA, charBName: nameB,
+          charARole: roleA, charBRole: roleB,
+          charAColor: colorA, charBColor: colorB,
+          speaker: line.speaker,
+          text: line.text,
+        });
+        await this.delay(5000);
+      }
+      this.opts.onConversationBar?.(null);
+    } finally {
+      this.zoneStepActive = false;
+    }
+  }
+
   private loop = (now: number) => {
     const dt = now - this.lastT;
     if (dt >= this.interval) {
@@ -523,6 +656,11 @@ export class OfficeEngine {
         this.mgr.update(this.tick);
         this.dlg.update(this.tick);
         for (const c of this.mgr.characters) this.dlg.updatePosition(c.def.id, c.px, c.py);
+        // Phase B P2-3: scan zone-step triggers once per ~1s
+        if (++this.zoneScanTick >= 30) {
+          this.zoneScanTick = 0;
+          this.checkZoneSteps();
+        }
       }
       // Update Waffles click animation (slower: 8 ticks per frame, hold last frame 15 ticks)
       if (this.wafflesClickAnim) {
