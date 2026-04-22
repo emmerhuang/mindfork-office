@@ -1014,7 +1014,9 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
           const isChat = obj.special === "trigger-chatroom";
           const bgColor = isDash ? "rgba(59,130,246,0.25)" : isChat ? "rgba(236,72,153,0.25)" : "rgba(34,197,94,0.25)";
           const borderColor = isDash ? "rgba(59,130,246,0.6)" : isChat ? "rgba(236,72,153,0.6)" : "rgba(34,197,94,0.6)";
-          const label = isDash ? "Dashboard" : isChat ? "Chat" : "Hall of Fame";
+          const defaultLabel = isDash ? "Dashboard" : isChat ? "Chat" : "Hall of Fame";
+          // Phase B P2-3 (2026-04-22): allow per-object custom label
+          const label = obj.label && obj.label.length > 0 ? obj.label : defaultLabel;
           return (
             <div
               key={obj.id}
@@ -1541,6 +1543,38 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
                     }}
                     className="w-full bg-gray-800 text-white border border-gray-600 rounded px-1 py-0.5 text-xs font-mono focus:outline-none focus:border-cyan-400"
                     placeholder="rgba(0,0,0,0.12) or #000000"
+                  />
+                </label>
+              </div>
+            )}
+            {/* Trigger zone properties (Phase B P2-3, 2026-04-22) */}
+            {selectedObj.special && selectedObj.special.startsWith("trigger-") && (
+              <div className="mb-1 border-t border-gray-700 pt-1 mt-1">
+                <span className="text-gray-500 text-[9px] block mb-1">Trigger Zone</span>
+                <label className="flex flex-col mb-1">
+                  <span className="text-gray-500 text-[9px]">Label (shown on tile)</span>
+                  <input
+                    type="text"
+                    value={selectedObj.label ?? ""}
+                    placeholder={selectedObj.special === "trigger-dashboard" ? "Dashboard" : selectedObj.special === "trigger-chatroom" ? "Chat" : "Hall of Fame"}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setObjectsAndPreview((prev) => prev.map((o) => o.id === selectedObj.id ? { ...o, label: v } : o));
+                    }}
+                    className="w-full bg-gray-800 text-white border border-gray-600 rounded px-1 py-0.5 text-xs font-mono focus:outline-none focus:border-cyan-400"
+                  />
+                </label>
+                <label className="flex flex-col mb-1">
+                  <span className="text-gray-500 text-[9px]">Dialogue Channel</span>
+                  <input
+                    type="text"
+                    value={selectedObj.dialogueChannel ?? ""}
+                    placeholder="e.g. forge|mika (leave blank to disable)"
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setObjectsAndPreview((prev) => prev.map((o) => o.id === selectedObj.id ? { ...o, dialogueChannel: v || null } : o));
+                    }}
+                    className="w-full bg-gray-800 text-white border border-gray-600 rounded px-1 py-0.5 text-xs font-mono focus:outline-none focus:border-cyan-400"
                   />
                 </label>
               </div>
