@@ -18,8 +18,13 @@ const MEMBER_NAMES: Record<string, string> = {
   yuki: "Yuki",
 };
 
+function normalizeMemberId(id: string): string {
+  return String(id || "").trim().toLowerCase();
+}
+
 function displayName(id: string): string {
-  return MEMBER_NAMES[id] || id;
+  const norm = normalizeMemberId(id);
+  return MEMBER_NAMES[norm] || id;
 }
 
 function shortTime(iso: string): string {
@@ -28,7 +33,8 @@ function shortTime(iso: string): string {
 }
 
 function senderInitial(id: string): string {
-  const name = MEMBER_NAMES[id];
+  const norm = normalizeMemberId(id);
+  const name = MEMBER_NAMES[norm];
   if (!name) return id.charAt(0).toUpperCase();
   return name.charAt(0).toUpperCase();
 }
@@ -200,7 +206,7 @@ export function ChatChannelList({ summaries, onSelectChannel, compact, favOnly }
                   style={{
                     width: 32,
                     height: 32,
-                    backgroundImage: `url(/sprites/atlas/${ch.participant_a}.png)`,
+                    backgroundImage: `url(/sprites/atlas/${normalizeMemberId(ch.participant_a)}.png)`,
                     backgroundSize: `auto ${32}px`,
                     backgroundPosition: "0px 0px",
                     backgroundRepeat: "no-repeat",
@@ -215,7 +221,7 @@ export function ChatChannelList({ summaries, onSelectChannel, compact, favOnly }
                   style={{
                     width: 32,
                     height: 32,
-                    backgroundImage: `url(/sprites/atlas/${ch.participant_b}.png)`,
+                    backgroundImage: `url(/sprites/atlas/${normalizeMemberId(ch.participant_b)}.png)`,
                     backgroundSize: `auto ${32}px`,
                     backgroundPosition: "0px 0px",
                     backgroundRepeat: "no-repeat",

@@ -588,7 +588,12 @@ export class OfficeEngine {
     if (zones.length === 0) return;
 
     for (const zone of zones) {
-      const last = this.zoneStepCooldown[zone.id] ?? -Infinity;
+      // Use dialogueChannel as primary cooldown key so layout re-import (which
+      // regenerates zone.id) does not reset the cooldown and cause back-to-back
+      // replays of the same channel. Fall back to zone.id for safety when
+      // dialogueChannel is absent (shouldn't happen given the filter above).
+      const cooldownKey = zone.dialogueChannel || zone.id;
+      const last = this.zoneStepCooldown[cooldownKey] ?? -Infinity;
       if (this.tick - last < this.ZONE_STEP_COOLDOWN_TICKS) continue;
 
       const anyoneStandingInZone = this.mgr.characters.some((c) =>
@@ -601,7 +606,7 @@ export class OfficeEngine {
       const summary = this.chatSummariesByChannel[channelId];
       if (!summary || summary.messages.length === 0) continue;
 
-      this.zoneStepCooldown[zone.id] = this.tick;
+      this.zoneStepCooldown[cooldownKey] = this.tick;
       // Fire and forget — async play does not block the loop
       void this.playZoneDialogue(summary);
     }

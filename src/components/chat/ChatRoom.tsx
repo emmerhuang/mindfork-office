@@ -42,8 +42,13 @@ const MEMBER_COLORS: Record<string, string> = {
   yuki: "#FFB7C5",
 };
 
+function normalizeMemberId(id: string): string {
+  return String(id || "").trim().toLowerCase();
+}
+
 function displayName(id: string): string {
-  return MEMBER_NAMES[id] || id;
+  const norm = normalizeMemberId(id);
+  return MEMBER_NAMES[norm] || id;
 }
 
 function shortTime(iso: string): string {
@@ -120,7 +125,7 @@ export function ChatRoom({ channelId, participantA, participantB, messages, memb
           >
             <div style={{
               width: 24, height: 24,
-              backgroundImage: `url(/sprites/atlas/${participantA}.png)`,
+              backgroundImage: `url(/sprites/atlas/${normalizeMemberId(participantA)}.png)`,
               backgroundSize: "auto 24px",
               backgroundPosition: "0px 0px",
               backgroundRepeat: "no-repeat",
@@ -134,7 +139,7 @@ export function ChatRoom({ channelId, participantA, participantB, messages, memb
           >
             <div style={{
               width: 24, height: 24,
-              backgroundImage: `url(/sprites/atlas/${participantB}.png)`,
+              backgroundImage: `url(/sprites/atlas/${normalizeMemberId(participantB)}.png)`,
               backgroundSize: "auto 24px",
               backgroundPosition: "0px 0px",
               backgroundRepeat: "no-repeat",
@@ -161,8 +166,9 @@ export function ChatRoom({ channelId, participantA, participantB, messages, memb
           <p className="text-gray-600 text-xs text-center py-4">還沒有任何對話紀錄喔</p>
         ) : (
           messages.map((msg, i) => {
-            const isA = msg.sender === participantA;
-            const color = MEMBER_COLORS[msg.sender] || "#666";
+            const senderNorm = normalizeMemberId(msg.sender);
+            const isA = senderNorm === normalizeMemberId(participantA);
+            const color = MEMBER_COLORS[senderNorm] || "#666";
             const bgColor = `${color}22`; // low opacity hex
             const borderColor = `${color}44`;
 
@@ -181,7 +187,7 @@ export function ChatRoom({ channelId, participantA, participantB, messages, memb
                   >
                     <div style={{
                       width: 24, height: 24,
-                      backgroundImage: `url(/sprites/atlas/${msg.sender}.png)`,
+                      backgroundImage: `url(/sprites/atlas/${senderNorm}.png)`,
                       backgroundSize: "auto 24px",
                       backgroundPosition: "0px 0px",
                       backgroundRepeat: "no-repeat",

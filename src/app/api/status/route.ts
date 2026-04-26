@@ -101,9 +101,13 @@ function buildChatSummaries(result: TursoResponse): Array<{
   for (const [channelId, channelRows] of channelMap) {
     // Sort by id ASC (rows came DESC from query)
     channelRows.sort((a, b) => a.id - b.id);
-    const parts = channelId.split("|");
-    const participantA = parts[0] || "";
-    const participantB = parts[1] || "";
+    // Defensive split: pipe is the canonical separator; legacy rows may use dash
+    let parts = channelId.split("|");
+    if (parts.length < 2) {
+      parts = channelId.split("-");
+    }
+    const participantA = (parts[0] || "").toLowerCase();
+    const participantB = (parts[1] || "").toLowerCase();
     const lastRow = channelRows[channelRows.length - 1];
     summaries.push({
       channel_id: channelId,
