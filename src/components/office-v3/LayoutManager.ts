@@ -76,30 +76,40 @@ export async function loadLayout(): Promise<OfficeLayout> {
   return layout;
 }
 
-/** Save layout to localStorage (local backup) + Turso API (shared persistence) */
-export async function saveLayout(layout: OfficeLayout, password?: string): Promise<{ ok: boolean; error?: string }> {
+/**
+ * Save layout to localStorage (local backup) + Turso API (shared persistence).
+ *
+ * Auth: relies on the httpOnly `mfo_admin` cookie set by /api/admin-auth.
+ * Caller must have already authenticated via that endpoint; if the cookie is
+ * missing/expired the API returns 403 and we surface the error.
+ *
+ * If `syncRemote` is false we only persist locally — useful for previews
+ * that should never round-trip through Turso.
+ */
+export async function saveLayout(
+  layout: OfficeLayout,
+  syncRemote: boolean = true,
+): Promise<{ ok: boolean; error?: string }> {
   // Always save locally as backup
   localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
 
-  // Sync to Turso if password provided
-  if (password) {
-    try {
-      const resp = await fetch("/api/layout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ layout, password }),
-      });
-      if (!resp.ok) {
-        const data = await resp.json().catch(() => ({}));
-        return { ok: false, error: data.error || `HTTP ${resp.status}` };
-      }
-      return { ok: true };
-    } catch (err) {
-      return { ok: false, error: String(err) };
-    }
-  }
+  if (!syncRemote) return { ok: true };
 
-  return { ok: true };
+  try {
+    const resp = await fetch("/api/layout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ layout }),
+    });
+    if (!resp.ok) {
+      const data = await resp.json().catch(() => ({}));
+      return { ok: false, error: data.error || `HTTP ${resp.status}` };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
 }
 
 /** Clear localStorage layout (revert to default) */

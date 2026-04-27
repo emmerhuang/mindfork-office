@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { verifyAdminCookie } from "@/lib/admin-auth";
 
 const TURSO_URL = process.env.TURSO_URL!;
 const TURSO_TOKEN = process.env.TURSO_TOKEN!;
-const PASSWORD = "emmer99";
 
 const MAP_OBJECTS_DIR = path.join(process.cwd(), "public", "sprites", "map-objects");
 const RECYCLE_DIR = path.join(MAP_OBJECTS_DIR, "_recycle");
@@ -163,12 +163,12 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { name, category, filename, width, height, imageData, password } = body;
-
-    if (password !== PASSWORD) {
+    if (!verifyAdminCookie(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const body = await request.json();
+    const { name, category, filename, width, height, imageData } = body;
 
     if (!name || !category || !filename) {
       return NextResponse.json({ error: "name, category, filename are required" }, { status: 400 });
@@ -214,12 +214,12 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { id, password } = body;
-
-    if (password !== PASSWORD) {
+    if (!verifyAdminCookie(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const body = await request.json();
+    const { id } = body;
 
     if (!id) {
       return NextResponse.json({ error: "id is required" }, { status: 400 });

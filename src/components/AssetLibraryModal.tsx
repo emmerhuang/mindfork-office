@@ -16,13 +16,17 @@ const CATEGORIES = [
   "floor", "wall", "office", "tearoom", "meeting", "decoration", "emote",
 ];
 
-const PASSWORD = "emmer99";
-
 export default function AssetLibraryModal({ onClose }: { onClose: () => void }) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filterCat, setFilterCat] = useState<string>("all");
+
+  // Admin gate: cookie may already be valid from a prior session.
+  // null = checking, false = prompt password, true = authorised.
+  const [authed, setAuthed] = useState<boolean | null>(null);
+  const [pwInput, setPwInput] = useState("");
+  const [pwError, setPwError] = useState("");
 
   // Upload state
   const [uploadName, setUploadName] = useState("");
@@ -35,6 +39,40 @@ export default function AssetLibraryModal({ onClose }: { onClose: () => void }) 
 
   // Delete state
   const [deleting, setDeleting] = useState<string | null>(null);
+
+  // Probe cookie on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch("/api/admin-auth", { credentials: "same-origin" });
+        const data = await r.json().catch(() => ({}));
+        setAuthed(Boolean(data?.ok));
+      } catch {
+        setAuthed(false);
+      }
+    })();
+  }, []);
+
+  const submitPassword = useCallback(async () => {
+    setPwError("");
+    try {
+      const r = await fetch("/api/admin-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ password: pwInput }),
+      });
+      if (r.ok) {
+        setAuthed(true);
+        setPwInput("");
+      } else {
+        setPwError("Wrong password");
+        setPwInput("");
+      }
+    } catch {
+      setPwError("Network error");
+    }
+  }, [pwInput]);
 
   const fetchAssets = useCallback(async () => {
     try {
@@ -54,8 +92,8 @@ export default function AssetLibraryModal({ onClose }: { onClose: () => void }) 
   }, []);
 
   useEffect(() => {
-    fetchAssets();
-  }, [fetchAssets]);
+    if (authed === true) fetchAssets();
+  }, [authed, fetchAssets]);
 
   // File selection handler
   const handleFileSelect = (file: File | null) => {
@@ -104,6 +142,7 @@ export default function AssetLibraryModal({ onClose }: { onClose: () => void }) 
       const res = await fetch("/api/assets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({
           name: uploadName,
           category: uploadCategory,
@@ -111,7 +150,6 @@ export default function AssetLibraryModal({ onClose }: { onClose: () => void }) 
           width: dimensions.w,
           height: dimensions.h,
           imageData: base64,
-          password: PASSWORD,
         }),
       });
 
@@ -141,7 +179,8 @@ export default function AssetLibraryModal({ onClose }: { onClose: () => void }) 
       const res = await fetch("/api/assets", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, password: PASSWORD }),
+        credentials: "same-origin",
+        body: JSON.stringify({ id }),
       });
       if (res.ok) {
         await fetchAssets();
@@ -152,6 +191,46 @@ export default function AssetLibraryModal({ onClose }: { onClose: () => void }) 
   };
 
   const filtered = filterCat === "all" ? assets : assets.filter((a) => a.category === filterCat);
+
+  // Admin gate: while probing or unauthorised, render a minimal password prompt
+  // instead of the modal contents. Server enforces the gate independently.
+  if (authed !== true) {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-black/70 flex items-center justify-center p-4">
+        <div className="bg-gray-900 border border-cyan-500 rounded-lg p-4 w-72 text-white font-mono">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-gray-300 text-sm">Admin password</p>
+            <button onClick={onClose} className="text-gray-400 hover:text-white text-lg leading-none">&times;</button>
+          </div>
+          {authed === null ? (
+            <p className="text-gray-500 text-xs">Checking session…</p>
+          ) : (
+            <>
+              <input
+                type="password"
+                value={pwInput}
+                onChange={(e) => setPwInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") void submitPassword(); }}
+                className="w-full bg-gray-800 text-white border border-gray-600 rounded px-2 py-1 text-sm focus:outline-none focus:border-cyan-400"
+                autoFocus
+              />
+              {pwError && <p className="text-red-400 text-xs mt-1">{pwError}</p>}
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => { void submitPassword(); }}
+                  className="flex-1 py-1 bg-cyan-600 text-white rounded text-xs hover:bg-cyan-500"
+                >Enter</button>
+                <button
+                  onClick={onClose}
+                  className="flex-1 py-1 bg-gray-700 text-gray-300 rounded text-xs hover:bg-gray-600"
+                >Cancel</button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[9999] bg-black/70 flex items-center justify-center p-4">

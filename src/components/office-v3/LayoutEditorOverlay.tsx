@@ -38,8 +38,6 @@ const CATEGORIES = [
   { key: "trigger", label: "Trigger Zone" },
 ];
 
-const PASSWORD = "emmer99";
-
 /** Handle exposed via ref for external triggers */
 export interface LayoutEditorHandle {
   triggerPasswordPrompt: () => void;
@@ -220,30 +218,44 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
     setShowPasswordPrompt(true);
   }, []);
 
-  const handlePasswordSubmit = useCallback(() => {
-    if (password === PASSWORD) {
-      const cloned = JSON.parse(JSON.stringify(layout.objects));
-      originalObjectsRef.current = cloned;
-      setObjects(cloned);
-      // Initialize floors from layout
-      const f = layout.floors ?? (layout.floorColors ? {
-        work: { color: layout.floorColors.work },
-        tearoom: { color: layout.floorColors.tearoom },
-        meetingRoom: { color: layout.floorColors.meetingRoom },
-      } : { work: { color: "#D4CFC8" }, tearoom: { color: "#E8DFC8" }, meetingRoom: { color: "#D8D0E0" } });
-      setFloors(JSON.parse(JSON.stringify(f)));
-      // Initialize room boundaries from layout
-      const rc = layout.roomConfig ?? { wallRows: 3, workRows: 14, tearoomCols: 6 };
-      setWallRows(rc.wallRows ?? 3);
-      setWorkRows(rc.workRows);
-      setTearoomCols(rc.tearoomCols);
-      setWalkableOverrides(layout.walkableOverrides ? { ...layout.walkableOverrides } : {});
-      setEditing(true);
-      setShowPasswordPrompt(false);
-      setPassword("");
-    } else {
-      setPassword("");
+  const handlePasswordSubmit = useCallback(async () => {
+    // Auth via server endpoint; on success the httpOnly mfo_admin cookie is
+    // set and subsequent /api/layout writes will be authorised.
+    let ok = false;
+    try {
+      const resp = await fetch("/api/admin-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ password }),
+      });
+      ok = resp.ok;
+    } catch {
+      ok = false;
     }
+    if (!ok) {
+      setPassword("");
+      return;
+    }
+    const cloned = JSON.parse(JSON.stringify(layout.objects));
+    originalObjectsRef.current = cloned;
+    setObjects(cloned);
+    // Initialize floors from layout
+    const f = layout.floors ?? (layout.floorColors ? {
+      work: { color: layout.floorColors.work },
+      tearoom: { color: layout.floorColors.tearoom },
+      meetingRoom: { color: layout.floorColors.meetingRoom },
+    } : { work: { color: "#D4CFC8" }, tearoom: { color: "#E8DFC8" }, meetingRoom: { color: "#D8D0E0" } });
+    setFloors(JSON.parse(JSON.stringify(f)));
+    // Initialize room boundaries from layout
+    const rc = layout.roomConfig ?? { wallRows: 3, workRows: 14, tearoomCols: 6 };
+    setWallRows(rc.wallRows ?? 3);
+    setWorkRows(rc.workRows);
+    setTearoomCols(rc.tearoomCols);
+    setWalkableOverrides(layout.walkableOverrides ? { ...layout.walkableOverrides } : {});
+    setEditing(true);
+    setShowPasswordPrompt(false);
+    setPassword("");
   }, [password, layout.objects, layout.floors, layout.floorColors, layout.roomConfig, layout.walkableOverrides]);
 
   // Convert DOM event coords to canvas coords
@@ -674,7 +686,7 @@ const LayoutEditorOverlay = forwardRef<LayoutEditorHandle, Props>(function Layou
       roomConfig: { wallRows, workRows, tearoomCols },
       ...(Object.keys(walkableOverrides).length > 0 ? { walkableOverrides } : {}),
     };
-    const result = await saveLayout(updated, PASSWORD);
+    const result = await saveLayout(updated);
     setSaving(false);
     if (!result.ok) {
       setSaveError(result.error || "Save failed");

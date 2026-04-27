@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyAdminCookie } from "@/lib/admin-auth";
 
 const TURSO_URL = process.env.TURSO_URL!;
 const TURSO_TOKEN = process.env.TURSO_TOKEN!;
 
 const CONV_KEY = "conv_bar_settings";
-const PASSWORD = "emmer99";
 
 interface TursoResponse {
   results: Array<{
@@ -66,15 +66,14 @@ export async function GET() {
   }
 }
 
-// POST /api/conv-settings — save conv bar settings to Turso (password protected)
+// POST /api/conv-settings — save conv bar settings to Turso (admin cookie required)
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-
-    if (body.password !== PASSWORD) {
+    if (!verifyAdminCookie(request)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const body = await request.json();
     const settings = body.settings;
     if (!settings || typeof settings !== "object") {
       return NextResponse.json({ error: "settings is required" }, { status: 400 });

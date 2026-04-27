@@ -107,6 +107,30 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
   const [convPwPrompt, setConvPwPrompt] = useState(false);
   const [convPw, setConvPw] = useState("");
   const [conv, setConv] = useState(CONV_DEFAULTS);
+  /**
+   * Verify the conv-bar password via /api/admin-auth (server-side compare).
+   * On success the httpOnly mfo_admin cookie is set so subsequent
+   * /api/conv-settings POSTs are authorised.
+   */
+  const verifyConvPassword = useCallback(async () => {
+    try {
+      const resp = await fetch("/api/admin-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ password: convPw }),
+      });
+      if (resp.ok) {
+        setConvPwPrompt(false);
+        setConvPw("");
+        setConvEdit(true);
+        return;
+      }
+    } catch {
+      // fall through to clear input
+    }
+    setConvPw("");
+  }, [convPw]);
   // Load saved settings: server first, localStorage fallback
   useEffect(() => {
     let cancelled = false;
@@ -480,20 +504,14 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
               value={convPw}
               onChange={(e) => setConvPw(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  if (convPw === "emmer99") { setConvPwPrompt(false); setConvPw(""); setConvEdit(true); }
-                  else { setConvPw(""); }
-                }
+                if (e.key === "Enter") void verifyConvPassword();
               }}
               className="w-full bg-gray-800 text-white border border-gray-600 rounded px-2 py-1 text-sm font-mono focus:outline-none focus:border-cyan-400"
               autoFocus
             />
             <div className="flex gap-2 mt-3">
               <button
-                onClick={() => {
-                  if (convPw === "emmer99") { setConvPwPrompt(false); setConvPw(""); setConvEdit(true); }
-                  else { setConvPw(""); }
-                }}
+                onClick={() => { void verifyConvPassword(); }}
                 className="flex-1 py-1 bg-cyan-600 text-white rounded text-xs hover:bg-cyan-500"
               >Enter</button>
               <button
@@ -703,7 +721,8 @@ export default function OfficeCanvas({ memberStatuses, memberOs, taskQueue, meet
                     fetch("/api/conv-settings", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ password: "emmer99", settings: conv }),
+                      credentials: "same-origin",
+                      body: JSON.stringify({ settings: conv }),
                     })
                       .then((r) => {
                         if (!r.ok) throw new Error("save failed");

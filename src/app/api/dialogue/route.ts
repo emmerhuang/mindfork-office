@@ -1,23 +1,99 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// ── In-memory rate limiter (per-minute) ──────────────────────
-const RATE_LIMIT = 5; // max requests per minute
-const rateBucket: number[] = []; // timestamps
-
-function checkRateLimit(): boolean {
-  const now = Date.now();
-  // Remove entries older than 60s
-  while (rateBucket.length > 0 && rateBucket[0] < now - 60_000) {
-    rateBucket.shift();
-  }
-  if (rateBucket.length >= RATE_LIMIT) return false;
-  rateBucket.push(now);
-  return true;
-}
-
 // ── Turso helpers (same pattern as /api/status) ─────────────
 const TURSO_URL = process.env.TURSO_URL!;
 const TURSO_TOKEN = process.env.TURSO_TOKEN!;
+
+// ── Rate limiter (Turso-backed, sliding window) ──────────────
+// Previously we used an in-memory array of timestamps. On Vercel each
+// Lambda/Edge instance has its own memory, so spikes routed across
+// multiple instances bypass the limit (Lens P1: ~25 reqs in 25s, only
+// ~5 blocked when 70%+ should be).
+//
+// Storage layout in `mindfork_status`:
+//   key   = `rate_limit:dialogue:<bucketKey>`
+//   value = JSON `{ count, windowStart }`
+const RATE_LIMIT = 5; // max requests per WINDOW_MS
+const WINDOW_MS = 60_000; // sliding window length
+
+interface RateBucketState {
+  count: number;
+  windowStart: number;
+}
+
+async function checkRateLimitTurso(bucketKey: string): Promise<boolean> {
+  const now = Date.now();
+  const tursoKey = `rate_limit:dialogue:${bucketKey}`;
+
+  // Read current bucket
+  let state: RateBucketState = { count: 0, windowStart: now };
+  try {
+    const result = await tursoExecute([
+      {
+        sql: "SELECT value FROM mindfork_status WHERE key = ?",
+        args: [{ type: "text", value: tursoKey }],
+      },
+    ]);
+    const raw = result.results?.[0]?.response?.result?.rows?.[0]?.[0]?.value;
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<RateBucketState>;
+      if (
+        typeof parsed.count === "number" &&
+        typeof parsed.windowStart === "number"
+      ) {
+        state = { count: parsed.count, windowStart: parsed.windowStart };
+      }
+    }
+  } catch {
+    // Turso read failed — fail open is risky but failing closed would
+    // also be wrong (would 429 every legit request during a Turso blip).
+    // Pick fail-open: dialogue is non-critical traffic.
+    return true;
+  }
+
+  // Reset window if expired
+  if (now - state.windowStart >= WINDOW_MS) {
+    state = { count: 0, windowStart: now };
+  }
+
+  if (state.count >= RATE_LIMIT) {
+    return false;
+  }
+
+  state.count += 1;
+
+  // Best-effort upsert (don't await long; errors don't block the request)
+  try {
+    const nowIso = new Date().toISOString();
+    await tursoExecute([
+      {
+        sql: "INSERT INTO mindfork_status (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+        args: [
+          { type: "text", value: tursoKey },
+          { type: "text", value: JSON.stringify(state) },
+          { type: "text", value: nowIso },
+        ],
+      },
+    ]);
+  } catch {
+    // Don't fail the request if write fails — return as if allowed.
+  }
+
+  return true;
+}
+
+/**
+ * Build a rate-limit bucket key from the request. Prefer the Vercel-supplied
+ * client IP; fall back to a global key so the limiter still applies (just
+ * shared across all callers).
+ */
+function getBucketKey(req: NextRequest): string {
+  const xff = req.headers.get("x-forwarded-for");
+  if (xff) return xff.split(",")[0]!.trim();
+  const realIp = req.headers.get("x-real-ip");
+  if (realIp) return realIp.trim();
+  return "global";
+}
 
 interface TursoResponse {
   results: Array<{
@@ -86,8 +162,10 @@ interface RequestBody {
 // ── Handler ──────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  // Rate limit check
-  if (!checkRateLimit()) {
+  // Rate limit check (Turso-backed; survives across Lambda instances)
+  const bucketKey = getBucketKey(req);
+  const allowed = await checkRateLimitTurso(bucketKey);
+  if (!allowed) {
     return NextResponse.json(
       { error: "Rate limited. Max 5 requests per minute." },
       { status: 429 },

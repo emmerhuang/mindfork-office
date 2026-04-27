@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyAdminCookie } from "@/lib/admin-auth";
 
 const TURSO_URL = process.env.TURSO_URL!;
 const TURSO_TOKEN = process.env.TURSO_TOKEN!;
@@ -63,15 +64,15 @@ export async function GET() {
   }
 }
 
-// POST /api/layout — upsert layout to Turso (password auth)
+// POST /api/layout — upsert layout to Turso (admin cookie required)
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { layout, password } = body;
-
-    if (password !== "emmer99") {
+    if (!verifyAdminCookie(request)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    const body = await request.json();
+    const { layout } = body;
 
     if (!layout || !layout.version || !layout.objects) {
       return NextResponse.json({ error: "Invalid layout data" }, { status: 400 });
