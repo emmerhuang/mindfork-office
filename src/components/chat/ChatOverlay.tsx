@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { ChatChannelSummary } from "@/types";
-import { ChatChannelList, getFavOnly, setFavOnly } from "./ChatChannelList";
+import { ChatChannelList, getFavOnly, setFavOnly, markAllChannelsRead } from "./ChatChannelList";
 import { ChatRoom, type MemberProfile } from "./ChatRoom";
 
 // Phase B P2-2 (2026-04-22): persist minimize + last channel so user can
@@ -32,7 +32,14 @@ export function ChatOverlay({ summaries, memberProfiles = [], onClose, onExpandF
     } catch { return null; }
   });
   const [favOnly, setFavOnlyState] = useState(false);
+  // Bump to force ChatChannelList re-render after mark-all-read.
+  const [, setReadAllRev] = useState(0);
   const selectedChannel = summaries.find((c) => c.channel_id === selectedChannelId);
+
+  const handleMarkAllRead = useCallback(() => {
+    markAllChannelsRead(summaries.map((s) => s.channel_id));
+    setReadAllRev((r) => r + 1);
+  }, [summaries]);
 
   // Persist selected channel so minimise+restore returns to the same room.
   useEffect(() => {
@@ -158,6 +165,17 @@ export function ChatOverlay({ summaries, memberProfiles = [], onClose, onExpandF
                 TEAM CHAT
               </h2>
               <div className="flex items-center gap-2">
+                <button
+                  className="text-gray-500 hover:text-cyan-400 transition-colors"
+                  onClick={handleMarkAllRead}
+                  title="全部標為已讀"
+                  aria-label="全部標為已讀"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 11 8 16 13 11" />
+                    <polyline points="11 11 16 16 21 11" />
+                  </svg>
+                </button>
                 <button
                   className={`text-xs select-none transition-colors ${
                     favOnly ? "text-red-400" : "text-gray-500 hover:text-red-400"

@@ -67,6 +67,28 @@ function markChannelRead(channelId: string): void {
   localStorage.setItem(`dashboard_chat_read_${channelId}`, String(Date.now()));
 }
 
+/**
+ * Mark all given channels as read by writing the current timestamp into
+ * `dashboard_chat_read_<channel_id>` for each id. Pure localStorage operation,
+ * SSR-safe (no-op on server). Caller is expected to bump a re-render token
+ * (e.g. setReadRev) so unread badges recompute.
+ *
+ * @param channelIds list of channel ids to mark read
+ * @returns number of channels written (0 on SSR or empty input)
+ */
+export function markAllChannelsRead(channelIds: string[]): number {
+  if (typeof window === "undefined") return 0;
+  if (!Array.isArray(channelIds) || channelIds.length === 0) return 0;
+  const now = String(Date.now());
+  let written = 0;
+  for (const id of channelIds) {
+    if (!id) continue;
+    localStorage.setItem(`dashboard_chat_read_${id}`, now);
+    written += 1;
+  }
+  return written;
+}
+
 function getPinnedChannels(): string[] {
   if (typeof window === "undefined") return [];
   try {
