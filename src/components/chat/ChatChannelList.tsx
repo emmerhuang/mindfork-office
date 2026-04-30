@@ -104,10 +104,43 @@ function setPinnedChannels(ids: string[]): void {
   localStorage.setItem(LS_PINNED_KEY, JSON.stringify(ids));
 }
 
+/**
+ * 計算未讀數。
+ *
+ * Phase 2 改版（2026-04-30）：
+ * - 主路徑：用 ch.last_at vs localStorage 的 read_ts 比較。一個 boolean 加總式（要嘛 0 要嘛
+ *   message_count，由 server 提供總筆數）— 因為 chat_channels 只給最後一筆，沒辦法精算
+ *   「自上次讀後新增幾筆」。折衷：未讀就顯示總筆數作 badge（>99 顯示 99+）。
+ * - Fallback：preload messages 還在時，仍可精算（保留舊行為）。當 messages 為「最新 50 筆預載」
+ *   而非全部時，這個精算只在預載範圍內準確；超出範圍未讀數會少算，但 badge 仍會顯示「有未讀」。
+ *
+ * 設計反饋（給秘書長）：
+ *   ChatChannelSummary 在 Phase 2 後 messages 不再是「全部」，導致 client 端無法精算未讀。
+ *   要 100% 精準需要 server 在 chat_channels 表加 last_message_id，前端比對 last_read_id（也存 server）。
+ *   這次先做粗 badge（顯示總筆數或 0），等老大回頭關心精度再升級。
+ */
 function getUnreadCount(ch: ChatChannelSummary): number {
-  if (ch.messages.length === 0) return 0;
+  if (ch.messages.length === 0 && !ch.last_at) return 0;
   const readTs = getReadTimestamp(ch.channel_id);
-  return ch.messages.filter((msg) => new Date(msg.created_at).getTime() > readTs).length;
+
+  // Fallback：精算（適用於所有訊息都在預載內的情況）
+  if (ch.messages.length > 0) {
+    const precise = ch.messages.filter(
+      (msg) => new Date(msg.created_at).getTime() > readTs
+    ).length;
+    if (precise > 0) return precise;
+    // 精算 = 0，但要再 cross-check last_at（防止 messages 預載沒包含最新）
+  }
+
+  // 主路徑：last_at vs read_ts
+  if (ch.last_at) {
+    const lastAtMs = new Date(ch.last_at).getTime();
+    if (lastAtMs > readTs) {
+      // 有未讀，但無法精算 → 用 message_count 作 upper bound badge（>99 → 99+）
+      return ch.message_count && ch.message_count > 0 ? Math.min(ch.message_count, 100) : 1;
+    }
+  }
+  return 0;
 }
 
 function isUnread(ch: ChatChannelSummary): boolean {
@@ -187,9 +220,20 @@ export function ChatChannelList({ summaries, onSelectChannel, compact, favOnly }
   return (
     <div className="flex flex-col gap-1">
       {sorted.map((ch) => {
-        const lastMsg = ch.messages.length > 0 ? ch.messages[ch.messages.length - 1] : null;
-        const lastPreview = lastMsg
-          ? `${senderInitial(lastMsg.sender)}: ${lastMsg.content.replace(/\n/g, " ")}`
+        // Phase 2: 優先用 server 提供的 last_message + last_sender，沒有的話 fallback 到
+        // messages[end]（chat_channels 表為空時的 fallback path）
+        const lastSender = ch.last_sender
+          ? ch.last_sender
+          : ch.messages.length > 0
+          ? ch.messages[ch.messages.length - 1].sender
+          : "";
+        const lastContent = ch.last_message
+          ? ch.last_message
+          : ch.messages.length > 0
+          ? ch.messages[ch.messages.length - 1].content
+          : "";
+        const lastPreview = lastSender
+          ? `${senderInitial(lastSender)}: ${lastContent.replace(/\n/g, " ")}`
           : "尚無對話";
         const unreadCount = getUnreadCount(ch);
         const unread = unreadCount > 0;

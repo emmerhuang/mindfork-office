@@ -151,6 +151,7 @@ export function ChatOverlay({ summaries, memberProfiles = [], onClose, onExpandF
             participantA={selectedChannel.participant_a}
             participantB={selectedChannel.participant_b}
             messages={selectedChannel.messages}
+            totalCount={selectedChannel.message_count}
             memberProfiles={memberProfiles}
             onBack={closeRoom}
           />

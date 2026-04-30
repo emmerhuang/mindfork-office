@@ -25,6 +25,7 @@ export function ChatRoomModal({ channel, memberProfiles = [], onClose }: Props) 
           participantA={channel.participant_a}
           participantB={channel.participant_b}
           messages={channel.messages}
+          totalCount={channel.message_count}
           memberProfiles={memberProfiles}
           onBack={onClose}
         />

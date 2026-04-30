@@ -40,15 +40,34 @@ async function tursoQuery(): Promise<TursoQueryResult> {
           },
         },
         {
+          // Phase 2: 改吃 chat_channels summary
           type: "execute",
           stmt: {
-            sql: "SELECT id, channel_id, sender, recipient, content, created_at FROM chat_messages ORDER BY id DESC LIMIT 500",
+            sql:
+              "SELECT channel_id, last_message, last_sender, last_at, message_count, status, updated_at " +
+              "FROM chat_channels " +
+              "WHERE channel_type='private' AND status='active' " +
+              "ORDER BY last_at DESC",
           },
         },
         {
+          // messages preload — 為每頻道帶最新 N 筆 ASC 給 ChatRoom
+          // 簡化版（2026-04-30 老大 5635）：30 天物理刪除，不再用 archived_at 過濾
           type: "execute",
           stmt: {
-            sql: "SELECT MAX(id) FROM chat_messages",
+            sql:
+              "SELECT id, channel_id, sender, recipient, content, created_at " +
+              "FROM chat_messages " +
+              "ORDER BY id DESC LIMIT 1500",
+          },
+        },
+        {
+          // 用 max(updated_at) of chat_channels + max(id) of chat_messages 當 fingerprint
+          type: "execute",
+          stmt: {
+            sql:
+              "SELECT (SELECT MAX(updated_at) FROM chat_channels) AS chat_ch_ts, " +
+              "(SELECT MAX(id) FROM chat_messages) AS msg_max",
           },
         },
       ],
@@ -64,32 +83,30 @@ async function tursoQuery(): Promise<TursoQueryResult> {
   const map: Record<string, string> = {};
   const updatedAtMap: Record<string, string> = {};
 
-  for (const r of data.results) {
-    if (r.type === "ok" && r.response?.result?.rows) {
-      for (const row of r.response.result.rows) {
-        const key = row[0]?.value;
-        const value = row[1]?.value;
-        const updatedAt = row[2]?.value;
-        if (key) {
-          map[key] = value;
-          updatedAtMap[key] = updatedAt;
-        }
+  // Only result[0] is the mindfork_status key/value/updated_at table
+  const statusResult = data.results[0];
+  if (statusResult?.type === "ok" && statusResult.response?.result?.rows) {
+    for (const row of statusResult.response.result.rows) {
+      const key = row[0]?.value;
+      const value = row[1]?.value;
+      const updatedAt = row[2]?.value;
+      if (key) {
+        map[key] = value;
+        updatedAtMap[key] = updatedAt;
       }
     }
   }
 
-  // Build a fingerprint from updated_at values to detect changes
-  // Also include chat_messages max id (result[2]) for change detection
-  let chatMaxId = "0";
-  const chatMaxResult = data.results[2];
-  if (chatMaxResult?.type === "ok" && chatMaxResult.response?.result?.rows?.[0]) {
-    chatMaxId = chatMaxResult.response.result.rows[0][0]?.value || "0";
-  }
+  // fingerprint = mindfork_status updated_at + chat_channels max updated_at + chat_messages max id
+  const fpRow = data.results[3]?.response?.result?.rows?.[0];
+  const chatChTs = fpRow?.[0]?.value || "0";
+  const msgMax = fpRow?.[1]?.value || "0";
 
-  const fingerprint = Object.keys(updatedAtMap)
-    .sort()
-    .map((k) => `${k}:${updatedAtMap[k]}`)
-    .join("|") + `|chat_max:${chatMaxId}`;
+  const fingerprint =
+    Object.keys(updatedAtMap)
+      .sort()
+      .map((k) => `${k}:${updatedAtMap[k]}`)
+      .join("|") + `|chat_ch:${chatChTs}|msg_max:${msgMax}`;
   map.__fingerprint = fingerprint;
 
   return { map, rawData: data };
@@ -104,55 +121,115 @@ interface ChatRow {
   created_at: string;
 }
 
-function buildChatSummaries(data: TursoResponse): Array<{
+interface ChannelSummary {
   channel_id: string;
   participant_a: string;
   participant_b: string;
   last_at: string;
-  messages: Array<{ sender: string; content: string; created_at: string }>;
-}> {
-  const chatResult = data.results[1];
-  if (!chatResult || chatResult.type !== "ok" || !chatResult.response?.result?.rows) {
-    return [];
+  last_message?: string;
+  last_sender?: string;
+  message_count?: number;
+  messages: Array<{ id?: number; sender: string; content: string; created_at: string }>;
+}
+
+const PRELOAD_PER_CHANNEL = 50;
+
+function buildChatSummaries(data: TursoResponse): ChannelSummary[] {
+  const channelsResult = data.results[1];
+  const messagesResult = data.results[2];
+
+  // 解 messages（preload 用）
+  const msgRows: ChatRow[] =
+    messagesResult?.type === "ok" && messagesResult.response?.result?.rows
+      ? messagesResult.response.result.rows.map((row) => ({
+          id: parseInt(row[0]?.value || "0", 10),
+          channel_id: row[1]?.value || "",
+          sender: row[2]?.value || "",
+          recipient: row[3]?.value || "",
+          content: row[4]?.value || "",
+          created_at: row[5]?.value || "",
+        }))
+      : [];
+
+  const messagesByChannel = new Map<string, ChatRow[]>();
+  for (const m of msgRows) {
+    if (!messagesByChannel.has(m.channel_id)) messagesByChannel.set(m.channel_id, []);
+    messagesByChannel.get(m.channel_id)!.push(m);
   }
 
-  const rows: ChatRow[] = chatResult.response.result.rows.map((row) => ({
-    id: parseInt(row[0]?.value || "0", 10),
-    channel_id: row[1]?.value || "",
-    sender: row[2]?.value || "",
-    recipient: row[3]?.value || "",
-    content: row[4]?.value || "",
-    created_at: row[5]?.value || "",
-  }));
+  const channelRows =
+    channelsResult?.type === "ok" && channelsResult.response?.result?.rows
+      ? channelsResult.response.result.rows
+      : [];
 
-  const channelMap = new Map<string, ChatRow[]>();
-  for (const row of rows) {
-    if (!channelMap.has(row.channel_id)) {
-      channelMap.set(row.channel_id, []);
+  // 主路徑：chat_channels 有資料
+  if (channelRows.length > 0) {
+    const summaries: ChannelSummary[] = [];
+    for (const row of channelRows) {
+      const channelId = row[0]?.value || "";
+      const lastMessage = row[1]?.value || "";
+      const lastSender = row[2]?.value || "";
+      const lastAt = row[3]?.value || "";
+      const messageCount = parseInt(row[4]?.value || "0", 10);
+
+      let parts = channelId.split("|");
+      if (parts.length < 2) parts = channelId.split("-");
+      const participantA = (parts[0] || "").toLowerCase();
+      const participantB = (parts[1] || "").toLowerCase();
+
+      const preload = messagesByChannel.get(channelId) || [];
+      preload.sort((a, b) => a.id - b.id);
+
+      summaries.push({
+        channel_id: channelId,
+        participant_a: participantA,
+        participant_b: participantB,
+        last_at: lastAt,
+        last_message: lastMessage,
+        last_sender: lastSender,
+        message_count: messageCount,
+        messages: preload.slice(-PRELOAD_PER_CHANNEL).map((r) => ({
+          id: r.id,
+          sender: r.sender,
+          content: r.content,
+          created_at: r.created_at,
+        })),
+      });
     }
+    summaries.sort((a, b) => (b.last_at || "").localeCompare(a.last_at || ""));
+    return summaries;
+  }
+
+  // Fallback：chat_channels 空 → 從 messages 即時聚合
+  const channelMap = new Map<string, ChatRow[]>();
+  for (const row of msgRows) {
+    if (!channelMap.has(row.channel_id)) channelMap.set(row.channel_id, []);
     channelMap.get(row.channel_id)!.push(row);
   }
-
-  const summaries = [];
-  for (const [channelId, channelRows] of channelMap) {
-    channelRows.sort((a, b) => a.id - b.id);
-    const parts = channelId.split("|");
-    const participantA = parts[0] || "";
-    const participantB = parts[1] || "";
-    const lastRow = channelRows[channelRows.length - 1];
+  const summaries: ChannelSummary[] = [];
+  for (const [channelId, rows] of channelMap) {
+    rows.sort((a, b) => a.id - b.id);
+    let parts = channelId.split("|");
+    if (parts.length < 2) parts = channelId.split("-");
+    const participantA = (parts[0] || "").toLowerCase();
+    const participantB = (parts[1] || "").toLowerCase();
+    const lastRow = rows[rows.length - 1];
     summaries.push({
       channel_id: channelId,
       participant_a: participantA,
       participant_b: participantB,
       last_at: lastRow.created_at,
-      messages: channelRows.map((r) => ({
+      last_message: (lastRow.content || "").slice(0, 100),
+      last_sender: lastRow.sender,
+      message_count: rows.length,
+      messages: rows.slice(-PRELOAD_PER_CHANNEL).map((r) => ({
+        id: r.id,
         sender: r.sender,
         content: r.content,
         created_at: r.created_at,
       })),
     });
   }
-
   summaries.sort((a, b) => b.last_at.localeCompare(a.last_at));
   return summaries;
 }
@@ -166,7 +243,6 @@ function buildPayload(map: Record<string, string>, rawData: TursoResponse): stri
   const memberProfiles = map.member_profiles ? JSON.parse(map.member_profiles) : [];
   const chatSummaries = buildChatSummaries(rawData);
 
-  // Normalize memberOs (same logic as GET /api/status)
   const memberOs: Record<
     string,
     Array<{ text: string; task?: string; at?: string }>
@@ -195,12 +271,10 @@ export async function GET(request: NextRequest) {
       let lastFingerprint = "";
       let alive = true;
 
-      // Clean up when client disconnects
       request.signal.addEventListener("abort", () => {
         alive = false;
       });
 
-      // Send initial data immediately
       try {
         const { map, rawData } = await tursoQuery();
         lastFingerprint = map.__fingerprint || "";
@@ -208,7 +282,7 @@ export async function GET(request: NextRequest) {
         controller.enqueue(
           encoder.encode(`event: status\ndata: ${payload}\n\n`)
         );
-      } catch (err) {
+      } catch {
         controller.enqueue(
           encoder.encode(
             `event: error\ndata: ${JSON.stringify({ error: "initial fetch failed" })}\n\n`
@@ -216,7 +290,6 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // Poll loop: check for changes every POLL_INTERVAL
       const poll = async () => {
         while (alive) {
           await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
@@ -233,10 +306,8 @@ export async function GET(request: NextRequest) {
                 encoder.encode(`event: status\ndata: ${payload}\n\n`)
               );
             }
-            // Send heartbeat to keep connection alive
             controller.enqueue(encoder.encode(`: heartbeat\n\n`));
           } catch {
-            // On error, send error event but keep connection alive
             controller.enqueue(
               encoder.encode(
                 `event: error\ndata: ${JSON.stringify({ error: "poll failed" })}\n\n`

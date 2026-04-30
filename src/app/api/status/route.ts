@@ -17,9 +17,10 @@ interface TursoResponse {
   }>;
 }
 
-async function tursoExecute(
-  statements: Array<{ sql: string; args?: Array<{ type: string; value: string }> }>
-): Promise<TursoResponse> {
+interface TursoStmtArg { type: string; value: string }
+interface TursoStmt { sql: string; args?: TursoStmtArg[] }
+
+async function tursoExecute(statements: TursoStmt[]): Promise<TursoResponse> {
   const requests = statements.map((stmt) => ({
     type: "execute" as const,
     stmt,
@@ -42,16 +43,14 @@ async function tursoExecute(
   return res.json();
 }
 
-function rowsToMap(result: TursoResponse): Record<string, string> {
+function rowsToMap(result: TursoResponse, idx: number = 0): Record<string, string> {
   const map: Record<string, string> = {};
-  for (const r of result.results) {
-    if (r.type === "ok" && r.response?.result?.rows) {
-      for (const row of r.response.result.rows) {
-        // row[0] = key, row[1] = value
-        const key = row[0]?.value;
-        const value = row[1]?.value;
-        if (key) map[key] = value;
-      }
+  const r = result.results[idx];
+  if (r?.type === "ok" && r.response?.result?.rows) {
+    for (const row of r.response.result.rows) {
+      const key = row[0]?.value;
+      const value = row[1]?.value;
+      if (key) map[key] = value;
     }
   }
   return map;
@@ -66,63 +65,125 @@ interface ChatRow {
   created_at: string;
 }
 
-function buildChatSummaries(result: TursoResponse): Array<{
+interface ChannelSummary {
   channel_id: string;
   participant_a: string;
   participant_b: string;
   last_at: string;
-  messages: Array<{ sender: string; content: string; created_at: string }>;
-}> {
-  // result.results[1] contains chat_messages rows
-  const chatResult = result.results[1];
-  if (!chatResult || chatResult.type !== "ok" || !chatResult.response?.result?.rows) {
-    return [];
+  last_message?: string;
+  last_sender?: string;
+  message_count?: number;
+  messages: Array<{ id?: number; sender: string; content: string; created_at: string }>;
+}
+
+/**
+ * Phase 2 chat summary builder（Sherlock 設計稿 §5）
+ *
+ * 主路徑：吃 chat_channels（last_*, message_count），快、不掃 messages 表
+ * Fallback：chat_channels 是空表（cleanup 還沒跑過）→ 從 chat_messages 即時聚合
+ *
+ * messages 預載：每頻道帶最新 50 筆 ASC（給 ChatRoom 開門即看到內容，
+ *   想看更舊上拉觸發 /api/chat/messages?before_id=）
+ */
+function buildChatSummaries(
+  channelsResult: TursoResponse["results"][number] | undefined,
+  messagesResult: TursoResponse["results"][number] | undefined,
+): ChannelSummary[] {
+  // 解析 messages（永遠跑：preload 用）
+  const msgRows: ChatRow[] =
+    messagesResult?.type === "ok" && messagesResult.response?.result?.rows
+      ? messagesResult.response.result.rows.map((row) => ({
+          id: parseInt(row[0]?.value || "0", 10),
+          channel_id: row[1]?.value || "",
+          sender: row[2]?.value || "",
+          recipient: row[3]?.value || "",
+          content: row[4]?.value || "",
+          created_at: row[5]?.value || "",
+        }))
+      : [];
+
+  const messagesByChannel = new Map<string, ChatRow[]>();
+  for (const m of msgRows) {
+    if (!messagesByChannel.has(m.channel_id)) messagesByChannel.set(m.channel_id, []);
+    messagesByChannel.get(m.channel_id)!.push(m);
   }
 
-  const rows: ChatRow[] = chatResult.response.result.rows.map((row) => ({
-    id: parseInt(row[0]?.value || "0", 10),
-    channel_id: row[1]?.value || "",
-    sender: row[2]?.value || "",
-    recipient: row[3]?.value || "",
-    content: row[4]?.value || "",
-    created_at: row[5]?.value || "",
-  }));
+  // 解析 chat_channels rows（主路徑）
+  const channelRows =
+    channelsResult?.type === "ok" && channelsResult.response?.result?.rows
+      ? channelsResult.response.result.rows
+      : [];
 
-  // Group by channel_id
-  const channelMap = new Map<string, ChatRow[]>();
-  for (const row of rows) {
-    if (!channelMap.has(row.channel_id)) {
-      channelMap.set(row.channel_id, []);
+  // 路徑 A：chat_channels 有資料 → 用它組
+  if (channelRows.length > 0) {
+    const summaries: ChannelSummary[] = [];
+    for (const row of channelRows) {
+      const channelId = row[0]?.value || "";
+      const lastMessage = row[1]?.value || "";
+      const lastSender = row[2]?.value || "";
+      const lastAt = row[3]?.value || "";
+      const messageCount = parseInt(row[4]?.value || "0", 10);
+
+      // participant 從 channel_id 拆（同既有規則：pipe 優先，dash 後備）
+      let parts = channelId.split("|");
+      if (parts.length < 2) parts = channelId.split("-");
+      const participantA = (parts[0] || "").toLowerCase();
+      const participantB = (parts[1] || "").toLowerCase();
+
+      // 取該 channel 的 preload messages（已從 chat_messages 撈了，作 ASC sort）
+      const preload = messagesByChannel.get(channelId) || [];
+      preload.sort((a, b) => a.id - b.id);
+
+      summaries.push({
+        channel_id: channelId,
+        participant_a: participantA,
+        participant_b: participantB,
+        last_at: lastAt,
+        last_message: lastMessage,
+        last_sender: lastSender,
+        message_count: messageCount,
+        messages: preload.map((r) => ({
+          id: r.id,
+          sender: r.sender,
+          content: r.content,
+          created_at: r.created_at,
+        })),
+      });
     }
+    summaries.sort((a, b) => (b.last_at || "").localeCompare(a.last_at || ""));
+    return summaries;
+  }
+
+  // 路徑 B（fallback）：chat_channels 空 → 從 messages 聚合（舊 GET 行為）
+  const channelMap = new Map<string, ChatRow[]>();
+  for (const row of msgRows) {
+    if (!channelMap.has(row.channel_id)) channelMap.set(row.channel_id, []);
     channelMap.get(row.channel_id)!.push(row);
   }
-
-  const summaries = [];
-  for (const [channelId, channelRows] of channelMap) {
-    // Sort by id ASC (rows came DESC from query)
-    channelRows.sort((a, b) => a.id - b.id);
-    // Defensive split: pipe is the canonical separator; legacy rows may use dash
+  const summaries: ChannelSummary[] = [];
+  for (const [channelId, rows] of channelMap) {
+    rows.sort((a, b) => a.id - b.id);
     let parts = channelId.split("|");
-    if (parts.length < 2) {
-      parts = channelId.split("-");
-    }
+    if (parts.length < 2) parts = channelId.split("-");
     const participantA = (parts[0] || "").toLowerCase();
     const participantB = (parts[1] || "").toLowerCase();
-    const lastRow = channelRows[channelRows.length - 1];
+    const lastRow = rows[rows.length - 1];
     summaries.push({
       channel_id: channelId,
       participant_a: participantA,
       participant_b: participantB,
       last_at: lastRow.created_at,
-      messages: channelRows.map((r) => ({
+      last_message: (lastRow.content || "").slice(0, 100),
+      last_sender: lastRow.sender,
+      message_count: rows.length,
+      messages: rows.map((r) => ({
+        id: r.id,
         sender: r.sender,
         content: r.content,
         created_at: r.created_at,
       })),
     });
   }
-
-  // Sort by last_at DESC
   summaries.sort((a, b) => b.last_at.localeCompare(a.last_at));
   return summaries;
 }
@@ -137,16 +198,35 @@ const FALLBACK_METRICS = {
   updatedAt: new Date().toISOString(),
 };
 
-// GET /api/status - read metrics and members from Turso
+// GET /api/status - read metrics, members, chat summaries from Turso
 export async function GET() {
   try {
-    // Query mindfork_status keys + chat_messages table in parallel
+    // 三段查詢（簡化版，2026-04-30 老大 5635：30 天 DELETE 不留歷史）：
+    //   [0] mindfork_status keys
+    //   [1] chat_channels（active private + 有訊息的 deleted 也帶上）
+    //   [2] chat_messages preload（每頻道最新 N 筆 — 用 ROW_NUMBER 切窗）
+    //
+    // preload 策略：先撈最近 1500 筆 messages（30 天內全部都是熱資料），
+    // 在 server 端按 channel 分桶並截每桶 50 筆。
+    // 為什麼不在 SQL 裡用 window function：libSQL 支援但複雜；1500 筆排序 cheap。
     const result = await tursoExecute([
       { sql: "SELECT key, value FROM mindfork_status WHERE key IN ('metrics', 'members', 'member_os', 'task_queue', 'meeting', 'member_profiles')" },
-      { sql: "SELECT id, channel_id, sender, recipient, content, created_at FROM chat_messages ORDER BY id DESC LIMIT 500" },
+      {
+        sql:
+          "SELECT channel_id, last_message, last_sender, last_at, message_count, status " +
+          "FROM chat_channels " +
+          "WHERE channel_type='private' AND status='active' " +
+          "ORDER BY last_at DESC",
+      },
+      {
+        sql:
+          "SELECT id, channel_id, sender, recipient, content, created_at " +
+          "FROM chat_messages " +
+          "ORDER BY id DESC LIMIT 1500",
+      },
     ]);
 
-    const map = rowsToMap(result);
+    const map = rowsToMap(result, 0);
 
     const metrics = map.metrics
       ? JSON.parse(map.metrics)
@@ -155,16 +235,16 @@ export async function GET() {
     const rawOs = map.member_os ? JSON.parse(map.member_os) : {};
     const taskQueue = map.task_queue ? JSON.parse(map.task_queue) : [];
     const meeting = map.meeting ? JSON.parse(map.meeting) : { active: false };
-    // Normalize: support legacy string[], new {text,task,at}[], or plain string
-    const memberOs: Record<string, Array<{text: string; task?: string; at?: string}>> = {};
+
+    const memberOs: Record<string, Array<{ text: string; task?: string; at?: string }>> = {};
     for (const [k, v] of Object.entries(rawOs)) {
       if (!Array.isArray(v)) {
-        // plain string (very old format)
         memberOs[k] = [{ text: String(v), task: "", at: "" }];
       } else {
         memberOs[k] = (v as unknown[]).map((item) => {
           if (typeof item === "string") return { text: item, task: "", at: "" };
-          if (typeof item === "object" && item !== null && "text" in item) return item as {text: string; task?: string; at?: string};
+          if (typeof item === "object" && item !== null && "text" in item)
+            return item as { text: string; task?: string; at?: string };
           return { text: String(item), task: "", at: "" };
         });
       }
@@ -172,8 +252,13 @@ export async function GET() {
 
     const memberProfiles = map.member_profiles ? JSON.parse(map.member_profiles) : [];
 
-    // Build chatSummaries from chat_messages rows (result[1])
-    const chatSummaries = buildChatSummaries(result);
+    // 把每頻道 preload 截成最多 50 筆（預設 LIMIT，之後上拉再撈舊）
+    const PRELOAD_PER_CHANNEL = 50;
+    const allSummaries = buildChatSummaries(result.results[1], result.results[2]);
+    const chatSummaries = allSummaries.map((s) => ({
+      ...s,
+      messages: s.messages.slice(-PRELOAD_PER_CHANNEL), // ASC 排序，留最新 N 筆
+    }));
 
     return NextResponse.json({ members, metrics, memberOs, taskQueue, meeting, memberProfiles, chatSummaries });
   } catch (err) {
@@ -185,7 +270,7 @@ export async function GET() {
   }
 }
 
-// POST /api/status - upsert metrics/members into Turso
+// POST /api/status - upsert metrics/members into Turso (unchanged)
 // Requires Authorization: Bearer <MINDFORK_API_KEY>
 export async function POST(request: NextRequest) {
   const apiKey = process.env.MINDFORK_API_KEY;
@@ -197,18 +282,16 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Read current state from Turso
     const current = await tursoExecute([
       { sql: "SELECT key, value FROM mindfork_status WHERE key IN ('metrics', 'members', 'member_os')" },
     ]);
-    const map = rowsToMap(current);
+    const map = rowsToMap(current, 0);
 
     let metrics = map.metrics
       ? JSON.parse(map.metrics)
       : { ...FALLBACK_METRICS };
     let members = map.members ? JSON.parse(map.members) : {};
 
-    // Update metrics fields if provided
     if (
       body.rateLimitPercent !== undefined ||
       body.pendingTasks !== undefined ||
@@ -235,7 +318,6 @@ export async function POST(request: NextRequest) {
       metrics.updatedAt = new Date().toISOString();
     }
 
-    // Update member status if provided
     if (body.memberId) {
       const { memberId, status, task } = body;
 
@@ -263,7 +345,6 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    // Handle meeting action: set meeting status in Turso
     let meetingPayload: { active: boolean; topic?: string; startedAt?: string } | undefined;
     if (body.meeting !== undefined) {
       if (body.meeting === true || body.meeting === "start") {
@@ -273,9 +354,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Upsert keys into Turso
     const now = new Date().toISOString();
-    const upserts: Array<{ sql: string; args: Array<{ type: string; value: string }> }> = [
+    const upserts: TursoStmt[] = [
       {
         sql: "INSERT INTO mindfork_status (key, value, updated_at) VALUES ('metrics', ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
         args: [
