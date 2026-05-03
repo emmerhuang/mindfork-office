@@ -159,56 +159,8 @@ export async function GET() {
   }
 }
 
-// ── POST /api/assets — upload new asset ─────────────────────
-
-export async function POST(request: NextRequest) {
-  try {
-    if (!verifyAdminCookie(request)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const { name, category, filename, width, height, imageData } = body;
-
-    if (!name || !category || !filename) {
-      return NextResponse.json({ error: "name, category, filename are required" }, { status: 400 });
-    }
-
-    await ensureTable();
-
-    // Sanitize filename: only allow alphanumeric, dash, underscore, dot
-    const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, "");
-    const finalFilename = safeFilename.endsWith(".png") ? safeFilename : `${safeFilename}.png`;
-
-    // Write image to public/sprites/map-objects/
-    if (imageData) {
-      const buffer = Buffer.from(imageData, "base64");
-      const filePath = path.join(MAP_OBJECTS_DIR, finalFilename);
-      fs.writeFileSync(filePath, buffer);
-    }
-
-    // Insert into Turso
-    const id = name.replace(/[^a-zA-Z0-9_-]/g, "-").toLowerCase();
-    await tursoExecute([
-      {
-        sql: "INSERT OR REPLACE INTO assets (id, name, category, filename, width, height) VALUES (?, ?, ?, ?, ?, ?)",
-        args: [
-          { type: "text", value: id },
-          { type: "text", value: name },
-          { type: "text", value: category },
-          { type: "text", value: finalFilename },
-          { type: "text", value: String(width ?? 0) },
-          { type: "text", value: String(height ?? 0) },
-        ],
-      },
-    ]);
-
-    return NextResponse.json({ ok: true, id, filename: finalFilename });
-  } catch (err) {
-    console.error("POST /api/assets error:", err);
-    return NextResponse.json({ error: String(err) }, { status: 500 });
-  }
-}
+// ── POST /api/assets — REMOVED 2026-05-01 (boss decision 5776) ──
+// Upload feature was unused and broken on production. Kept GET/DELETE only.
 
 // ── DELETE /api/assets — soft-delete (move to _recycle) ─────
 

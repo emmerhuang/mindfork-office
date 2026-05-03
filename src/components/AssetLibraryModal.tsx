@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface Asset {
   id: string;
@@ -27,15 +27,6 @@ export default function AssetLibraryModal({ onClose }: { onClose: () => void }) 
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [pwInput, setPwInput] = useState("");
   const [pwError, setPwError] = useState("");
-
-  // Upload state
-  const [uploadName, setUploadName] = useState("");
-  const [uploadCategory, setUploadCategory] = useState("decoration");
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadPreview, setUploadPreview] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadMsg, setUploadMsg] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Delete state
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -94,82 +85,6 @@ export default function AssetLibraryModal({ onClose }: { onClose: () => void }) 
   useEffect(() => {
     if (authed === true) fetchAssets();
   }, [authed, fetchAssets]);
-
-  // File selection handler
-  const handleFileSelect = (file: File | null) => {
-    if (!file) return;
-    setUploadFile(file);
-    // Auto-fill name from filename
-    if (!uploadName) {
-      setUploadName(file.name.replace(/\.png$/i, ""));
-    }
-    // Preview
-    const reader = new FileReader();
-    reader.onload = () => setUploadPreview(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  // Drop handler
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file && /\.png$/i.test(file.name)) {
-      handleFileSelect(file);
-    }
-  };
-
-  // Upload
-  const handleUpload = async () => {
-    if (!uploadFile || !uploadName) return;
-    setUploading(true);
-    setUploadMsg("");
-    try {
-      // Read file as base64
-      const arrayBuffer = await uploadFile.arrayBuffer();
-      const base64 = btoa(
-        new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), "")
-      );
-
-      // Get natural dimensions
-      const img = new Image();
-      const dimensions = await new Promise<{ w: number; h: number }>((resolve) => {
-        img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-        img.src = URL.createObjectURL(uploadFile);
-      });
-
-      const filename = uploadName.replace(/[^a-zA-Z0-9_-]/g, "-").toLowerCase();
-
-      const res = await fetch("/api/assets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({
-          name: uploadName,
-          category: uploadCategory,
-          filename,
-          width: dimensions.w,
-          height: dimensions.h,
-          imageData: base64,
-        }),
-      });
-
-      if (res.ok) {
-        setUploadMsg("Uploaded successfully");
-        setUploadName("");
-        setUploadFile(null);
-        setUploadPreview(null);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-        await fetchAssets();
-      } else {
-        const data = await res.json();
-        setUploadMsg(`Error: ${data.error}`);
-      }
-    } catch (e) {
-      setUploadMsg(`Error: ${String(e)}`);
-    } finally {
-      setUploading(false);
-    }
-  };
 
   // Delete
   const handleDelete = async (id: string) => {
@@ -246,69 +161,6 @@ export default function AssetLibraryModal({ onClose }: { onClose: () => void }) 
         </div>
 
         <div className="flex-1 overflow-hidden flex flex-col">
-          {/* Upload area */}
-          <div className="px-4 py-3 border-b border-gray-800">
-            <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Upload New Asset</div>
-            <div className="flex gap-3 items-start">
-              {/* Drop zone */}
-              <div
-                className="w-24 h-24 border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-400 transition-colors shrink-0"
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={handleDrop}
-              >
-                {uploadPreview ? (
-                  <img src={uploadPreview} alt="preview" className="max-w-full max-h-full" style={{ imageRendering: "pixelated" }} />
-                ) : (
-                  <span className="text-gray-500 text-xs text-center px-1">Drop PNG or click</span>
-                )}
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".png"
-                className="hidden"
-                onChange={(e) => handleFileSelect(e.target.files?.[0] ?? null)}
-              />
-
-              {/* Fields */}
-              <div className="flex-1 flex flex-col gap-2">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Asset name"
-                    value={uploadName}
-                    onChange={(e) => setUploadName(e.target.value)}
-                    className="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm"
-                  />
-                  <select
-                    value={uploadCategory}
-                    onChange={(e) => setUploadCategory(e.target.value)}
-                    className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm"
-                  >
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <button
-                    onClick={handleUpload}
-                    disabled={!uploadFile || !uploadName || uploading}
-                    className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 rounded text-sm"
-                  >
-                    {uploading ? "Uploading..." : "Upload"}
-                  </button>
-                  {uploadMsg && (
-                    <span className={`text-xs ${uploadMsg.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>
-                      {uploadMsg}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Filter bar */}
           <div className="px-4 py-2 border-b border-gray-800 flex gap-1 flex-wrap">
             <button
