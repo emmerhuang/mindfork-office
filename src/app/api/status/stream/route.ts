@@ -3,6 +3,30 @@ import { NextRequest } from "next/server";
 const TURSO_URL = process.env.TURSO_URL!;
 const TURSO_TOKEN = process.env.TURSO_TOKEN!;
 
+/** 合法 memberId 白名單（task #301，與 /api/status route.ts 同步維護）*/
+const VALID_MEMBER_IDS = new Set([
+  "boss", "secretary", "sherlock", "lego", "vault", "lens",
+  "forge", "grant", "mika", "yuki", "waffles",
+]);
+
+/** 過濾掉不在白名單的 member key（單字元亂碼等）*/
+function sanitizeMembers(raw: unknown): Record<string, unknown> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const clean: Record<string, unknown> = {};
+  let dirty = 0;
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof k === "string" && VALID_MEMBER_IDS.has(k)) clean[k] = v;
+    else dirty++;
+  }
+  if (dirty > 0) {
+    console.warn(
+      `[api/status/stream] members has ${dirty} invalid keys (skipped). ` +
+      `valid count=${Object.keys(clean).length}`
+    );
+  }
+  return clean;
+}
+
 /** Poll interval for checking Turso changes (ms) */
 const POLL_INTERVAL = 5_000;
 
@@ -236,7 +260,7 @@ function buildChatSummaries(data: TursoResponse): ChannelSummary[] {
 
 function buildPayload(map: Record<string, string>, rawData: TursoResponse): string {
   const metrics = map.metrics ? JSON.parse(map.metrics) : null;
-  const members = map.members ? JSON.parse(map.members) : {};
+  const members = sanitizeMembers(map.members ? JSON.parse(map.members) : {});
   const rawOs = map.member_os ? JSON.parse(map.member_os) : {};
   const taskQueue = map.task_queue ? JSON.parse(map.task_queue) : [];
   const meeting = map.meeting ? JSON.parse(map.meeting) : { active: false };

@@ -45,7 +45,22 @@ const nextConfig: NextConfig = {
       {
         source: '/(.*)',
         headers: [
-          { key: 'Content-Security-Policy-Report-Only', value: csp },
+          // task #303（2026-05-06）：Report-Only → enforce
+          //
+          // 仍保留 script-src/style-src 的 'unsafe-inline'，原因：
+          //   1. Next.js SSR/streaming 必注入 inline <script> 攜帶 hydration data
+          //   2. React `style={{}}` JSX prop 編譯為 element inline style，
+          //      被 CSP style-src 攔截
+          // 真正乾淨的修法是 nonce 化（middleware 注入 per-request nonce，
+          // 同時用 next/script + 自製 StyleProvider），屬於既有 P1 backlog。
+          // 本輪 enforce 仍有意義：
+          //   - 阻擋外部惡意腳本（default-src 'self' / connect-src 'self'）
+          //   - 阻擋 frame embedding（frame-ancestors 'none'）
+          //   - 阻擋 form 跨域 POST、object-src、media-src
+          //   - object/data URL 注入 → 全擋
+          // 即「象徵意義 > 實際擋 inline，但 supply chain / clickjacking
+          // 防護全面 enforce」。
+          { key: 'Content-Security-Policy', value: csp },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },

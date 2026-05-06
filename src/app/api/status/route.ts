@@ -4,6 +4,56 @@ import { MemberStatus } from "@/types";
 const TURSO_URL = process.env.TURSO_URL!;
 const TURSO_TOKEN = process.env.TURSO_TOKEN!;
 
+/**
+ * 合法 memberId 白名單（task #301 P2 防禦）
+ *
+ * 歷史上某段 code 把字串型 memberId 當 spread 寫進 members dict，
+ * 導致線上 43 個 key 中 32 個是中英文單字元亂碼（'。','W','i','k'...）。
+ * GET 端跳過不在白名單內的 key + console.warn；POST 端拒收非白名單 memberId。
+ */
+const VALID_MEMBER_IDS = new Set([
+  "boss",
+  "secretary",
+  "sherlock",
+  "lego",
+  "vault",
+  "lens",
+  "forge",
+  "grant",
+  "mika",
+  "yuki",
+  "waffles",
+]);
+
+function isValidMemberId(id: unknown): id is string {
+  return typeof id === "string" && VALID_MEMBER_IDS.has(id);
+}
+
+/**
+ * 從 raw members JSON 過濾掉不在白名單的 key（含 spread string 留下的單字元亂碼）。
+ * 跑過時若偵測到髒資料，console.warn 一次提醒，方便日後抓到再次寫入的兇手。
+ */
+function sanitizeMembers(raw: unknown): Record<string, unknown> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const clean: Record<string, unknown> = {};
+  const dirtyKeys: string[] = [];
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (isValidMemberId(k)) {
+      clean[k] = v;
+    } else {
+      dirtyKeys.push(k);
+    }
+  }
+  if (dirtyKeys.length > 0) {
+    // 不洩 key 內容（避免 log injection），只記數量
+    console.warn(
+      `[api/status] members has ${dirtyKeys.length} invalid keys (skipped). ` +
+      `valid count=${Object.keys(clean).length}`
+    );
+  }
+  return clean;
+}
+
 interface TursoResponse {
   results: Array<{
     type: string;
@@ -231,7 +281,8 @@ export async function GET() {
     const metrics = map.metrics
       ? JSON.parse(map.metrics)
       : { ...FALLBACK_METRICS };
-    const members = map.members ? JSON.parse(map.members) : {};
+    const rawMembers = map.members ? JSON.parse(map.members) : {};
+    const members = sanitizeMembers(rawMembers);
     const rawOs = map.member_os ? JSON.parse(map.member_os) : {};
     const taskQueue = map.task_queue ? JSON.parse(map.task_queue) : [];
     const meeting = map.meeting ? JSON.parse(map.meeting) : { active: false };
@@ -290,7 +341,12 @@ export async function POST(request: NextRequest) {
     let metrics = map.metrics
       ? JSON.parse(map.metrics)
       : { ...FALLBACK_METRICS };
-    let members = map.members ? JSON.parse(map.members) : {};
+    // 讀取既有 members 時順手清掉髒 key（task #301）—
+    // 這樣每次 POST 都會把線上殘留的單字元亂碼 key 自動修掉，
+    // 不需要另寫一次性清理腳本。
+    let members = sanitizeMembers(
+      map.members ? JSON.parse(map.members) : {}
+    ) as Record<string, { status: MemberStatus; task: string; updatedAt?: string }>;
 
     if (
       body.rateLimitPercent !== undefined ||
@@ -318,8 +374,16 @@ export async function POST(request: NextRequest) {
       metrics.updatedAt = new Date().toISOString();
     }
 
-    if (body.memberId) {
+    if (body.memberId !== undefined) {
       const { memberId, status, task } = body;
+
+      // task #301：memberId 必須是合法白名單成員（防 spread string 等畸形寫入）
+      if (!isValidMemberId(memberId)) {
+        return NextResponse.json(
+          { error: `Invalid memberId. Must be one of: ${[...VALID_MEMBER_IDS].join(", ")}` },
+          { status: 400 }
+        );
+      }
 
       if (!status) {
         return NextResponse.json(
@@ -340,7 +404,7 @@ export async function POST(request: NextRequest) {
 
       members[memberId] = {
         status,
-        task: task || "",
+        task: typeof task === "string" ? task : "",
         updatedAt: new Date().toISOString(),
       };
     }
