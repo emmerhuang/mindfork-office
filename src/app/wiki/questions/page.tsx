@@ -1,17 +1,16 @@
-// app/wiki/questions/page.tsx — 老大端題目清單頁（就地答題）
+// app/wiki/questions/page.tsx — 老大端題目清單頁（批次答題）
 //
-// Phase: 2 (Forge — 拆回獨立頁，2026-05-10 老大 #6493)
+// Phase: 2 (Forge — 全部填完一次送，2026-05-10 老大 #6496)
 // Spec  : phase2 spec D-4 / D-5
 // ADR   : reports/architecture/memory-webapp-phase2-lego-adr-20260510.md §A / §F.1
 //
-// 設計原則（老大 #6493 澄清）：
-//   - /wiki 和 /wiki/questions 是兩個獨立頁、兩條獨立連結
-//   - 「一頁式」= 在清單頁直接答題，不是把兩塊整合到同一頁
-//   - 點開題目不必跳到詳情頁；題目主體 + 影響說明 + 選項 + 補充說明 + 送出 都在這頁
-//   - 詳情頁 /wiki/questions/[id] 仍保留（次要入口：查看歷史 / Telegram 直連單題）
+// 設計原則（老大 #6496）：
+//   - 清單頁就地答題，但「全部填完一次送」，不再每題各自送出
+//   - Pending 區由 PendingQuestionsBatch (client component) 統一管理 draft state
+//   - 底部一個「全部送出（N 題已填）」按鈕，並行 POST /api/wiki/questions/answer
 //
 // 顯示策略：
-//   - 上方：等老大答（pending；按 createdAt ASC 最舊先答）→ 卡片內就地展開答題表單
+//   - 上方：等老大答（pending；按 createdAt ASC 最舊先答）→ 批次答題容器
 //   - 下方：最近 7 天已答的（recently_answered；按 answeredAt DESC）→ 點卡片進詳情頁回看
 //
 // Auth：
@@ -27,7 +26,7 @@ import { listQuestionsForBoss, type QuestionListItem } from "@/lib/questions-dat
 import { verifyAdminCookie } from "@/lib/admin-auth";
 import { verifyTokenCapability } from "@/lib/token-capability";
 import { WIKI_TOKEN_COOKIE } from "@/lib/wiki-auth";
-import InlineAnswerForm from "./InlineAnswerForm";
+import PendingQuestionsBatch from "./PendingQuestionsBatch";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -103,18 +102,7 @@ export default async function QuestionsListPage({
         )}
 
         {!dbError && pending.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-blue-700">
-              等你答（{pending.length}）
-            </h2>
-            <ul className="space-y-4">
-              {pending.map((q) => (
-                <li key={q.id}>
-                  <PendingQuestionCard q={q} />
-                </li>
-              ))}
-            </ul>
-          </section>
+          <PendingQuestionsBatch questions={pending} />
         )}
 
         {!dbError && recentlyAnswered.length > 0 && (
@@ -137,66 +125,7 @@ export default async function QuestionsListPage({
 }
 
 // ── Sub-components ──────────────────────────────────────────
-
-/**
- * Pending 題目：就地展開答題（題目 + 影響 + 選項 + 補充 + 送出）。
- * 不再用 <Link> 包整張卡，避免點到任何位置都跳走。
- * 卡片底部留一個小連結「在獨立頁開啟」，給需要 deep-link / 分享情境。
- */
-function PendingQuestionCard({ q }: { q: QuestionListItem }) {
-  return (
-    <article className="rounded-lg bg-white shadow-sm border border-blue-200 p-4 sm:p-5 space-y-3">
-      {/* meta */}
-      <div className="flex items-center gap-2 text-xs text-stone-500">
-        <span>#{q.id}</span>
-        <span>·</span>
-        <span>{q.owner}</span>
-        <span>·</span>
-        <time dateTime={q.createdAt}>{formatRelative(q.createdAt)}</time>
-      </div>
-
-      {/* 題目主體 */}
-      <p className="text-sm sm:text-base font-medium text-stone-900 whitespace-pre-wrap">
-        {q.questionBody}
-      </p>
-
-      {/* D-5：影響說明（決策前同畫面可見） */}
-      <div className="rounded-md bg-amber-50 border border-amber-200 p-3">
-        <h3 className="text-xs font-semibold text-amber-900 mb-1">
-          這個決定的可能影響
-        </h3>
-        <p className="text-sm text-amber-800 whitespace-pre-wrap">
-          {q.impactSummary}
-        </p>
-      </div>
-
-      {/* hypothesis（如有） */}
-      {q.hypothesis && (
-        <div className="rounded-md bg-stone-50 border border-stone-200 p-3">
-          <h3 className="text-xs font-semibold text-stone-600 mb-1">
-            {q.owner} 的建議答案
-          </h3>
-          <p className="text-sm text-stone-700 whitespace-pre-wrap">
-            {q.hypothesis}
-          </p>
-        </div>
-      )}
-
-      {/* 就地答題表單（client component） */}
-      <InlineAnswerForm questionId={q.id} options={q.options} />
-
-      {/* 次要連結：詳情頁 deep-link */}
-      <div className="flex justify-end pt-1">
-        <Link
-          href={`/wiki/questions/${q.id}`}
-          className="text-xs text-stone-400 hover:text-stone-600"
-        >
-          在獨立頁開啟 →
-        </Link>
-      </div>
-    </article>
-  );
-}
+// PendingQuestionCard 已移至 PendingQuestionsBatch.tsx（批次答題容器內部）
 
 /**
  * 已答題目：保留 <Link> 連到詳情頁（看完整答覆 + answer_note）。
