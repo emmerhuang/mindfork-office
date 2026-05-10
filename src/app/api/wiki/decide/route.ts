@@ -43,7 +43,9 @@ import {
   type ActionStatus,
 } from "@/lib/db/schema";
 import { db } from "@/lib/turso";
-import { verifyWikiAccess } from "@/lib/wiki-auth";
+import { WIKI_TOKEN_COOKIE } from "@/lib/wiki-auth";
+import { verifyAdminCookie } from "@/lib/admin-auth";
+import { verifyTokenCapability } from "@/lib/token-capability";
 import { isDryRun, dryRunResponse, requireDryRunAudit } from "@/lib/dry-run";
 import { notifyOwnerOfDecision } from "@/lib/telegram-notify";
 
@@ -86,15 +88,35 @@ function jsonError(
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   // ----- 1. Auth (Phase 1g P1-14：mfo_admin OR wiki_admin_token 雙路徑) -----
+  // Phase 2 hotfix (2026-05-10)：token 路徑須帶 capability='wiki_action'；不再委派
+  // verifyWikiAccess（它會吞掉 capability_mismatch 的 reason），改自己跑 capability check
+  // 才能正確區分 401（沒 token）vs 403（token 有但 scope 不對）。
+  //
   // 老大從 Telegram 點 magic link → middleware rewrite 到 /api/wiki/auth-magic →
   // set wiki_admin_token cookie → redirect 回 /wiki → DecisionButtons.tsx fetch
   // 本 endpoint 帶 wiki_admin_token cookie。
-  // 老大內網 / 直接打密碼登入 → 走 mfo_admin cookie 路徑。
-  // 兩條都失敗才 401。
-  if (!(await verifyWikiAccess(req))) {
-    return jsonError(401, "unauthorized", {
-      hint: "decide endpoint requires admin cookie or magic link (wiki_admin_token)",
-    });
+  // 老大內網 / 直接打密碼登入 → 走 mfo_admin cookie 路徑（root，跳過 capability）。
+  if (!verifyAdminCookie(req)) {
+    const tokenStr = req.cookies.get(WIKI_TOKEN_COOKIE)?.value;
+    const cap = await verifyTokenCapability(tokenStr, "wiki_action");
+    if (!cap.ok) {
+      const isAuthMissing =
+        cap.reason === "missing_token" ||
+        cap.reason === "token_revoked" ||
+        cap.reason === "token_expired" ||
+        cap.reason === "token_not_found" ||
+        cap.reason.startsWith("bad_token_") ||
+        cap.reason === "token_db_error";
+      const status = isAuthMissing ? 401 : 403;
+      return jsonError(
+        status,
+        isAuthMissing ? "unauthorized" : "capability_mismatch",
+        {
+          reason: cap.reason,
+          hint: "decide endpoint requires admin cookie or wiki_admin_token with capability=wiki_action",
+        },
+      );
+    }
   }
 
   // ----- 2. Parse body -----
