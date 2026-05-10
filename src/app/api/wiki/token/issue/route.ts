@@ -19,11 +19,11 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { wikiTokens } from "@/lib/db/schema";
-import { db } from "@/lib/turso";
+import { getTursoClient } from "@/lib/turso";
 import { verifyAdminCookie } from "@/lib/admin-auth";
 import { signToken, type TokenPayload } from "@/lib/wiki-hmac";
 import { isDryRun, dryRunResponse, requireDryRunAudit } from "@/lib/dry-run";
+import { VALID_CAPABILITIES, type Capability } from "@/lib/token-capability";
 
 export const runtime = "nodejs";
 
@@ -32,6 +32,7 @@ const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
 interface IssueBody {
   note?: unknown;
+  capability?: unknown;
 }
 
 function jsonError(
@@ -88,6 +89,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
   }
 
+  // capability：可選，未指定 default 'wiki_action'（schema 層 DEFAULT 也是這個）
+  // 白名單：'wiki_action' | 'questions'（與 lib/token-capability.ts VALID_CAPABILITIES 一致）
+  let capability: Capability = "wiki_action";
+  if (body.capability !== undefined && body.capability !== null) {
+    if (typeof body.capability !== "string") {
+      return jsonError(400, "capability_not_string");
+    }
+    if (!(VALID_CAPABILITIES as readonly string[]).includes(body.capability)) {
+      return jsonError(400, "capability_invalid", {
+        valid: VALID_CAPABILITIES,
+      });
+    }
+    capability = body.capability as Capability;
+  }
+
   // ----- 3. Generate token id + timestamps -----
   // randomUUID 36 chars，schema CHECK length BETWEEN 16 AND 64 通過
   const tokenId = crypto.randomUUID();
@@ -108,21 +124,31 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         expires_at: expiresAt,
         issued_by: "secretary",
         subject: "boss",
+        capability,
         note,
       },
     });
   }
 
   // ----- 5. INSERT wiki_tokens -----
+  // 走 raw SQL 因為 Drizzle schema.ts 的 wikiTokens 還沒同步 capability 欄位
+  // （Vault turso-005 已落地，但 schema.ts 同步是另一個 PR — Lego ADR §B.3）
   try {
-    await db.insert(wikiTokens).values({
-      id: tokenId,
-      issuedAt,
-      expiresAt,
-      issuedBy: "secretary",
-      subject: "boss",
-      useCount: 0,
-      note,
+    const client = getTursoClient();
+    await client.execute({
+      sql: `INSERT INTO wiki_tokens
+            (id, issued_at, expires_at, issued_by, subject, capability, use_count, note)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        tokenId,
+        issuedAt,
+        expiresAt,
+        "secretary",
+        "boss",
+        capability,
+        0,
+        note,
+      ],
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -146,6 +172,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       token_id: tokenId,
       issued_at: issuedAt,
       expires_at: expiresAt,
+      capability,
     },
     { status: 201 },
   );

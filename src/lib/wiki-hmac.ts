@@ -48,6 +48,27 @@ function getAgentSecret(): string {
   );
 }
 
+/**
+ * Phase 2 — Questions endpoint 用獨立 secret（Lego ADR §E.2 三層 enforce 第三層）。
+ *
+ * 為什麼分離：MEMORY_AGENT_HMAC_SECRET 外洩時，攻擊者可送 wiki action submit；
+ * 若 questions 共用同一個 secret，問答系統也會一起淪陷。物理隔離 secret 讓
+ * 兩條 server-to-server 路徑各自獨立的爆炸半徑。
+ *
+ * Production 必設 QUESTIONS_AGENT_HMAC_SECRET（>=32 chars）；dev 走預設值方便 Forge/Lens
+ * 本機跑 driver。
+ */
+function getQuestionsAgentSecret(): string {
+  const s = process.env.QUESTIONS_AGENT_HMAC_SECRET;
+  if (s && s.length >= 32) return s;
+  if (process.env.NODE_ENV !== "production") {
+    return "dev-questions-agent-hmac-secret-do-not-use-prod-32chars";
+  }
+  throw new Error(
+    "QUESTIONS_AGENT_HMAC_SECRET not configured or too short (need >=32 chars).",
+  );
+}
+
 // ============================================================================
 // Server-to-server HMAC（subagent → /api/wiki/submit）
 // ============================================================================
@@ -78,6 +99,41 @@ export function verifyAgentSig(
 ): boolean {
   if (!providedSig || typeof providedSig !== "string") return false;
   const expected = computeAgentSig(rawBody);
+  if (providedSig.length !== expected.length) return false;
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(providedSig, "hex"),
+      Buffer.from(expected, "hex"),
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Phase 2 questions submit / poll-answers 專屬 HMAC（與 wiki action 分離，見 §E.2）。
+ *
+ * Subagent 送題用法：
+ *   const sig = computeQuestionsAgentSig(JSON.stringify(body));
+ *   fetch('/api/wiki/questions/submit', {
+ *     headers: { 'X-Agent-HMAC': sig, 'X-Agent-Name': 'sherlock' },
+ *     body: JSON.stringify(body),
+ *   });
+ */
+export function computeQuestionsAgentSig(rawBody: string): string {
+  return crypto
+    .createHmac("sha256", getQuestionsAgentSecret())
+    .update(rawBody)
+    .digest("hex");
+}
+
+/** 驗 questions endpoint 帶來的 HMAC（與 verifyAgentSig 同模式，secret 不同）。 */
+export function verifyQuestionsAgentSig(
+  rawBody: string,
+  providedSig: string | null | undefined,
+): boolean {
+  if (!providedSig || typeof providedSig !== "string") return false;
+  const expected = computeQuestionsAgentSig(rawBody);
   if (providedSig.length !== expected.length) return false;
   try {
     return crypto.timingSafeEqual(
