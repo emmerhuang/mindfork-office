@@ -23,7 +23,13 @@ import { sqliteTable, integer, text, index } from "drizzle-orm/sqlite-core";
 // Enum literals — 與 SQL CHECK constraints 雙端對齊
 // ============================================================================
 
-/** v2 §D.2 鎖死的 7 個 action_type */
+/**
+ * v2 §D.2 鎖死的 action_type 白名單。
+ *
+ * Phase 1.2 (turso-003 LIVE 2026-05-10): 加 'rollback'（白名單由 7 → 8）。
+ * rollback 是補償動作 row：worker 撈到後從 backup_path 還原檔案，完成後把
+ * 原 war 由 'rolled_back' 升 'superseded_by_rollback'。詳見 v2 §F.2 / §G.3。
+ */
 export const ACTION_TYPES = [
   "create_page",
   "modify_content",
@@ -32,6 +38,7 @@ export const ACTION_TYPES = [
   "merge_pages",
   "split_page",
   "adjust_tags",
+  "rollback",
 ] as const;
 export type ActionType = (typeof ACTION_TYPES)[number];
 
@@ -60,14 +67,20 @@ export const INITIATED_BY = ["agent", "boss", "cron", "migration"] as const;
 export type InitiatedBy = (typeof INITIATED_BY)[number];
 
 /**
- * v2 §D.2 完整 11 種 status。State machine（合法轉換見 SQL trigger T10）：
- *   auto_pending      → worker_picked / auto_applied / applied_failed
+ * v2 §D.2 完整 status 白名單。State machine（合法轉換見 SQL trigger T10）：
+ *   auto_pending      → worker_picked / auto_applied / applied_failed / rollback_failed
  *   pending_review    → approved / rejected
- *   approved          → worker_picked / applied / applied_failed
- *   worker_picked     → auto_applied / applied / applied_pending_ack / applied_failed
+ *   approved          → worker_picked / applied / applied_failed / rollback_failed
+ *   worker_picked     → auto_applied / applied / applied_pending_ack / applied_failed / rollback_failed
  *   applied_pending_ack → ack / rolled_back
  *   applied / auto_applied → rolled_back
- *   ack / rejected / rolled_back / applied_failed → 終態
+ *   rolled_back       → superseded_by_rollback   (Phase 1.2 turso-003 新增)
+ *   ack / rejected / superseded_by_rollback / applied_failed / rollback_failed → 終態
+ *
+ * Phase 1.2 (turso-003 LIVE 2026-05-10): 加 'rollback_failed' + 'superseded_by_rollback'
+ *   - rollback_failed：rollback action row 自身在 worker 階段失敗（必填 worker_error，T7 守）
+ *   - superseded_by_rollback：原 war 在補償 rollback action 完成後，由 'rolled_back' 升此終態
+ *     （T10 合法轉換 rolled_back → superseded_by_rollback）
  */
 export const ACTION_STATUSES = [
   "auto_pending",
@@ -81,6 +94,8 @@ export const ACTION_STATUSES = [
   "rejected",
   "rolled_back",
   "applied_failed",
+  "rollback_failed",
+  "superseded_by_rollback",
 ] as const;
 export type ActionStatus = (typeof ACTION_STATUSES)[number];
 
@@ -115,6 +130,13 @@ export const wikiActionRequests = sqliteTable(
 
     /** JSON array of paths (merge/split 時的連動頁面)；可為 null */
     relatedPages: text("related_pages"),
+
+    /**
+     * Phase 1.2 (turso-003 LIVE 2026-05-10) 新欄。
+     * rollback action row 必填，指向被回滾的原 war_id（self-FK）；非 rollback action
+     * 必須 NULL。SQL trigger T11/T12 在 INSERT 時雙端守門（不靠 application 自律）。
+     */
+    relatedWarId: integer("related_war_id"),
 
     owner: text("owner", { enum: OWNERS }).notNull(),
 

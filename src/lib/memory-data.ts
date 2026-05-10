@@ -309,8 +309,11 @@ export function statusLabel(status: ActionStatus): string {
     applied_pending_ack: "成員做完了，請看一眼",
     ack: "你已看過",
     rejected: "你已拒絕",
-    rolled_back: "已軟回滾",
+    rolled_back: "已軟回滾（等系統還原中）",
     applied_failed: "執行失敗",
+    // Phase 1.2 (turso-003)
+    rollback_failed: "軟回滾失敗",
+    superseded_by_rollback: "已軟回滾並還原完成",
   };
   return map[status] ?? status;
 }
@@ -341,6 +344,8 @@ export function actionTypeLabel(type: ActionType): string {
     merge_pages: "合併頁",
     split_page: "拆頁",
     adjust_tags: "改標籤",
+    // Phase 1.2 (turso-003)：補償動作 row（不直接由 owner 提交，老大決策後 endpoint 自動建）
+    rollback: "軟回滾還原",
   };
   return map[type] ?? type;
 }

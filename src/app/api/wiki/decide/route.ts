@@ -230,6 +230,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       break;
     }
     case "rollback": {
+      // Phase 1.2 (turso-003 LIVE 2026-05-10): 兩步走實作
+      //   Step A (本 endpoint): UPDATE 原 war status='rolled_back' (T9 守 rolled_back_at +
+      //          rolled_back_by + rollback_reason) — 標記「老大要求軟回滾」。
+      //   Step B (本 endpoint): INSERT 新 rollback war (action_type='rollback',
+      //          status='auto_pending', related_war_id=原 war_id, owner=原 war.owner,
+      //          target_page=原 war.target_page) — 補償動作 row。
+      //   Step C (worker side): worker 撈到 status=auto_pending 的 rollback war，
+      //          從原 war.backup_path 還原檔案，成功後：
+      //            - 升該 rollback war status='auto_applied'（要 backup_path，T6 守）
+      //            - 升原 war status='rolled_back' → 'superseded_by_rollback' (T10 合法)
+      //          失敗則：rollback war status='rollback_failed'（要 worker_error，T7 守），
+      //          原 war 維持 'rolled_back'（不升 superseded）。
+      //
       // T9 強制 rolled_back 必填 rolled_back_at + rolled_back_by + rollback_reason
       const rr = body.rollback_reason;
       if (
@@ -241,17 +254,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           hint: "non-empty string, <= 4096 chars",
         });
       }
+      // 額外閘：rollback 必須有 backup_path 才有得還原（worker step C 依賴）
+      if (!current.backupPath || current.backupPath.length === 0) {
+        return jsonError(409, "rollback_no_backup", {
+          hint: "原 war 沒有 backup_path，無法軟回滾（worker 端無檔案可還原）。",
+          request_id: reqId,
+        });
+      }
+      // 額外閘：rollback action 自身不可被 rollback（避免 nested rollback 路徑）
+      if (current.actionType === "rollback") {
+        return jsonError(400, "cannot_rollback_a_rollback", {
+          hint: "rollback action row 不可再被 rollback；如要追加補償請建新 war。",
+        });
+      }
       updateFields.status = "rolled_back";
       updateFields.decidedAt = now;
       updateFields.rolledBackAt = now;
       updateFields.rolledBackBy = "boss";
       updateFields.rollbackReason = rr;
-      // 注意：派工單寫 'rollback_pending' 是錯的，schema 沒這 status；
-      // T10 合法轉換是 applied_pending_ack → rolled_back（直接落終態）。
-      // 軟回滾的「執行」（從 backup 還原檔案）由 worker 撈一筆新的 action_type='rollback' war 處理（v2 §F.2 step 4）。
-      // 本輪 endpoint 只負責原 war 的 status 落 'rolled_back'，新 rollback war 等 P1-5 worker 啟用時補。
-      // ★ 待追蹤：v2 §F.2 寫「rollback: INSERT 新 war (action_type='rollback')」這段
-      //   還沒實作 — 本輪先讓原 war 落 rolled_back，新 war 留待 P1-5 worker 啟用時補。
       break;
     }
   }
@@ -308,6 +328,66 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
   }
 
+  // ----- 8.5 rollback 專屬：INSERT 新 rollback war (Phase 1.2 turso-003) -----
+  //
+  // 原 war 已 UPDATE 成 'rolled_back'。現在 INSERT 一筆新 rollback war 給 worker 撈：
+  //   - action_type='rollback'         (T11 守 related_war_id 必填且原 war 必須存在)
+  //   - decision_layer='auto'          (worker 撈 auto_pending 自動處理；不需老大再批准軟回滾的執行)
+  //   - status='auto_pending'          (T3 守 auto layer 初始 status)
+  //   - related_war_id=原 war_id       (T11 必填、T12 反向守非 rollback 不可填)
+  //   - target_page=原 target_page     (worker 還原此檔案)
+  //   - payload_new='(rollback)'       (T1 length>=1；rollback 不從 payload 讀內容，從原 war.backup_path 取)
+  //   - owner=原 war.owner             (補償 row 屬於誰要修就是誰；通知也送他)
+  //   - initiated_by='boss'            (老大發起的回滾)
+  //   - 三欄白話文 not required (auto layer 不強制；T5 只守 notify)
+  //
+  // 失敗 path：rollback war INSERT 失敗 → 原 war 已落 rolled_back 但無對應補償 row。
+  //   選擇：回 500 並標明「partial state」，secretary 看 log 介入；不回滾原 war 的 status
+  //   （原 war UPDATE 已 commit；schema append-only 也不允許「撤銷」UPDATE）。
+  let rollbackWarId: number | null = null;
+  if (decideAction === "rollback") {
+    try {
+      const rbInsert = await db
+        .insert(wikiActionRequests)
+        .values({
+          actionType: "rollback",
+          decisionLayer: "auto",
+          targetPage: current.targetPage,
+          relatedPages: null,
+          relatedWarId: reqId,
+          owner: current.owner,
+          initiatedBy: "boss",
+          payloadOld: null,
+          payloadNew: "(rollback)",
+          payloadEdited: null,
+          whatChanged: null,
+          whyChanged: null,
+          impactScope: null,
+          justification: null,
+          rejectReason: null,
+          status: "auto_pending",
+          backupPath: null,
+          workerError: null,
+          createdAt: now,
+        })
+        .returning({ id: wikiActionRequests.id });
+      rollbackWarId = rbInsert[0]?.id ?? null;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      // 原 war 已 UPDATE 成 rolled_back（commit 過了），但補償 row 沒 INSERT 成功。
+      // 回 500 + 詳情，讓 secretary 在 log 看到並手動介入。
+      console.error(
+        `[decide] rollback war INSERT failed for original war ${reqId}: ${msg}`,
+      );
+      return jsonError(500, "rollback_insert_failed", {
+        original_war_id: reqId,
+        original_status_after: "rolled_back",
+        detail: msg,
+        hint: "原 war 已標 rolled_back，但補償 rollback war 沒建。secretary 介入。",
+      });
+    }
+  }
+
   // ----- 9. Write chat_messages 通知 owner -----
   //
   // Phase 1e (P1-8 + Task 3 補 approve 通知)：
@@ -315,7 +395,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   //               （worker 動完才會再寫一筆 applied 結果，那是 P1-5 worker 的工作）
   //   - reject   → 寫 owner inbox：被 reject + 理由
   //   - ack      → 寫 owner inbox：老大已 acknowledge
-  //   - rollback → 寫 owner inbox：被軟回滾 + 理由
+  //   - rollback → 寫 owner inbox：被軟回滾 + 理由 + 等 worker 從 backup 還原
   //
   // 改走 lib/telegram-notify.ts notifyOwnerOfDecision（強制小寫白名單 + canonical channel_id）
   let notifyContent: string | null = null;
@@ -330,7 +410,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       notifyContent = `【決策】你的告知 (${current.actionType} → ${current.targetPage}) 老大已 acknowledge。`;
       break;
     case "rollback":
-      notifyContent = `【決策】你的動作 (${current.actionType} → ${current.targetPage}) 被老大軟回滾。理由：${updateFields.rollbackReason}`;
+      notifyContent =
+        `【決策】老大要求軟回滾你之前的動作 (${current.actionType} → ${current.targetPage})。` +
+        `\n理由：${updateFields.rollbackReason}` +
+        `\n等 worker 從 backup 還原中（rollback war_id=${rollbackWarId ?? "?"}）。`;
       break;
   }
   if (notifyContent) {
@@ -360,6 +443,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       action: decideAction,
       status: updateFields.status,
       decided_at: now,
+      ...(rollbackWarId !== null ? { rollback_war_id: rollbackWarId } : {}),
     },
     { status: 200 },
   );
