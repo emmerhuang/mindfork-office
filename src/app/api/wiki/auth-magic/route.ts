@@ -66,9 +66,16 @@ function sanitizeNext(next: string | null): string {
 }
 
 /**
- * 組 Set-Cookie header value（httpOnly + Secure 在 prod + SameSite=Strict）。
+ * 組 Set-Cookie header value（httpOnly + Secure 在 prod + SameSite=Lax）。
  * 不能用 Next.js cookies() helper（response.cookies.set 在 redirect 時行為不可
  * 靠），手寫 header value 更穩。
+ *
+ * 為何 Lax 不 Strict（2026-05-10 老大拍板）：
+ *   magic link 從 Telegram in-app browser 點開是 cross-site top-level
+ *   navigation，Strict 會擋瀏覽器把 cookie 送回（reload / 重開 tab 場景）。
+ *   業界標準（Stripe / Auth0 / Clerk）magic link cookie 都用 Lax。Lax 對
+ *   cross-site GET top-nav 送 cookie，仍能擋 cross-site POST CSRF — 符合
+ *   magic link 安全模型。
  */
 function buildWikiTokenCookie(token: string): string {
   return [
@@ -76,7 +83,7 @@ function buildWikiTokenCookie(token: string): string {
     "Path=/",
     `Max-Age=${COOKIE_MAX_AGE_SEC}`,
     "HttpOnly",
-    "SameSite=Strict",
+    "SameSite=Lax",
     process.env.NODE_ENV === "production" ? "Secure" : "",
   ]
     .filter(Boolean)
