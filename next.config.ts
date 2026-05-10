@@ -67,6 +67,23 @@ const nextConfig: NextConfig = {
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
         ],
       },
+      // Lens P2-D：token issue / revoke endpoint 接收 query string token，
+      // 需要更嚴格的 Referrer-Policy: strict-origin（連同源都不送 path/query），
+      // 避免 magic link 的 ?t=<token> 被 Referer header 漏出去。同源也擋是
+      // 雙保險：P1-14 token middleware 雖會即時 query→cookie + redirect 去除
+      // token，但 redirect 之前的那一 hop（含 server log / proxy log / 任何
+      // SSR 內部 fetch）仍可能透過 Referer 帶 token 字串。
+      //
+      // 為什麼放最後：Next.js headers() 規則是「全部 match 都套用，相同 key
+      // 後者覆蓋前者」（latest-wins，非 first-match）。前面 /api/:path* 跟
+      // /(.*)  catchall 都設 Referrer-Policy 為 strict-origin-when-cross-origin，
+      // 我們要 override 成更嚴格的 strict-origin，必須放最後。
+      {
+        source: '/api/wiki/token/:path*',
+        headers: [
+          { key: 'Referrer-Policy', value: 'strict-origin' },
+        ],
+      },
     ];
   },
 };
