@@ -255,15 +255,15 @@ export function getActionsForStatus(status: ActionStatus): ButtonConfig[] {
     case "pending_review":
       // 要問層 — 老大批准/拒絕/編輯
       return [
-        { kind: "approve", label: "Approve", variant: "primary" },
-        { kind: "reject", label: "Reject", variant: "danger" },
-        { kind: "edit", label: "Edit & Approve", variant: "ghost" },
+        { kind: "approve", label: "同意", variant: "primary" },
+        { kind: "reject", label: "拒絕", variant: "danger" },
+        { kind: "edit", label: "修改後同意", variant: "ghost" },
       ];
     case "applied_pending_ack":
       // 告知層 — 已動完，老大事後同意或軟回滾
       return [
-        { kind: "ack", label: "Acknowledge", variant: "primary" },
-        { kind: "rollback", label: "Rollback", variant: "danger" },
+        { kind: "ack", label: "我看過了", variant: "primary" },
+        { kind: "rollback", label: "復原", variant: "danger" },
       ];
     case "auto_pending":
     case "approved":
@@ -274,7 +274,7 @@ export function getActionsForStatus(status: ActionStatus): ButtonConfig[] {
     case "auto_applied":
     case "ack":
       // 已完成終態 — 唯一可逆動作是軟回滾
-      return [{ kind: "rollback", label: "Rollback", variant: "ghost" }];
+      return [{ kind: "rollback", label: "復原", variant: "ghost" }];
     case "rejected":
     case "rolled_back":
     case "applied_failed":
@@ -293,20 +293,24 @@ export interface ButtonConfig {
 
 /**
  * 給 status 一個白話中文標籤（顯示在詳情頁頂部 status badge / list 卡片）。
+ *
+ * 命名原則（老大 2026-05-10 反饋）：
+ *   - 不用「排隊」「worker」「ack」這類技術詞
+ *   - 用老大視角寫：「不用我管 / 我來看 / 我已決定」
  */
 export function statusLabel(status: ActionStatus): string {
   const map: Record<ActionStatus, string> = {
-    auto_pending: "等本機 worker 執行",
-    auto_applied: "已自動執行完成",
-    pending_review: "等老大批准",
-    approved: "已批准，等 worker 執行",
-    worker_picked: "Worker 處理中",
+    auto_pending: "成員自己處理中（不用你管）",
+    auto_applied: "成員已自己處理完",
+    pending_review: "等你批准",
+    approved: "你已批准，成員執行中",
+    worker_picked: "成員執行中",
     applied: "已執行完成",
-    applied_pending_ack: "已通知，等老大確認",
-    ack: "老大已確認",
-    rejected: "老大已拒絕",
+    applied_pending_ack: "成員做完了，請看一眼",
+    ack: "你已看過",
+    rejected: "你已拒絕",
     rolled_back: "已軟回滾",
-    applied_failed: "Worker 執行失敗",
+    applied_failed: "執行失敗",
   };
   return map[status] ?? status;
 }
@@ -330,13 +334,13 @@ export function layerLabel(layer: DecisionLayer): string {
  */
 export function actionTypeLabel(type: ActionType): string {
   const map: Record<ActionType, string> = {
-    create_page: "新增頁面",
+    create_page: "新建頁",
     modify_content: "修改內容",
-    delete_page: "刪除頁面",
-    mark_stale: "標為過時",
-    merge_pages: "合併頁面",
-    split_page: "拆分頁面",
-    adjust_tags: "調整標籤",
+    delete_page: "刪除頁",
+    mark_stale: "標過期",
+    merge_pages: "合併頁",
+    split_page: "拆頁",
+    adjust_tags: "改標籤",
   };
   return map[type] ?? type;
 }

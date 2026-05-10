@@ -90,7 +90,7 @@ export default function EditModal({
       return;
     }
     if (edited === originalPayload) {
-      setLocalError("payload 沒有改變 — 直接點 Approve 不要走 Edit");
+      setLocalError("內容沒有改變 — 如果不修改請直接點「同意」");
       return;
     }
     if (mode === "json") {
@@ -147,7 +147,7 @@ export default function EditModal({
         {/* Header */}
         <header className="px-4 py-3 sm:px-6 border-b border-stone-200 flex items-center justify-between flex-shrink-0">
           <h2 id="edit-modal-title" className="text-base sm:text-lg font-semibold text-stone-900">
-            Edit & Approve
+            修改後同意
           </h2>
           <button
             type="button"
@@ -261,7 +261,7 @@ export default function EditModal({
             disabled={isSubmitting}
             className="px-4 py-2 rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50"
           >
-            {isSubmitting ? "送出中…" : "送出修改 + Approve"}
+            {isSubmitting ? "送出中…" : "送出修改後同意"}
           </button>
         </footer>
       </div>

@@ -82,7 +82,7 @@ export default function DecisionButtons({
       const text = `[${res.status}] ${err}${hint ? `\n${hint}` : ""}`;
       // 401 通常是 cookie 過期 — 老大要重新登入或重發 magic link
       if (res.status === 401) {
-        alert("登入已過期或 magic link 失效，請從首頁重新輸入 admin 密碼，或請秘書長重發 magic link");
+        alert("連結已過期。請告訴秘書長：「memory webapp 連結過期了，重發一下」");
       }
       return { ok: false, errorText: text };
     }
@@ -106,7 +106,7 @@ export default function DecisionButtons({
         payload = { request_id: requestId, action: "approve" };
         break;
       case "reject": {
-        const reason = window.prompt("Reject reason（必填）：");
+        const reason = window.prompt("拒絕的原因（必填）：");
         if (!reason || !reason.trim()) {
           // 使用者按取消或留空 → 直接放棄，不打 endpoint
           return;
@@ -122,7 +122,7 @@ export default function DecisionButtons({
         payload = { request_id: requestId, action: "ack" };
         break;
       case "rollback": {
-        const reason = window.prompt("Rollback reason（必填）：");
+        const reason = window.prompt("為什麼要復原（必填）：");
         if (!reason || !reason.trim()) {
           return;
         }

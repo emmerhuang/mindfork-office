@@ -18,9 +18,11 @@ import { headers } from "next/headers";
 import { NextRequest } from "next/server";
 
 import {
+  actionTypeLabel,
   computeDiff,
   getActionsForStatus,
   getRequestById,
+  layerLabel,
   statusLabel,
   type DiffLine,
 } from "@/lib/memory-data";
@@ -70,18 +72,25 @@ export default async function WikiActionDetailPage({ params }: PageProps) {
             </time>
           </div>
           <h1 className="text-xl sm:text-2xl font-semibold break-words">
-            {req.actionType.replace(/_/g, " ")}{" "}
+            {actionTypeLabel(req.actionType)}{" "}
             <span className="text-gray-500 font-normal">→</span>{" "}
             <code className="font-mono text-base sm:text-lg break-all">
               {req.targetPage}
             </code>
           </h1>
+          {/* 一句白話 summary：誰想做什麼 */}
+          <p className="text-sm text-stone-600">
+            <span className="font-medium text-stone-800">{req.owner}</span>{" "}
+            想{actionTypeLabel(req.actionType)}「
+            <code className="font-mono text-xs break-all">{req.targetPage}</code>
+            」
+          </p>
           <StatusBadge label={statusLabel(req.status)} layer={req.decisionLayer} />
         </header>
 
         {/* ── Related pages（merge/split 才有） ───────── */}
         {req.relatedPages && req.relatedPages.length > 0 && (
-          <Section title="Related pages">
+          <Section title="相關頁面">
             <ul className="text-sm space-y-1">
               {req.relatedPages.map((p) => (
                 <li key={p}>
@@ -94,7 +103,7 @@ export default async function WikiActionDetailPage({ params }: PageProps) {
 
         {/* ── 三欄白話文 ─────────────────────────────── */}
         {(req.whatChanged || req.whyChanged || req.impactScope) && (
-          <Section title="白話文說明">
+          <Section title="白話說明">
             <dl className="grid grid-cols-1 gap-3 text-sm">
               <NarrativeRow label="改了什麼" value={req.whatChanged} />
               <NarrativeRow label="為什麼改" value={req.whyChanged} />
@@ -105,7 +114,7 @@ export default async function WikiActionDetailPage({ params }: PageProps) {
 
         {/* ── 要問層必填的 justification ─────────────── */}
         {req.justification && (
-          <Section title="申請理由 (justification)">
+          <Section title="申請理由">
             <p className="text-sm whitespace-pre-wrap">{req.justification}</p>
           </Section>
         )}
@@ -118,13 +127,13 @@ export default async function WikiActionDetailPage({ params }: PageProps) {
         )}
 
         {/* ── Diff viewer ─────────────────────────────── */}
-        <Section title={`Diff (${diff.length} 行)`}>
+        <Section title={`內容差異（${diff.length} 行）`}>
           <DiffView lines={diff} />
         </Section>
 
         {/* ── Backup path ─────────────────────────────── */}
         {req.backupPath && (
-          <Section title="Backup">
+          <Section title="備份位置">
             <code className="font-mono text-xs break-all text-gray-600">
               {req.backupPath}
             </code>
@@ -140,7 +149,7 @@ export default async function WikiActionDetailPage({ params }: PageProps) {
           />
         ) : (
           <div className="text-sm text-gray-500 italic py-4">
-            目前狀態無可操作動作。
+            這筆已經處理完，沒有可以做的動作。
           </div>
         )}
       </div>
@@ -202,7 +211,7 @@ function StatusBadge({
   return (
     <div className="flex flex-wrap gap-2 text-xs">
       <span className={`px-2 py-0.5 rounded-full ${layerColor}`}>
-        {layer} layer
+        {layerLabel(layer)}
       </span>
       <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
         {label}

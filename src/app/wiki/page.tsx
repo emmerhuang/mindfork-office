@@ -77,13 +77,26 @@ export default async function WikiPendingListPage({
   return (
     <main className="min-h-screen bg-[#f5f1eb] px-4 py-6 sm:px-8 sm:py-10">
       <div className="mx-auto max-w-3xl space-y-6">
-        <header className="space-y-1">
+        <header className="space-y-2">
           <h1 className="text-xl sm:text-2xl font-semibold text-stone-900">
-            Memory Webapp
+            團隊筆記更動清單
           </h1>
           <p className="text-sm text-stone-600">
-            Wiki 維護動作審核 — 共 {items.length} 筆待處理
+            成員想動 wiki 筆記時，會先送到這裡讓你看一眼
           </p>
+          {items.length > 0 && (
+            <div className="flex flex-wrap gap-2 text-xs pt-1">
+              <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-800">
+                請決定 {reviewItems.length}
+              </span>
+              <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-800">
+                請看一眼 {ackItems.length}
+              </span>
+              <span className="px-2 py-1 rounded-full bg-stone-100 text-stone-700">
+                不用你管 {autoItems.length}
+              </span>
+            </div>
+          )}
         </header>
 
         {items.length === 0 ? (
@@ -91,17 +104,17 @@ export default async function WikiPendingListPage({
         ) : (
           <>
             <ListGroup
-              title="要問：等老大批准"
+              title="請決定（需要你批准才能動）"
               tone="review"
               items={reviewItems}
             />
             <ListGroup
-              title="告知：等老大確認"
+              title="請看一眼（成員做完了，等你確認）"
               tone="notify"
               items={ackItems}
             />
             <ListGroup
-              title="自主：worker 排隊中"
+              title="不用你管（成員自己處理中）"
               tone="auto"
               items={autoItems}
             />
@@ -239,9 +252,9 @@ function StatusBadge({ status }: { status: WikiRequestListItem["status"] }) {
 function EmptyState() {
   return (
     <section className="rounded-lg border border-stone-300 bg-stone-50 p-6 text-center">
-      <p className="text-stone-600 text-sm">目前沒有待處理的 wiki 動作。</p>
+      <p className="text-stone-600 text-sm">目前沒有要處理的事。</p>
       <p className="text-stone-500 text-xs mt-1">
-        Subagent 提交新動作後會出現在這裡。
+        成員提出新的筆記更動時，會出現在這裡。
       </p>
     </section>
   );
