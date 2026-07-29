@@ -22,15 +22,10 @@
 //                              ★ 派工單寫「→ rollback_pending」schema 沒這 status；
 //                              T10 合法轉換是 applied_pending_ack → rolled_back
 //   4. Drizzle UPDATE — SQL trigger T10 兜底擋非法轉換（重複 approve / 跳階等）
-//   5. INSERT chat_messages（Turso）通知 owner（v2 §F：worker 動完才寫 / 老大決策後 endpoint 寫）
-//      由於本輪只動 decide endpoint、worker 是 P1-5：
-//        approve:  暫不寫 chat_messages（worker 動完才寫 — 等 P1-5）
-//        reject:   寫 chat_messages 給 owner inbox：'你的提議被 reject，理由：...'
-//        ack:      寫 chat_messages 給 owner inbox：'老大已 acknowledge 你的告知'
-//        rollback: 寫 chat_messages 給 owner inbox：'你的動作被軟回滾，理由：...'
-//      ★ 注意：chat_messages 寫到 Turso（v2 §D.4 兩邊都有，sync-all 會拉到本機）
-//      ★ Turso chat_messages schema 比本機簡，只有 (id, channel_id, sender, recipient, content, created_at, archived_at)
-//        沒 channel_type / metadata / is_read / synced — 用 Turso schema 為準
+//   5. 寫一行 structured log 記錄決策（2026-07-29 起）
+//      原本這一步是 INSERT chat_messages 通知 owner 的私聊 inbox。該路徑已移除
+//      （私聊拆除 + 它從未真的送達過任何人），詳細理由見第 9 步的區塊註解。
+//      決策的 durable 紀錄在 wiki_action_requests 自己的欄位裡，不依賴通知。
 //
 // Spec source: reports/architecture/memory-webapp-architecture-v2-20260509.md §F.2 §F.3
 
@@ -47,7 +42,6 @@ import { WIKI_TOKEN_COOKIE } from "@/lib/wiki-auth";
 import { verifyAdminCookie } from "@/lib/admin-auth";
 import { verifyTokenCapability } from "@/lib/token-capability";
 import { isDryRun, dryRunResponse, requireDryRunAudit } from "@/lib/dry-run";
-import { notifyOwnerOfDecision } from "@/lib/telegram-notify";
 
 export const runtime = "nodejs";
 
@@ -76,11 +70,11 @@ function jsonError(
 }
 
 // ============================================================================
-// chat_messages writer
+// 決策通知
 // ============================================================================
 //
-// Phase 1e (P1-8 整合)：改走 lib/telegram-notify.ts 統一寫入 + canonical 強制。
-// 舊版本直接用 raw libSQL client（保留邏輯但拆到 lib 共用，sender/recipient 強制小寫白名單）。
+// 2026-07-29 Forge：本 endpoint 已不寫任何通知表。原本寫 chat_messages 給 owner
+// 私聊 inbox 的路徑連同私聊機制一起移除（理由見第 9 步的說明）。
 
 // ============================================================================
 // POST handler
@@ -410,54 +404,32 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  // ----- 9. Write chat_messages 通知 owner -----
+  // ----- 9. 決策結果的落點 -----
   //
-  // Phase 1e (P1-8 + Task 3 補 approve 通知)：
-  //   - approve  → 寫 owner inbox：「你提交的 X 已批准、worker 動完會通知你」
-  //               （worker 動完才會再寫一筆 applied 結果，那是 P1-5 worker 的工作）
-  //   - reject   → 寫 owner inbox：被 reject + 理由
-  //   - ack      → 寫 owner inbox：老大已 acknowledge
-  //   - rollback → 寫 owner inbox：被軟回滾 + 理由 + 等 worker 從 backup 還原
+  // 2026-07-29 Forge：這裡原本寫一筆 chat_messages 到 owner 的私聊 inbox
+  // （notifyOwnerOfDecision）。該路徑已移除，理由是它的成立前提被打掉了：
   //
-  // 改走 lib/telegram-notify.ts notifyOwnerOfDecision（強制小寫白名單 + canonical channel_id）
-  let notifyContent: string | null = null;
-  switch (decideAction) {
-    case "approve":
-      notifyContent = `【決策】你提交的 ${current.actionType} (${current.targetPage}) 已被老大批准。worker 動完後會再通知你結果。`;
-      break;
-    case "reject":
-      notifyContent = `【決策】你的提議 (${current.actionType} → ${current.targetPage}) 被老大 reject。理由：${updateFields.rejectReason}`;
-      break;
-    case "ack":
-      notifyContent = `【決策】你的告知 (${current.actionType} → ${current.targetPage}) 老大已 acknowledge。`;
-      break;
-    case "rollback":
-      notifyContent =
-        `【決策】老大要求軟回滾你之前的動作 (${current.actionType} → ${current.targetPage})。` +
-        `\n理由：${updateFields.rollbackReason}` +
-        `\n等 worker 從 backup 還原中（rollback war_id=${rollbackWarId ?? "?"}）。`;
-      break;
-  }
-  if (notifyContent) {
-    try {
-      const r = await notifyOwnerOfDecision({
-        owner: current.owner,
-        content: notifyContent,
-      });
-      if (!r.ok) {
-        // chat_messages 寫失敗不影響主流程（status 已更新），log 即可
-        // 老大 #6414 答 A 等價：通知失敗時 endpoint 仍回成功，下次 sync 補
-        console.error(
-          `[decide] notifyOwnerOfDecision failed for war ${reqId}: ${r.reason}`,
-        );
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      console.error(
-        `[decide] notifyOwnerOfDecision threw for war ${reqId}: ${msg}`,
-      );
-    }
-  }
+  //   ‧ 私聊機制整條拆除（老大 #13857-13859），成員的私聊 inbox 不存在了
+  //   ‧ 更根本的是，它**從來沒有送達過任何人**：舊註解寫「下次 sync 補」，
+  //     但 sync-all 的 chat 同步只有本機→雲端單向，全庫沒有 Turso→本機的
+  //     puller。寫進雲端的成員通知從落地那天起就沒有讀者。
+  //
+  // 決策本身的 durable 紀錄沒有因此丟失 —— 它就在本表的
+  // status / rejectReason / rollbackReason / decidedAt 欄位裡，成員下次被喚醒時
+  // 查 war 就看得到，那才是這份資訊真正的真相來源。
+  //
+  // 這裡改成寫一行 structured log（進 Vercel function log），保留「誰在何時決策了什麼」
+  // 的排查軌跡，但不再假裝有一個會送達的通知通道。
+  //
+  // ⚠ 若日後要讓成員主動收到決策結果，那需要另設一條真的有讀者的通道
+  //   （設計時第一個要回答的問題是「誰會來讀、讀的那一端在哪台機器上」），
+  //   不是把 notifyOwnerOfDecision 接回來。
+  console.info(
+    `[decide] war=${reqId} action=${decideAction} owner=${current.owner} ` +
+      `actionType=${current.actionType} targetPage=${current.targetPage} ` +
+      `status=${updateFields.status}` +
+      (rollbackWarId !== null ? ` rollbackWar=${rollbackWarId}` : ""),
+  );
 
   return NextResponse.json(
     {

@@ -19,8 +19,12 @@
 //   7. INSERT wiki_action_requests via Drizzle
 //   8. return { war_id, status }
 //
-// 不在本輪做（留 Phase 1c~1d）：
-//   - 寫 chat_messages 通知（要等 P1-4 decide endpoint + token mechanism 一起）
+// 通知老大的落點（2026-07-29 Forge 更新）：
+//   要問層送出後走 notifyBossOfPendingReview()，寫進 Turso `boss_notifications`
+//   （migration turso-006）。原本寫的是 chat_messages，隨私聊拆除搬家。
+//   實際推播由本機的 boss_notifications_pull.py 執行（雲端無 bot 憑證）。
+//
+// 不在本輪做：
 //   - log filter（middleware 端做，P1-14）
 //
 // Spec source: reports/architecture/memory-webapp-architecture-v2-20260509.md §F

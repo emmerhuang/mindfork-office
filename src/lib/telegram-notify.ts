@@ -1,22 +1,41 @@
-// lib/telegram-notify.ts — Telegram push 整合 helper（Memory Webapp Phase 1）
+// lib/telegram-notify.ts — 老大通知寫入端（Vercel 側）
 //
-// Phase: 1e (P1-8 by Forge — 新建)
-// Spec source: reports/architecture/memory-webapp-architecture-v2-20260509.md §F
+// 2026-07-29 Forge 改寫：通知從 Turso `chat_messages` 搬到專用的 `boss_notifications`
+// （migration turso-006）。背景是老大 #13857-13859 拆掉私聊整條路、chat_messages 要 DROP。
 //
-// 設計決策：
-//   1. Vercel serverless 不能直接呼叫 Telegram bot — 既有架構：Vercel 寫 Turso chat_messages
-//      → 本機 sync-all（Python cron）拉到本機 SQLite → 本機 telegram bot 推老大。
-//      Vercel 端只負責「寫一筆 chat_messages with magic link URL」即可，sync 既有路徑不變。
-//   2. magic link URL 從**最新 active wiki_tokens row** 抓（multi-use OK），組成 URL 帶在 content
-//      裡。如無 active token，URL 不帶 ?t=（老大點開後 webapp 顯示「token 過期，叫秘書長重發」）。
-//   3. chat_messages canonical 規則（reference_chat_db_canonical）：
-//      - sender / recipient 全小寫白名單
-//      - channel_id 字母排序+pipe（boss|<owner>）
-//   4. 訊息格式：「[Wiki] {action_type} on {target_page} - {decision_layer} - {url}」
-//      告知層 (auto_pending) **不在 submit 時推**，等 worker 動完 status 升 applied_pending_ack 才推。
-//      要問層 (pending_review) submit 時就推。
-//      Phase 1e endpoint 端只負責「要問層 submit + 老大決策後（reject/ack/rollback）」推；
-//      告知層的 worker 端 push 留給 P1-5 worker 啟用時補。
+// ============================================================================
+// 為什麼 Vercel 端只能寫 DB、不能自己推 Telegram
+// ============================================================================
+// mindfork-office 跑在 Vercel，而**雲端刻意不放 Telegram bot 憑證**（既有決策：
+// 通知由本機發、雲端零 bot 憑證）。所以「要問層送出要通知老大」只能寫進 Turso，
+// 由本機的 puller 撈到、用本機的 bot 推。
+//
+// 這不是繞路，是憑證邊界的必然結果。也因此這張表是一個**單向 outbox**：
+// 只有一個收件人（老大），沒有對話、沒有 sender/recipient、沒有 channel。
+//
+// ============================================================================
+// ⚠ 搬家時修正的一句假話
+// ============================================================================
+// 舊版檔頭寫著「Vercel 寫 Turso chat_messages → 本機 sync-all 拉到本機 SQLite
+// → 本機 telegram bot 推老大」。**那條路不存在**：sync-all 的 sync_chat_messages()
+// 只有本機→雲端單向，全庫沒有任何 Turso→本機的 puller。
+// 也就是說這個模組寫出去的通知，從落地那天起就沒有任何讀者。
+// （同型病灶：check-worker-daemon 的告警寫雲端而讀者在本機，五個月從未到達。）
+//
+// 讀取端因此是**新建**的，不是改既有的：
+//   C:\MySecretary\scripts\boss_notifications_pull.py
+//
+// ============================================================================
+// 刻意沒有搬過來的東西
+// ============================================================================
+// ‧ VALID_PARTICIPANTS 白名單、makePrivateChannelId、writeChatMessage
+//   → 都是「兩個對話端點」的私聊語意。這張表只有一個收件人，留著等於把
+//     要拆掉的概念換個地方活下來。
+// ‧ notifyOwnerOfDecision（通知成員「老大 reject 了你的提議」）
+//   → 它的收件人是成員、靠私聊 inbox 送達，而那個 inbox 已不存在（且雲端→本機
+//     的同步從來沒有過 ⟹ 它也從未送達過任何人）。成立前提被打掉，一併移除。
+//     ⚠ 若日後真要讓成員收到決策結果，那需要另設一條通道，不是把這支接回來。
+//     決策本身的durable紀錄仍在 wiki_action_requests.status，沒有因此丟失。
 //
 // 用法：
 //   import { notifyBossOfPendingReview } from "@/lib/telegram-notify";
@@ -31,20 +50,27 @@ import { signToken, type TokenPayload } from "@/lib/wiki-hmac";
 // Constants
 // ============================================================================
 
-/** chat_messages canonical：白名單成員（reference_chat_db_canonical）*/
-const VALID_PARTICIPANTS = new Set([
-  "boss",
-  "forge",
-  "grant",
-  "lego",
-  "lens",
-  "mika",
-  "sherlock",
-  "vault",
-  "waffles",
-  "yuki",
-  "secretary",
-]);
+/** 這個服務在 boss_notifications.source 裡的名字。 */
+const SOURCE = "mindfork-office";
+
+/**
+ * content 上限。對齊 turso-006 的 CHECK (length(content) BETWEEN 1 AND 4000)。
+ * 超長時截短而不是整則丟掉：一則被截短的通知仍然告訴老大「有事要看」，
+ * 而丟掉就是靜默漏送（DB 的 CHECK 會擋下整句 INSERT，只剩一行沒人看的 log）。
+ */
+const CONTENT_MAX = 4000;
+
+/**
+ * 截短時附在尾端的記號。
+ *
+ * 為什麼需要它：無聲截短會讓老大讀到一則**看起來完整但其實被切掉**的通知，
+ * 而他無法分辨「本來就這麼短」與「後面還有東西」。這跟顯示未驗證的成功是同一類
+ * 問題 —— 畫面說的話比實際情況樂觀。加一句記號讓他知道要去看連結。
+ */
+const TRUNCATED_MARK = "\n…（內容過長已截短，完整內容請看上面的連結）";
+
+/** justification / whatChanged 等自由文字在 content 裡的截斷長度。 */
+const NOTE_MAX = 200;
 
 function getBaseUrl(): string {
   const explicit = process.env.MEMORY_WEBAPP_BASE_URL;
@@ -54,22 +80,13 @@ function getBaseUrl(): string {
   return "http://localhost:3000";
 }
 
-/** canonical channel_id：字母排序+pipe（兩端強制小寫） */
-export function makePrivateChannelId(a: string, b: string): string {
-  const lo = [a, b].map((s) => s.trim().toLowerCase()).sort();
-  return lo.join("|");
-}
-
 // ============================================================================
-// Token URL builder
+// Token URL builder（未變動）
 // ============================================================================
 
 /**
  * 取得最新 active token（exp > now AND revoked_at IS NULL），重用同一 token。
  * 不存在則回傳 null（caller 組 URL 時 fallback 不帶 ?t=）。
- *
- * Phase 1e 直接 query DB 簽 token；Phase 1f worker 上線時可考慮快取（但
- * cold start lambda 重 query 不貴，Phase 1 不優化）。
  */
 export async function getActiveTokenString(): Promise<string | null> {
   const now = Date.now();
@@ -92,16 +109,10 @@ export async function getActiveTokenString(): Promise<string | null> {
 
 /**
  * 組 magic link URL（指向特定 war 詳情頁或 list）。
- * 如無 active token，URL 不帶 ?t=（老大點進去會看到 401，需要叫秘書長重發 token）。
- *
- * Phase 1f (P2-NEW-1 by Forge — Lens 1e 機會點)：
- *   getActiveTokenString() 回 null 時，console.error 一筆讓 secretary 從 Vercel
- *   function log 知道要重發 token。原本靜默 fallback 老大會看到無權限頁面但
- *   程式不告警 — 這是 UX 問題不是安全問題（P2 嚴重度）。
+ * 如無 active token，URL 不帶 ?t=，並 console.error 一筆讓 secretary 從 Vercel
+ * function log 知道要重發 token（否則老大點進去只會看到無權限頁面而程式不告警）。
  */
-export async function buildMagicLinkUrl(
-  warId?: number,
-): Promise<string> {
+export async function buildMagicLinkUrl(warId?: number): Promise<string> {
   const base = getBaseUrl();
   const path = warId !== undefined ? `/wiki/${warId}` : `/wiki`;
   const token = await getActiveTokenString();
@@ -116,67 +127,74 @@ export async function buildMagicLinkUrl(
 }
 
 // ============================================================================
-// chat_messages writer (Turso)
+// boss_notifications writer (Turso)
 // ============================================================================
 
 /**
- * Sanitize chat_messages content：
- *   Lens 1e P3-NEW-4：reject_reason / rollback_reason 等 user-controlled 字串可能
- *   含 control char（NUL / BEL / ESC 等）造成 telegram bot render 混亂。
- *   規範：移除 U+0000-U+0008 / U+000B-U+001F / U+007F；保留 \n (U+000A) — telegram
- *   支援換行，老大要的格式有 \n。
+ * 移除控制字元、保留 \n。
+ *
+ * 這道處理原本叫 sanitizeChatContent（Lens 1e P3-NEW-4 加的）：reject_reason /
+ * rollback_reason 等 user-controlled 字串可能含 NUL / BEL / ESC，造成 telegram bot
+ * render 混亂。**這個前提沒有被本次改動打掉**，所以處理照留，只是名字裡的 "Chat"
+ * 已經沒有對應的東西了，改成 Notification。
+ *
+ * 規範：移除 U+0000-U+0008 / U+000B-U+001F / U+007F；保留 \n (U+000A)。
  */
 // eslint-disable-next-line no-control-regex
-const CHAT_CONTROL_CHAR_RE = /[\x00-\x08\x0b-\x1f\x7f]/g;
+const CONTROL_CHAR_RE = /[\x00-\x08\x0b-\x1f\x7f]/g;
 
-export function sanitizeChatContent(content: string): string {
-  return content.replace(CHAT_CONTROL_CHAR_RE, " ");
+export function sanitizeNotificationContent(content: string): string {
+  return content.replace(CONTROL_CHAR_RE, " ");
 }
 
 /**
- * 寫一筆 chat_messages 到 Turso。canonical 規則：
- *   - sender / recipient 強制小寫 + 白名單檢查（fail-loud）
- *   - channel_id 字母排序+pipe
- *   - content sanitize 控制字元（保留 \n，移除 NUL/BEL/ESC 等）
+ * 寫一筆 boss_notifications 到 Turso。
  *
- * Vercel 寫到 Turso 後，本機 sync-all 拉到 SQLite → telegram bot 推老大。
+ * 刻意**不**寫 delivery_state / delivered_at / attempt_count：那三欄是投遞狀態，
+ * 由 DB default（pending / NULL / 0）與本機 puller 負責。寫入端插手就會造出
+ * 「雲端說已送達、其實沒人推過」的假狀態。
  *
  * @returns 寫入是否成功（不丟錯，給 caller 決定要不要中斷主流程）
  */
-export async function writeChatMessage(args: {
-  sender: string;
-  recipient: string;
+export async function writeBossNotification(args: {
+  source: string;
+  kind: string;
+  ref: string | null;
   content: string;
 }): Promise<{ ok: true } | { ok: false; reason: string }> {
-  const sender = args.sender.trim().toLowerCase();
-  const recipient = args.recipient.trim().toLowerCase();
+  const source = args.source.trim();
+  const kind = args.kind.trim();
 
-  if (!VALID_PARTICIPANTS.has(sender)) {
-    return { ok: false, reason: `invalid_sender: ${sender}` };
-  }
-  if (!VALID_PARTICIPANTS.has(recipient)) {
-    return { ok: false, reason: `invalid_recipient: ${recipient}` };
-  }
+  // source / kind 是 DB NOT NULL。在這裡擋掉比讓 DB 丟一句 SQL 錯誤清楚，
+  // 而且 reason 會進 Vercel function log，查起來知道是哪一種問題。
+  if (source.length === 0) return { ok: false, reason: "empty_source" };
+  if (kind.length === 0) return { ok: false, reason: "empty_kind" };
+
   if (!args.content || typeof args.content !== "string" || args.content.length === 0) {
     return { ok: false, reason: "empty_content" };
   }
 
-  // Lens 1e P3-NEW-4：sanitize control chars (留 \n)
-  const safeContent = sanitizeChatContent(args.content);
-  // sanitize 後若空（極端 case），擋掉
-  if (safeContent.trim().length === 0) {
+  const safe = sanitizeNotificationContent(args.content);
+  // sanitize 後若只剩空白：空的通知推給老大只會是一則謎題，擋掉。
+  if (safe.trim().length === 0) {
     return { ok: false, reason: "content_only_control_chars" };
   }
+  // 超長截短（見 CONTENT_MAX 註解：截短優於靜默漏送）。
+  // 截短時附記號，且要保證「本體 + 記號」總長仍在上限內，否則 DB CHECK 會擋。
+  const content =
+    safe.length > CONTENT_MAX
+      ? safe.slice(0, CONTENT_MAX - TRUNCATED_MARK.length) + TRUNCATED_MARK
+      : safe;
 
-  const channelId = makePrivateChannelId(sender, recipient);
+  const ref = args.ref && args.ref.trim().length > 0 ? args.ref.trim() : null;
   const now = new Date().toISOString();
 
   try {
     const client = getTursoClient();
     await client.execute({
-      sql: `INSERT INTO chat_messages (channel_id, sender, recipient, content, created_at)
+      sql: `INSERT INTO boss_notifications (source, kind, ref, content, created_at)
             VALUES (?, ?, ?, ?, ?)`,
-      args: [channelId, sender, recipient, safeContent, now],
+      args: [source, kind, ref, content, now],
     });
     return { ok: true };
   } catch (e) {
@@ -186,13 +204,15 @@ export async function writeChatMessage(args: {
 }
 
 // ============================================================================
-// 高階 helper：要問層 submit 時 push 老大
+// 高階 helper
 // ============================================================================
 
 /**
- * 要問層 (pending_review) submit 時，寫一筆 chat_messages 給 boss inbox。
- * 走 sender=<owner>, recipient=boss → channel_id = boss|<owner>。
- * 本機 sync-all 拉到後，telegram bot 推老大。
+ * 要問層 (pending_review) submit 時，寫一筆通知給老大。
+ *
+ * ⚠ owner 進 content 而不是進某個欄位：舊版靠 chat_messages.sender 表達「誰提的」，
+ *   新表沒有 sender（單向 outbox），所以這個資訊必須寫在 content 裡，
+ *   否則搬家等於把「誰提的」弄丟。
  */
 export async function notifyBossOfPendingReview(args: {
   warId: number;
@@ -202,13 +222,17 @@ export async function notifyBossOfPendingReview(args: {
   justification?: string | null;
 }): Promise<{ ok: boolean; reason?: string }> {
   const url = await buildMagicLinkUrl(args.warId);
-  const justNote = args.justification ? `\n理由：${args.justification.slice(0, 200)}` : "";
+  const justNote = args.justification
+    ? `\n理由：${args.justification.slice(0, NOTE_MAX)}`
+    : "";
   const content =
-    `[Wiki][要問] ${args.actionType} on ${args.targetPage} - review` +
+    `[Wiki][要問] ${args.actionType} on ${args.targetPage}` +
+    `\n提出者：${args.owner}` +
     `${justNote}\n批准看：${url}`;
-  const r = await writeChatMessage({
-    sender: args.owner,
-    recipient: "boss",
+  const r = await writeBossNotification({
+    source: SOURCE,
+    kind: "pending_review",
+    ref: `war:${args.warId}`,
     content,
   });
   if (!r.ok) return { ok: false, reason: r.reason };
@@ -216,8 +240,11 @@ export async function notifyBossOfPendingReview(args: {
 }
 
 /**
- * 告知層 worker 動完後，寫一筆 chat_messages 給 boss inbox（worker 啟用後才用）。
- * Phase 1e 不主動呼叫，留給 P1-5 worker 整合。
+ * 告知層 worker 動完後，寫一筆通知給老大。
+ *
+ * ⚠ 目前 mindfork-office 端沒有呼叫者（worker 跑在本機、見
+ *   C:\MySecretary\scripts\wiki\agent-worker.py）。保留是因為 Vercel 端若接手
+ *   worker 職責時需要它，而且它與 pending_review 共用同一張表與同一組守衛。
  */
 export async function notifyBossOfAppliedPendingAck(args: {
   warId: number;
@@ -228,32 +255,17 @@ export async function notifyBossOfAppliedPendingAck(args: {
   whyChanged?: string | null;
 }): Promise<{ ok: boolean; reason?: string }> {
   const url = await buildMagicLinkUrl(args.warId);
-  const what = args.whatChanged ? `\n做了：${args.whatChanged.slice(0, 200)}` : "";
-  const why = args.whyChanged ? `\n為什麼：${args.whyChanged.slice(0, 200)}` : "";
+  const what = args.whatChanged ? `\n做了：${args.whatChanged.slice(0, NOTE_MAX)}` : "";
+  const why = args.whyChanged ? `\n為什麼：${args.whyChanged.slice(0, NOTE_MAX)}` : "";
   const content =
-    `[Wiki][告知] ${args.actionType} on ${args.targetPage} - notify` +
+    `[Wiki][告知] ${args.actionType} on ${args.targetPage}` +
+    `\n執行者：${args.owner}` +
     `${what}${why}\n看 diff：${url}`;
-  const r = await writeChatMessage({
-    sender: args.owner,
-    recipient: "boss",
+  const r = await writeBossNotification({
+    source: SOURCE,
+    kind: "applied_pending_ack",
+    ref: `war:${args.warId}`,
     content,
-  });
-  if (!r.ok) return { ok: false, reason: r.reason };
-  return { ok: true };
-}
-
-/**
- * 老大決策後（approve/reject/ack/rollback）寫一筆 chat_messages 給 owner inbox。
- * 用 sender=boss, recipient=<owner> → channel_id = boss|<owner>。
- */
-export async function notifyOwnerOfDecision(args: {
-  owner: string;
-  content: string;
-}): Promise<{ ok: boolean; reason?: string }> {
-  const r = await writeChatMessage({
-    sender: "boss",
-    recipient: args.owner,
-    content: args.content,
   });
   if (!r.ok) return { ok: false, reason: r.reason };
   return { ok: true };
