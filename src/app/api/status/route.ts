@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MemberStatus } from "@/types";
+import { fetchStatusGated, statusKeyList, tursoDetect } from "./stream/detect";
 
 const TURSO_URL = process.env.TURSO_URL!;
 const TURSO_TOKEN = process.env.TURSO_TOKEN!;
@@ -106,138 +107,6 @@ function rowsToMap(result: TursoResponse, idx: number = 0): Record<string, strin
   return map;
 }
 
-interface ChatRow {
-  id: number;
-  channel_id: string;
-  sender: string;
-  recipient: string;
-  content: string;
-  created_at: string;
-}
-
-interface ChannelSummary {
-  channel_id: string;
-  participant_a: string;
-  participant_b: string;
-  last_at: string;
-  last_message?: string;
-  last_sender?: string;
-  message_count?: number;
-  messages: Array<{ id?: number; sender: string; content: string; created_at: string }>;
-}
-
-/**
- * Phase 2 chat summary builder（Sherlock 設計稿 §5）
- *
- * 主路徑：吃 chat_channels（last_*, message_count），快、不掃 messages 表
- * Fallback：chat_channels 是空表（cleanup 還沒跑過）→ 從 chat_messages 即時聚合
- *
- * messages 預載：每頻道帶最新 50 筆 ASC（給 ChatRoom 開門即看到內容，
- *   想看更舊上拉觸發 /api/chat/messages?before_id=）
- */
-function buildChatSummaries(
-  channelsResult: TursoResponse["results"][number] | undefined,
-  messagesResult: TursoResponse["results"][number] | undefined,
-): ChannelSummary[] {
-  // 解析 messages（永遠跑：preload 用）
-  const msgRows: ChatRow[] =
-    messagesResult?.type === "ok" && messagesResult.response?.result?.rows
-      ? messagesResult.response.result.rows.map((row) => ({
-          id: parseInt(row[0]?.value || "0", 10),
-          channel_id: row[1]?.value || "",
-          sender: row[2]?.value || "",
-          recipient: row[3]?.value || "",
-          content: row[4]?.value || "",
-          created_at: row[5]?.value || "",
-        }))
-      : [];
-
-  const messagesByChannel = new Map<string, ChatRow[]>();
-  for (const m of msgRows) {
-    if (!messagesByChannel.has(m.channel_id)) messagesByChannel.set(m.channel_id, []);
-    messagesByChannel.get(m.channel_id)!.push(m);
-  }
-
-  // 解析 chat_channels rows（主路徑）
-  const channelRows =
-    channelsResult?.type === "ok" && channelsResult.response?.result?.rows
-      ? channelsResult.response.result.rows
-      : [];
-
-  // 路徑 A：chat_channels 有資料 → 用它組
-  if (channelRows.length > 0) {
-    const summaries: ChannelSummary[] = [];
-    for (const row of channelRows) {
-      const channelId = row[0]?.value || "";
-      const lastMessage = row[1]?.value || "";
-      const lastSender = row[2]?.value || "";
-      const lastAt = row[3]?.value || "";
-      const messageCount = parseInt(row[4]?.value || "0", 10);
-
-      // participant 從 channel_id 拆（同既有規則：pipe 優先，dash 後備）
-      let parts = channelId.split("|");
-      if (parts.length < 2) parts = channelId.split("-");
-      const participantA = (parts[0] || "").toLowerCase();
-      const participantB = (parts[1] || "").toLowerCase();
-
-      // 取該 channel 的 preload messages（已從 chat_messages 撈了，作 ASC sort）
-      const preload = messagesByChannel.get(channelId) || [];
-      preload.sort((a, b) => a.id - b.id);
-
-      summaries.push({
-        channel_id: channelId,
-        participant_a: participantA,
-        participant_b: participantB,
-        last_at: lastAt,
-        last_message: lastMessage,
-        last_sender: lastSender,
-        message_count: messageCount,
-        messages: preload.map((r) => ({
-          id: r.id,
-          sender: r.sender,
-          content: r.content,
-          created_at: r.created_at,
-        })),
-      });
-    }
-    summaries.sort((a, b) => (b.last_at || "").localeCompare(a.last_at || ""));
-    return summaries;
-  }
-
-  // 路徑 B（fallback）：chat_channels 空 → 從 messages 聚合（舊 GET 行為）
-  const channelMap = new Map<string, ChatRow[]>();
-  for (const row of msgRows) {
-    if (!channelMap.has(row.channel_id)) channelMap.set(row.channel_id, []);
-    channelMap.get(row.channel_id)!.push(row);
-  }
-  const summaries: ChannelSummary[] = [];
-  for (const [channelId, rows] of channelMap) {
-    rows.sort((a, b) => a.id - b.id);
-    let parts = channelId.split("|");
-    if (parts.length < 2) parts = channelId.split("-");
-    const participantA = (parts[0] || "").toLowerCase();
-    const participantB = (parts[1] || "").toLowerCase();
-    const lastRow = rows[rows.length - 1];
-    summaries.push({
-      channel_id: channelId,
-      participant_a: participantA,
-      participant_b: participantB,
-      last_at: lastRow.created_at,
-      last_message: (lastRow.content || "").slice(0, 100),
-      last_sender: lastRow.sender,
-      message_count: rows.length,
-      messages: rows.map((r) => ({
-        id: r.id,
-        sender: r.sender,
-        content: r.content,
-        created_at: r.created_at,
-      })),
-    });
-  }
-  summaries.sort((a, b) => b.last_at.localeCompare(a.last_at));
-  return summaries;
-}
-
 const FALLBACK_METRICS = {
   rateLimitPercent: -1,
   pendingTasks: -1,
@@ -248,34 +117,53 @@ const FALLBACK_METRICS = {
   updatedAt: new Date().toISOString(),
 };
 
-// GET /api/status - read metrics, members, chat summaries from Turso
-export async function GET() {
-  try {
-    // 三段查詢（簡化版，2026-04-30 老大 5635：30 天 DELETE 不留歷史）：
-    //   [0] mindfork_status keys
-    //   [1] chat_channels（active private + 有訊息的 deleted 也帶上）
-    //   [2] chat_messages preload（每頻道最新 N 筆 — 用 ROW_NUMBER 切窗）
-    //
-    // preload 策略：先撈最近 1500 筆 messages（30 天內全部都是熱資料），
-    // 在 server 端按 channel 分桶並截每桶 50 筆。
-    // 為什麼不在 SQL 裡用 window function：libSQL 支援但複雜；1500 筆排序 cheap。
-    const result = await tursoExecute([
-      { sql: "SELECT key, value FROM mindfork_status WHERE key IN ('metrics', 'members', 'member_os', 'task_queue', 'meeting', 'member_profiles')" },
-      {
-        sql:
-          "SELECT channel_id, last_message, last_sender, last_at, message_count, status " +
-          "FROM chat_channels " +
-          "WHERE channel_type='private' AND status='active' " +
-          "ORDER BY last_at DESC",
-      },
-      {
-        sql:
-          "SELECT id, channel_id, sender, recipient, content, created_at " +
-          "FROM chat_messages " +
-          "ORDER BY id DESC LIMIT 1500",
-      },
-    ]);
+/**
+ * 完整 batch（一段查詢）。
+ *
+ * ⚠ 2026-07-29 起只剩 mindfork_status 一條。原本還有 chat_channels（active private）與
+ *   chat_messages preload 兩條，隨私聊整條拆除一併移除（老大 #13857-13859），
+ *   同時也是「drop Turso chat_messages」的前提。
+ *   本專案原本只查 `channel_type='private'`，所以拆私聊等於拆掉本專案全部的 chat 讀取；
+ *   會議訊息（channel_type='meeting'）從來不在這裡讀。
+ */
+function fetchStatusFull(): Promise<TursoResponse> {
+  return tursoExecute([
+    { sql: `SELECT key, value FROM mindfork_status WHERE key IN (${statusKeyList()})` },
+  ]);
+}
 
+/**
+ * GET /api/status — 兩段式（2026-07-28 Forge）
+ *
+ * 這條路徑是 useStatusStream 的 fallback：SSE 連 5 次失敗後每 15 秒打一次。
+ * 原本每輪都跑上面的完整 batch，一輪 679 列、一個卡住的分頁一天 391 萬列。
+ *
+ * 現在先跑 cheap detect（45 列）；client 用 ?fp= 帶回上一輪的 fingerprint，
+ * 沒變就直接回 { unchanged: true } 而不碰完整 batch。
+ *
+ * 閘門為什麼在這裡而不是在 hook：這個 handler 一被呼叫，679 列就已經在 Turso
+ * 讀掉了。client 端比對是「付完錢才決定不買」，省不到任何東西。
+ *
+ * 相容性：沒帶 fp（首載、或舊版 client）時 fingerprint 必然與空字串不同，
+ * 一定走完整 batch，行為與加閘門前相同。
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const clientFingerprint = request.nextUrl.searchParams.get("fp") ?? "";
+
+    const gated = await fetchStatusGated(clientFingerprint, {
+      detect: tursoDetect,
+      full: fetchStatusFull,
+    });
+
+    if (gated.unchanged) {
+      return NextResponse.json({
+        unchanged: true,
+        fingerprint: gated.fingerprint,
+      });
+    }
+
+    const result = gated.data;
     const map = rowsToMap(result, 0);
 
     const metrics = map.metrics
@@ -303,17 +191,18 @@ export async function GET() {
 
     const memberProfiles = map.member_profiles ? JSON.parse(map.member_profiles) : [];
 
-    // 把每頻道 preload 截成最多 50 筆（預設 LIMIT，之後上拉再撈舊）
-    const PRELOAD_PER_CHANNEL = 50;
-    const allSummaries = buildChatSummaries(result.results[1], result.results[2]);
-    const chatSummaries = allSummaries.map((s) => ({
-      ...s,
-      messages: s.messages.slice(-PRELOAD_PER_CHANNEL), // ASC 排序，留最新 N 筆
-    }));
-
-    return NextResponse.json({ members, metrics, memberOs, taskQueue, meeting, memberProfiles, chatSummaries });
+    return NextResponse.json({
+      members,
+      metrics,
+      memberOs,
+      taskQueue,
+      meeting,
+      memberProfiles,
+      fingerprint: gated.fingerprint,
+    });
   } catch (err) {
     console.error("GET /api/status error:", err);
+    // 錯誤回應刻意不帶 fingerprint：client 會保留舊值，下一輪重試而不是誤判成已同步。
     return NextResponse.json({
       members: {},
       metrics: { ...FALLBACK_METRICS },
